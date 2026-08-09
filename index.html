@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>운행 일지</title>
+
+    <!-- PDF 저장용 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- 외부 CSS 연결 -->
+    <link rel="stylesheet" href="style.css">
+    
+</head>
+<body>
+
+    <!-- 스플래시 화면 (시작 화면) -->
+    <div id="splashScreen" class="splash-screen">
+        <img src="banner_image.png" alt="시작 화면 배너" class="splash-banner">
+    </div>
+
+    <div class="container" id="appContent">
+
+        <!-- 메인으로 돌아가기 버튼 (보조차량 전용) -->
+        <button id="subCarBackBtn" class="icon-btn sub-car-back-btn" onclick="switchCarLog('main')" title="메인으로 돌아가기" style="display: none;">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        
+        <!-- 상단 컨트롤 버튼 그룹 -->
+        <div class="top-btn-group">
+            <div id="pdfDropdownGroup" style="display: none; position: relative;">
+                <button id="pdfDropdownToggleBtn" class="icon-btn" onclick="togglePdfMenu()" title="내역서 다운로드 메뉴">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div id="pdfMenuDropdown" class="pdf-menu-dropdown">
+                    <button class="icon-btn" onclick="openDetailReportModal(); togglePdfMenu();" title="세부 내역서 조회">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" onclick="downloadPDF(); togglePdfMenu();" title="현재 화면 PDF 다운로드">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <path d="M12 18v-6"></path>
+                            <path d="M9 15l3 3 3-3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <button id="pdfDownloadBtn" class="icon-btn" onclick="downloadPDF()" title="PDF 다운로드" style="display: none;">
+                <svg viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <path d="M12 18v-6"></path>
+                    <path d="M9 15l3 3 3-3"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- 사이드 메뉴 -->
+        <div id="sideMenuOverlay" class="side-menu-overlay" onclick="toggleMenu()"></div>
+        <div id="sideMenu" class="side-menu">
+            <div class="side-menu-header">
+                <div class="menu-banner-wrap">
+                    <img src="banner_image_Light.png" class="menu-banner-light" style="height: 70px; object-fit: contain;">
+                    <img src="banner_image_dark.png" class="menu-banner-dark" style="height: 70px; object-fit: contain;">
+                </div>
+                
+                <button class="icon-btn" onclick="showPersonalInfo()" style="padding: 6px; min-width: auto; min-height: auto;" title="개인정보">
+                    <svg viewBox="0 0 24 24" style="width: 22px; height: 22px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round;">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </button>
+            </div>
+            
+            <button class="dropdown-item" onclick="showCarManagement()" style="display: flex; align-items: center; gap: 10px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                차량 관리
+            </button>
+            <button class="dropdown-item" onclick="showMaintManagement()" style="display: flex; align-items: center; gap: 10px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                정비 관리
+            </button>
+            <button class="dropdown-item" onclick="showFuelManagement()" style="display: flex; align-items: center; gap: 10px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="M3 22v-8c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v8M11 22H3M15 22v-5l-3-3V6c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2M20 9v5l-3 3"></path></svg>
+                주유 내역
+            </button>
+            <button class="dropdown-item" onclick="showClientManagement()" style="display: flex; align-items: center; gap: 10px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                거래처
+            </button>
+
+            <button class="dropdown-item" onclick="showSettings('main')" style="display: flex; align-items: center; gap: 10px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                앱 설정
+            </button>
+            <button id="menuReportBtn" class="dropdown-item" onclick="showReport()" style="display: flex; align-items: center; gap: 10px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                운송비 내역서
+            </button>
+            
+            <div id="subCarLogMenuContainer" style="border-top: 1px solid var(--border-color); margin-top: 5px; padding-top: 5px;"></div>
+        </div>
+
+        <!-- [메인 페이지] -->
+        <div id="mainPage" class="page">
+            <div class="header">
+                <div class="banner-container">
+                    <img id="mainBannerImage" src="banner_image.png" alt="운행 일지 로고" class="banner-logo" onerror="this.style.display='none'">
+                    <span id="mainBannerText" class="banner-text">운행 일지</span>
+                </div>
+                
+                <div class="date-navigator">
+                    <button class="arrow-btn" onclick="changeMonth(-1)" title="이전 달">
+                        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    
+                    <div class="date-select-group">
+                        <select id="yearSelect" class="date-select" onchange="changeYearMonth()" title="년도 선택"></select>
+                        <select id="monthSelect" class="date-select" onchange="changeYearMonth()" title="월 선택"></select>
+                    </div>
+
+                    <button class="arrow-btn" onclick="changeMonth(1)" title="다음 달">
+                        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="calendar-grid">
+                <div class="day-header sunday">일</div>
+                <div class="day-header">월</div>
+                <div class="day-header">화</div>
+                <div class="day-header">수</div>
+                <div class="day-header">목</div>
+                <div class="day-header">금</div>
+                <div class="day-header saturday">토</div>
+
+                <div id="calendar-cells" style="display: contents;"></div>
+            </div>
+
+            <div id="unpaidSummaryCard" class="unpaid-summary-card" style="display: none;">
+                <!-- 미수금 안내 문구 렌더링 영역 -->
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-title">
+                    <span>월간 운송료 정산</span>
+                    <span id="summaryTotalWork">총 0회 운행</span>
+                </div>
+                <!-- 실 운행거리 표시 영역 (설정 ON일 때만 노출) -->
+                <div class="summary-row" id="summaryDistanceRow" style="display: none; color: var(--primary-color); font-weight: 700; margin-bottom: 12px;">
+                    <span>실 운행거리</span>
+                    <span class="summary-value" id="summaryTotalDistance">0 km</span>
+                </div>
+                <!-- 기본 운송료 동적 렌더링 컨테이너 -->
+                <div id="dynamicBaseFareContainer">
+                    <div class="summary-row">
+                        <span>기본 운송료</span>
+                        <span class="summary-value" id="summaryFare">0 원</span>
+                    </div>
+                </div>
+
+                <!-- 보조차량 수수료 행 -->
+                <div class="summary-row" id="summarySubCarCommissionRow" style="display: none;">
+                    <span><span id="summarySubCarCommissionLabel">보조차량 수수료</span></span>
+                    <span class="summary-value" id="summarySubCarCommissionFare">- 0 원</span>
+                </div>
+                <div class="summary-row" id="summaryPalletRow" style="display: none;">
+                    <span>파렛트 회수 청구액</span>
+                    <span class="summary-value" id="summaryPalletFare">0 원</span>
+                </div>
+                <div class="summary-row">
+                    <span>부가세 (10%)</span>
+                    <span class="summary-value" id="summaryVat">0 원</span>
+                </div>
+                <div class="summary-row total">
+                    <span>합계</span>
+                    <span class="summary-value" id="summaryTotal">0 원</span>
+                </div>
+                <div class="summary-row maint" id="summaryMaintRow" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color);">
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        <svg class="inline-icon sm" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                        차량 정비비
+                    </span>
+                    <span class="summary-value" id="summaryMaintFare">0 원</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- [운송비 내역서 페이지] -->
+        <div id="reportPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="handleReportBack()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title"></div>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div class="report-page" id="reportContentToExport">
+                <div class="report-title" id="reportMonthTitle">2026년 8월 운송비 내역서</div>
+
+                <table class="info-table">
+                    <tr>
+                        <th>성명</th>
+                        <td id="rptUserName">-</td>
+                        <th>연락처</th>
+                        <td id="rptUserPhone">-</td>
+                    </tr>
+                    <tr>
+                        <th>차량번호</th>
+                        <td id="rptCarNumber">-</td>
+                        <th>차량톤수</th>
+                        <td id="rptCarTonnage">-</td>
+                    </tr>
+                    <tr>
+                        <th>입금은행</th>
+                        <td id="rptBankName">-</td>
+                        <th>계좌번호</th>
+                        <td id="rptAccountNumber">-</td>
+                    </tr>
+                </table>
+
+                <div id="reportTableContainer"></div>
+
+                <div class="report-summary-box">
+                    <div class="summary-row">
+                        <span>기본 운송료</span>
+                        <span class="summary-value" id="rptFare">0 원</span>
+                    </div>
+
+                    <!-- 보조차량 수수료 내역 추가 -->
+                    <div class="summary-row" id="rptSubCarCommissionRow" style="display: none;">
+                        <span><span id="rptSubCarCommissionLabel">보조차량 수수료</span></span>
+                        <span class="summary-value" id="rptSubCarCommissionFare">- 0 원</span>
+                    </div>
+                    <div class="summary-row" id="rptPalletTotalRow">
+                        <span>파렛트 회수 청구액</span>
+                        <span class="summary-value" id="rptPalletFare">0 원</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>부가세 (10%)</span>
+                        <span class="summary-value" id="rptVat">0 원</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>계</span>
+                        <span class="summary-value" id="rptTotal">0 원</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- [개인정보 페이지] -->
+        <div id="personalInfoPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="showMain()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title">개인정보</div>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div class="setting-section">
+                <h3>기본 정보 설정</h3>
+                <div class="form-group">
+                    <label for="userName">성명</label>
+                    <input type="text" id="userName" class="input-box" placeholder="성명을 입력하세요" oninput="savePersonalInfo()">
+                </div>
+                <div class="form-group">
+                    <label for="userPhone">연락처</label>
+                    <input type="tel" id="userPhone" class="input-box" placeholder="010-0000-0000" oninput="formatPhoneNumber(this); savePersonalInfo()">
+                </div>
+                <div class="form-group">
+                    <label for="bankName">입금 은행</label>
+                    <input type="text" id="bankName" class="input-box" placeholder="예: OO은행" oninput="savePersonalInfo()">
+                </div>
+               <div class="form-group">
+                    <label for="accountNumber">계좌번호</label>
+                    <input type="text" id="accountNumber" class="input-box" inputmode="numeric" placeholder="계좌번호 입력" oninput="savePersonalInfo()">
+                </div>
+                
+                <!-- 추가된 로그인/로그아웃 영역 -->
+                <div style="margin-top: 30px; border-top: 1px dashed var(--border-color); padding-top: 20px;">
+                    <button class="save-btn" onclick="handleLogin()" style="margin-top: 0; background-color: var(--primary-color);">로그인</button>
+                    <button class="text-btn" onclick="handleLogout()" style="width: 100%; text-align: center; color: var(--sub-text-color); font-size: 0.85rem; background: none; border: none; padding: 10px; margin-top: 5px; text-decoration: underline; cursor: pointer;">로그아웃</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- [차량 관리 페이지] -->
+        <div id="carManagementPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="showMain()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title">차량 관리</div>
+                <div style="width: 40px;"></div>
+            </div>
+            
+            <div id="carListContainer"></div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn-add" style="flex: 1; border-color: var(--primary-color); color: var(--primary-color);" onclick="openCarModal('main')">
+                    + 차량 등록
+                </button>
+                <button class="btn-add" style="flex: 1; border-color: #3182ce; color: #3182ce;" onclick="openCarModal('sub')">
+                    + 기사 등록
+                </button>
+            </div>
+        </div>
+
+        <!-- [거래처 관리 페이지] -->
+        <div id="clientManagementPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="showMain()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title">거래처</div>
+                <button class="icon-btn" id="clientOrderEditBtn" onclick="toggleClientOrderEditMode()" title="순서 변경 편집" style="display: none;">
+                    <svg viewBox="0 0 24 24"><path d="M3 15h18M3 9h18"></path></svg>
+                </button>
+                <div id="clientOrderEditSpacer" style="width: 40px;"></div>
+            </div>
+            
+            <div id="clientListContainer"></div>
+            <button class="btn-add" style="margin-top: 15px; border-color: var(--primary-color); color: var(--primary-color);" onclick="openClientModal()">
+                + 거래처 등록
+            </button>
+        </div>
+
+        <!-- [정비 관리 페이지] -->
+        <div id="maintManagementPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="showMain()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title">정비 관리</div>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div class="date-navigator" style="margin-bottom:20px;">
+                <button class="arrow-btn" onclick="changeMaintMonth(-1)" title="이전 달">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                
+                <div class="date-select-group">
+                    <select id="maintYearSelect" class="date-select" onchange="changeMaintYearMonth()"></select>
+                    <select id="maintMonthSelect" class="date-select" onchange="changeMaintYearMonth()"></select>
+                </div>
+
+                <button class="arrow-btn" onclick="changeMaintMonth(1)" title="다음 달">
+                    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            </div>
+
+            <div id="maintListContainer"></div>
+
+            <button class="save-btn" style="margin-top:15px;" onclick="openMaintRecordModal()">+ 정비 내역 추가</button>
+        </div>
+        
+        <!-- [주유 내역 페이지] -->
+        <div id="fuelManagementPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="showMain()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title">주유 내역</div>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div class="date-navigator" style="margin-bottom:20px;">
+                <button class="arrow-btn" onclick="changeFuelMonth(-1)" title="이전 달">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                
+                <div class="date-select-group">
+                    <select id="fuelYearSelect" class="date-select" onchange="changeFuelYearMonth()"></select>
+                    <select id="fuelMonthSelect" class="date-select" onchange="changeFuelYearMonth()"></select>
+                </div>
+
+                <button class="arrow-btn" onclick="changeFuelMonth(1)" title="다음 달">
+                    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            </div>
+
+            <div id="fuelListContainer"></div>
+
+            <button class="save-btn" style="margin-top:15px;" onclick="openFuelDetailModal()">+ 주유 내역 추가</button>
+        </div>
+
+        <!-- [앱 설정 페이지] -->
+        <div id="settingsPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="goBackFromSettings()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title">앱 설정</div>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div class="setting-section" style="padding: 12px 16px;">
+                <div class="setting-item" style="margin-bottom: 0;">
+                    <label style="font-weight: 700; font-size: 1.1rem;">테마 선택</label>
+                    <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()">
+                        <span id="themeIcon">
+                            <svg class="inline-icon sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        </span>
+                        <span id="themeText">라이트 모드</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-section">
+                <h3 id="mainSettingsTitle">운행 일지 설정</h3>
+                
+                <div class="setting-item">
+                    <label>달력 일일 표시 방식</label>
+                    <div style="display: flex; gap: 4px; background-color: var(--input-bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <button type="button" id="btnInputModeCount" class="toggle-btn active-work" style="min-width: 60px; min-height: 28px; padding: 4px 8px; font-size: 0.8rem; margin: 0; border: none; border-radius: 6px; white-space: nowrap;" onclick="setInputMode('count', 'main'); saveSettings();">횟수</button>
+                        <button type="button" id="btnInputModeFare" class="toggle-btn" style="min-width: 60px; min-height: 28px; padding: 4px 8px; font-size: 0.8rem; margin: 0; border: none; border-radius: 6px; white-space: nowrap;" onclick="setInputMode('fare', 'main'); saveSettings();">금액</button>
+                    </div>
+                </div>
+                
+                <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <div class="setting-item">
+                    <label for="callDetailToggle">운행 일지 세부 입력</label>
+                    <label class="switch">
+                        <input type="checkbox" id="callDetailToggle" onchange="updateToggleDependencies('main'); saveSettings();">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div id="callDetailSubSettings" class="sub-setting-group tree-line-group" style="display: none;">
+                    <div class="setting-item">
+                        <label for="paymentToggle">결제 및 수금 입력</label>
+                        <label class="switch">
+                            <input type="checkbox" id="paymentToggle" onchange="saveSettings();">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label for="timeToggle">운행 시간 입력</label>
+                        <label class="switch">
+                            <input type="checkbox" id="timeToggle" onchange="saveSettings();">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label for="platformToggle">플랫폼 입력</label>
+                        <label class="switch">
+                            <input type="checkbox" id="platformToggle" onchange="saveSettings();">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label for="distanceToggle">운행 거리 입력</label>
+                        <label class="switch">
+                            <input type="checkbox" id="distanceToggle" onchange="saveSettings();">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <div class="setting-item">
+                    <label for="fixedToggle">고정 노선 사용</label>
+                    <label class="switch">
+                        <input type="checkbox" id="fixedToggle" onchange="toggleFixedSubSettings(); updateToggleDependencies('main'); saveSettings();">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div id="fixedSubSettings" class="sub-setting-group tree-line-group" style="display: none;">
+                    <div class="setting-item">
+                        <label for="unitPrice">고정 기본 단가 (원)</label>
+                        <input type="text" id="unitPrice" class="input-box" inputmode="numeric" placeholder="0" oninput="formatCurrencyInput(this); saveSettings();" style="width: 120px; margin-top: 0;">
+                    </div>
+                    <div class="setting-item">
+                        <label for="runCountToggle">운행 횟수 버튼 사용</label>
+                        <label class="switch">
+                            <input type="checkbox" id="runCountToggle" onchange="saveSettings();">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label for="palletToggle">파렛트 회수 사용</label>
+                        <label class="switch">
+                            <input type="checkbox" id="palletToggle" onchange="togglePalletSubSettings(); saveSettings();">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="palletSubSettings" class="price-setting" style="display: none; justify-content: flex-end;">
+                        <input type="text" id="palletPrice" class="input-box" inputmode="numeric" placeholder="단가 0" oninput="formatCurrencyInput(this); saveSettings();" style="width: 120px; margin-top: 0;">
+                    </div>
+                </div>
+
+            <div class="setting-section">
+                <h3>데이터 관리 (백업 / 복구)</h3>
+                <p style="font-size: 0.85rem; color: var(--sub-text-color); margin-bottom: 10px;">
+                    기기 변경 시 기록을 보관 및 복원할 수 있습니다.
+                </p>
+                <div class="backup-btn-group">
+                    <button class="backup-btn" onclick="exportData()">
+                        <svg class="inline-icon sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> 백업 저장하기
+                    </button>
+                    <button class="backup-btn" onclick="document.getElementById('importFileInput').click()">
+                        <svg class="inline-icon sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 백업 불러오기
+                    </button>
+                </div>
+                <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="importData(event)">
+            </div>
+        </div>
+
+        <!-- [보조 운행일지 설정 페이지] -->
+        <div id="subCarSettingsPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="goBackFromSettings()" title="뒤로가기">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="settings-title">보조 운행일지 설정</div>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div class="setting-section" id="subCarSettingsSection">
+                <h3 id="subCarSettingsTitle">보조 차량 운행 일지 설정</h3>
+                
+                <div class="setting-item">
+                    <label>달력 일일 표시 방식</label>
+                    <div style="display: flex; gap: 4px; background-color: var(--input-bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <button type="button" id="btnSubInputModeCount" class="toggle-btn active-work" style="min-width: 60px; min-height: 28px; padding: 4px 8px; font-size: 0.8rem; margin: 0; border: none; border-radius: 6px; white-space: nowrap;" onclick="setInputMode('count', 'sub'); saveSettings();">횟수</button>
+                        <button type="button" id="btnSubInputModeFare" class="toggle-btn" style="min-width: 60px; min-height: 28px; padding: 4px 8px; font-size: 0.8rem; margin: 0; border: none; border-radius: 6px; white-space: nowrap;" onclick="setInputMode('fare', 'sub'); saveSettings();">금액</button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="subCallDetailToggle">운행 일지 세부 입력</label>
+                    <label class="switch">
+                        <input type="checkbox" id="subCallDetailToggle" onchange="updateToggleDependencies('sub'); saveSettings();">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-item" id="subPaymentToggleContainer" style="padding-left: 10px; display: none;">
+                    <label for="subPaymentToggle" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: #888; border-radius: 50%;"></span>
+                        결제 및 수금 표시
+                    </label>
+                    <label class="switch">
+                        <input type="checkbox" id="subPaymentToggle" onchange="saveSettings();">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <div class="setting-item">
+                    <label for="subFixedToggle">고정 노선 사용</label>
+                    <label class="switch">
+                        <input type="checkbox" id="subFixedToggle" onchange="toggleSubFixedSettings(); updateToggleDependencies('sub'); saveSettings();">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div id="subFixedSubSettings" class="sub-setting-group" style="display: none;">
+                    <div class="price-setting" style="display: flex; align-items: center; justify-content: space-between;">
+                        <label for="subUnitPrice" style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; background-color: #888; border-radius: 50%;"></span>
+                            고정 기본 단가 (원)
+                        </label>
+                        <input type="text" id="subUnitPrice" class="input-box" inputmode="numeric" placeholder="0" oninput="formatCurrencyInput(this); saveSettings();" style="width: 120px; margin-top: 0;">
+                    </div>
+
+                    <div class="setting-item" style="margin-top: 10px;">
+                        <label for="subPalletToggle" style="display: flex; align-items: center; gap: 8px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; background-color: #888; border-radius: 50%;"></span>
+                            파렛트 회수 사용
+                        </label>
+                        <label class="switch">
+                            <input type="checkbox" id="subPalletToggle" onchange="toggleSubPalletSubSettings(); saveSettings();">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="subPalletSubSettings" class="price-setting" style="display: none; justify-content: flex-end;">
+                        <input type="text" id="subPalletPrice" class="input-box" inputmode="numeric" placeholder="단가 0" oninput="formatCurrencyInput(this); saveSettings();" style="width: 120px; margin-top: 0;">
+                    </div>
+                </div>
+
+                <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <div class="setting-item">
+                    <label for="subCallToggle">용차(수시/일회성) 사용</label>
+                    <label class="switch">
+                        <input type="checkbox" id="subCallToggle" onchange="saveSettings();">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 근무/운행 입력 메인 패널 (스와이프 슬라이드) -->
+    <div id="workModal" class="work-panel">
+        <div class="settings-header" style="padding: 20px 20px 10px 20px; margin-top: 0;">
+            <button class="icon-btn" onclick="closeModal()" title="닫기">
+                <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div id="modalTitle" class="settings-title">운행 내역 입력</div>
+            <div style="width: 40px;"></div>
+        </div>
+        <div class="work-panel-content">
+            <div id="modalOffBtnGroup" class="btn-group-toggle" style="display: flex;">
+                <button type="button" id="btnOffToggle" class="toggle-btn" onclick="toggleOffState()">휴무</button>
+            </div>
+
+            <div>
+                <div id="modalWorkDetails">
+                    <div id="modalFixedSection" class="modal-section" style="display: none;">
+                        <div class="modal-section-title">고정 노선</div>
+                        <div class="form-group">
+                            <label>운행 횟수 입력</label>
+                            <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                                <input type="number" id="modalFixedCountInput" class="input-box" inputmode="numeric" placeholder="0" min="0" style="flex:1;" oninput="autoSaveWorkRecord()">
+                                <span style="font-weight:600;">회 운행</span>
+                            </div>
+                        </div>
+                        <div id="modalPalletSection" class="form-group" style="display: none;">
+                            <label for="modalPalletCount">파렛트 회수 (장)</label>
+                            <input type="number" id="modalPalletCount" class="input-box" inputmode="numeric" placeholder="0" min="0" oninput="autoSaveWorkRecord()">
+                        </div>
+                    </div>
+
+                    <div id="modalCallSection" class="modal-section" style="display: none;">
+                        <div class="modal-section-title">용차 / 수시 운송</div>
+                        <div id="callListContainer"></div>
+                        <button class="btn-add" onclick="addCallInputRow()">+ 용차 운임 추가</button>
+                    </div>
+
+                    <div id="modalCallDetailSection" class="modal-section" style="display: none;">
+                        <div class="modal-section-title" style="display: flex; align-items: center; color: var(--primary-color); margin-bottom: 8px;">
+                            <span>운행 일지 세부 입력</span>
+                            <button class="compact-add-btn" style="margin-left: auto;" onclick="openCallDetailModal(-1)">+ 추가</button>
+                        </div>
+                        <div id="callDetailSummaryContainer" style="display: none; margin-top: 8px;">
+                            <div class="maint-summary-card" id="callDetailSummaryList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="modalMaintSection" class="modal-section">
+                    <div class="modal-section-title" style="display: flex; align-items: center; color: var(--sunday-color); margin-bottom: 8px;">
+                     <span>차량 정비/주유</span>
+                     <button class="compact-add-btn" style="margin-left: auto;" onclick="openMaintFuelSelectModal()">+ 추가</button>
+                    </div>
+                    <div id="maintSummaryContainer" style="display: none; margin-top: 8px;">
+                     <div class="maint-summary-card" id="maintSummaryList"></div>
+                    </div>
+                    <div id="fuelSummaryContainer" style="display: none; margin-top: 8px;">
+                     <div class="maint-summary-card" id="fuelSummaryList"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- 하단 저장/취소 버튼 제거 (자동 저장 적용) -->
+        </div>
+    </div>
+
+    <!-- 운행 일지 세부 입력 모달 (2차 팝업) -->
+    <div id="callDetailModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 420px; padding: 24px;">
+            <div id="callDetailModalTitle" class="modal-title" style="color: var(--primary-color); font-size: 1.3rem; border-bottom: 2px solid var(--border-color); padding-bottom: 12px; margin-bottom: 20px;">
+                운행 일지 세부 입력
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label style="color: var(--primary-color); font-weight: 700;">상차지</label>
+                    <input type="text" id="callLoadLoc" list="loadLocList" class="input-box" placeholder="상차지 입력" style="background-color: var(--hover-bg);">
+                    <datalist id="loadLocList"></datalist>
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label style="color: var(--sunday-color); font-weight: 700;">하차지</label>
+                    <input type="text" id="callUnloadLoc" list="unloadLocList" class="input-box" placeholder="하차지 입력" style="background-color: var(--hover-bg);">
+                    <datalist id="unloadLocList"></datalist>
+                </div>
+            </div>
+
+            <div class="form-group" style="background-color: var(--hover-bg); padding: 14px; border-radius: 10px; margin-bottom: 14px;">
+                <label style="font-size: 0.95rem; font-weight: 700;">운송료 (원)</label>
+                <input type="text" id="callDetailFare" class="input-box" inputmode="numeric" placeholder="운송료 입력" oninput="formatCurrencyInput(this); calculateCallDetailComm();" style="font-size: 1.15rem; font-weight: bold; color: var(--primary-color); background-color: var(--input-bg);">
+                <div id="callDetailCommInfo" style="display:none; margin-top: 8px; font-size: 0.85rem; color: var(--sunday-color); text-align: right;">
+                    수수료 <span id="callDetailCommText">0</span>원 차감 ➔ 최종 <span id="callDetailNetFare" style="font-weight: bold;">0</span>원
+                </div>
+            </div>
+
+            <div id="callDetailTimeSection" style="display: flex; gap: 10px; margin-bottom: 14px; display: none;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label style="font-weight: 700;">출발 시간</label>
+                    <input type="time" id="callDepartureTime" class="input-box" style="padding: 12px;">
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label style="font-weight: 700;">도착 시간</label>
+                    <input type="time" id="callArrivalTime" class="input-box" style="padding: 12px;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-weight: 700;">거래처</label>
+                <input type="text" id="callClient" list="clientDataList" class="input-box" placeholder="거래처 직접입력 또는 선택" oninput="calculateCallDetailComm();" onchange="calculateCallDetailComm();">
+                <datalist id="clientDataList"></datalist>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px; display: none;" id="callPlatformContainer">
+                <label style="font-weight: 700;">플랫폼</label>
+                <input type="text" id="callPlatform" class="input-box" placeholder="플랫폼 직접입력 또는 선택" style="background-color: var(--hover-bg);">
+            </div>
+            
+            <div id="callDetailReceiptSection" class="form-group" style="margin-bottom: 14px; display: none;">
+                <label style="font-weight: 700;">계산서</label>
+                <div class="dark-pill-group" id="callReceiptGroup">
+                    <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('receipt', '전자')">전자</button>
+                    <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('receipt', '일반')">일반</button>
+                    <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('receipt', '카드')">카드</button>
+                    <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('receipt', '현금')">현금</button>
+                    <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('receipt', '송금')">송금</button>
+                </div>
+                <input type="hidden" id="callReceiptValue" value="">
+            </div>
+
+            <div id="callDetailDistanceSection" class="form-group" style="margin-bottom: 14px; display: none;">
+                <label style="font-weight: 700;">운행 거리</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="dark-pill-group" id="callDistanceGroup" style="flex: 1; flex-wrap: nowrap;">
+                        <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('distance', '공차')">공차</button>
+                        <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('distance', '독차')">독차</button>
+                        <button type="button" class="dark-pill-btn" onclick="selectCallDetailBtn('distance', '혼짐')">혼짐</button>
+                    </div>
+                    <div class="input-with-suffix" style="width: 100px;">
+                        <input type="text" id="callDistanceKm" class="input-box" inputmode="numeric" oninput="formatCurrencyInput(this)" style="padding-right: 34px; text-align: right;">
+                        <span class="suffix" style="font-weight: 700;">km</span>
+                    </div>
+                </div>
+                <input type="hidden" id="callDistanceType" value="">
+                <input type="hidden" id="callLinkedLoadIndex" value="-1">
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 700;">비고</label>
+                <input type="text" id="callRemarks" class="input-box" placeholder="특이사항 입력">
+            </div>
+            
+            <input type="hidden" id="callDetailEditIndex" value="-1">
+            
+            <div class="modal-btns" style="margin-top: 24px;">
+                <button class="modal-btn cancel" onclick="closeCallDetailModal()">취소</button>
+                <button class="modal-btn confirm" onclick="saveCallDetail()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 플랫폼 선택 모달 -->
+    <div id="platformSelectModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 380px; padding: 24px; background-color: #262626; border: none; color: #fff;">
+            <div class="modal-title" style="color: #63b3ed; font-size: 1.3rem; border-bottom: 1px solid #444; padding-bottom: 12px; margin-bottom: 20px;">
+                플랫폼 선택
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 16px;">
+                <input type="text" id="platformDirectInput" class="input-box" placeholder="직접입력" style="background-color: #383838; border: 1px solid #555; color: #fff; padding: 14px;">
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; justify-content: center;">
+                <button type="button" class="platform-btn" onclick="selectPlatformQuick('24시콜')">24시콜</button>
+                <button type="button" class="platform-btn" onclick="selectPlatformQuick('화물맨')">화물맨</button>
+                <button type="button" class="platform-btn" onclick="selectPlatformQuick('더운반')">더운반</button>
+                <button type="button" class="platform-btn" onclick="selectPlatformQuick('원콜')">원콜</button>
+                <button type="button" class="platform-btn" onclick="selectPlatformQuick('전국화물콜')">전국화물콜</button>
+                <button type="button" class="platform-btn" onclick="selectPlatformQuick('카카오T트럭커')">카카오T트럭커</button>
+            </div>
+
+            <div class="modal-btns" style="margin-top: 0;">
+                <button class="modal-btn" style="background-color: #383838; color: #fff; border: none; flex: 1;" onclick="closePlatformSelectModal()">취소</button>
+                <button class="modal-btn" style="background-color: #63b3ed; color: #fff; border: none; flex: 1;" onclick="savePlatformDirect()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 세부 내역서 다운로드(PDF)를 위한 거래처 선택 모달 -->
+    <div id="detailReportSelectModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-title" style="color: var(--primary-color);">세부 내역서 조회</div>
+            <div class="form-group">
+                <label>거래처 선택</label>
+                <select id="detailReportClientSelect" class="input-box">
+                </select>
+            </div>
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeDetailReportModal()">취소</button>
+                <button class="modal-btn confirm" style="background-color: var(--primary-color);" onclick="viewDetailReport()">조회 (화면)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 정비/주유 1차 선택 모달 -->
+    <div id="maintFuelSelectModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <div class="modal-title" style="color: var(--primary-color); margin-bottom: 24px;">내역 추가</div>
+            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                <button class="modal-btn" style="background-color: var(--input-bg); border: 2px solid var(--sunday-color); color: var(--sunday-color); flex: 1; padding: 20px 0;" onclick="selectMaintOption()">정비</button>
+                <button class="modal-btn" style="background-color: var(--input-bg); border: 2px solid #3182ce; color: #3182ce; flex: 1; padding: 20px 0;" onclick="selectFuelOption()">주유</button>
+            </div>
+            <button class="modal-btn cancel" style="width: 100%;" onclick="closeMaintFuelSelectModal()">취소</button>
+        </div>
+    </div>
+
+    <!-- 주유 내역 추가 모달 (피그마 디자인 스펙 준수: 강제 다크 테마 적용) -->
+    <div id="fuelDetailModal" class="modal-overlay hidden">
+        <div class="modal-content fuel-modal-dark">
+            <div class="modal-title" style="font-size: 1.4rem; font-weight: 800; margin-bottom: 24px;">주유 내역 추가</div>
+            
+            <div class="form-group">
+                <label>날짜</label>
+                <input type="date" id="fuelDetailDate" class="date-input">
+            </div>
+
+            <div class="form-group">
+                <label>비용 (원)</label>
+                <input type="text" id="fuelDetailCost" class="input-box" inputmode="numeric" placeholder="비용을 입력하세요" oninput="formatCurrencyInput(this)">
+            </div>
+
+            <div class="form-group">
+                <label>유가보조금</label>
+                <input type="text" id="fuelDetailSubsidy" class="input-box" inputmode="numeric" placeholder="비용을 입력하세요" oninput="formatCurrencyInput(this)">
+            </div>
+
+            <div class="form-group" style="margin-top: 10px; margin-bottom: 16px;">
+                <div class="pill-group" id="fuelTypeGroup">
+                    <button type="button" class="pill-btn active" onclick="selectFuelType(this, '주유')">주유</button>
+                    <button type="button" class="pill-btn" onclick="selectFuelType(this, '요소수')">요소수</button>
+                    <button type="button" class="pill-btn" onclick="selectFuelType(this, '기타')">기타</button>
+                </div>
+                <input type="hidden" id="fuelDetailType" value="주유">
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label>주유량</label>
+                    <div class="input-with-suffix">
+                        <input type="number" step="0.1" id="fuelDetailLiter" class="input-box" style="padding-right: 30px; text-align: right;">
+                        <span class="suffix">L</span>
+                    </div>
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label>누적거리</label>
+                    <div class="input-with-suffix">
+                        <input type="number" id="fuelDetailMileage" class="input-box" style="padding-right: 38px; text-align: right;">
+                        <span class="suffix">km</span>
+                    </div>
+                </div>
+            </div>
+            
+            <input type="hidden" id="fuelOriginalDate">
+            <input type="hidden" id="fuelOriginalIndex">
+
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeFuelDetailModal()">취소</button>
+                <button class="modal-btn confirm" onclick="saveFuelDetail()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 정비 관리 페이지용 정비 내역 추가/수정 모달 -->
+    <div id="maintRecordModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div id="maintRecordModalTitle" class="modal-title">정비 내역 추가</div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label for="maintRecordDate">날짜</label>
+                    <input type="date" id="maintRecordDate" class="date-input" style="padding-right: 10px;">
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label for="maintRecordMileage">누적거리</label>
+                    <div class="input-with-suffix">
+                        <input type="text" id="maintRecordMileage" class="input-box" inputmode="numeric" oninput="formatCurrencyInput(this)" style="padding-right: 30px; text-align: right;">
+                        <span class="suffix">km</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="maintRecordName">정비 항목명</label>
+                <input type="text" id="maintRecordName" class="input-box" placeholder="항목명을 입력하세요">
+            </div>
+            
+            <div class="form-group">
+                <label>분류</label>
+                <div class="pill-group" id="maintCategoryGroup">
+                    <button type="button" class="pill-btn" onclick="selectMaintCategory(this, '엔진/미션')">엔진/미션</button>
+                    <button type="button" class="pill-btn" onclick="selectMaintCategory(this, '판금/도장')">판금/도장</button>
+                    <button type="button" class="pill-btn" onclick="selectMaintCategory(this, '소모품')">소모품</button>
+                    <button type="button" class="pill-btn" onclick="selectMaintCategory(this, '기타')">기타</button>
+                </div>
+                <input type="hidden" id="maintRecordCategory" value="">
+            </div>
+
+            <div class="form-group">
+                <label for="maintRecordFare">비용 (원)</label>
+                <input type="text" id="maintRecordFare" class="input-box" inputmode="numeric" placeholder="비용을 입력하세요" oninput="formatCurrencyInput(this)">
+            </div>
+
+            <div class="form-group" style="flex-direction: row; justify-content: space-between; align-items: center; margin-top: 18px;">
+                <label style="margin: 0; font-size: 1rem; color: var(--text-color);">결제 방식</label>
+                <div class="segment-control" id="maintPaymentGroup">
+                    <button type="button" class="segment-btn active" onclick="selectMaintPayment(this, '카드')">카드</button>
+                    <button type="button" class="segment-btn" onclick="selectMaintPayment(this, '현금')">현금</button>
+                </div>
+                <input type="hidden" id="maintRecordPayment" value="카드">
+            </div>
+            
+            <input type="hidden" id="maintRecordOriginalDate">
+            <input type="hidden" id="maintRecordOriginalIndex">
+            
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeMaintRecordModal()">취소</button>
+                <button class="modal-btn confirm" onclick="saveMaintRecord()">저장</button>
+            </div>
+        </div>
+    </div>
+
+
+<!-- 새 차량 / 기사 등록 / 수정 팝업 모달 -->
+    <div id="carModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div id="carModalTitle" class="modal-title">차량 등록</div>
+            
+            <input type="hidden" id="carModalMode" value="main">
+
+            <div class="form-group">
+                <label for="newCarNumber">차량번호</label>
+                <input type="text" id="newCarNumber" class="input-box" placeholder="12가 3456">
+            </div>
+            <div class="form-group">
+                <label for="newCarTonnage">차량 톤수</label>
+                <input type="text" id="newCarTonnage" class="input-box" placeholder="예: 5톤, 11톤, 25톤">
+            </div>
+
+            <div id="logToggleContainer" style="display: none;">
+                <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <div class="setting-item">
+                    <div style="text-align: left;">
+                        <label for="newLogToggle">운행일지</label>
+                        <p style="font-size: 0.75rem; color: var(--sub-text-color); margin-top: 4px;">(해당 기사차량 운행일지 등록이 가능합니다)</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="newLogToggle" onchange="toggleNewLogSettings()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div id="newLogSettings" class="sub-setting-group" style="display: none;">
+                    <div class="setting-item" style="margin-bottom: 10px;">
+                        <label for="newCarInsuranceToggle">산재보험 적용</label>
+                        <label class="switch">
+                            <input type="checkbox" id="newCarInsuranceToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div style="background-color: var(--hover-bg); padding: 12px; border-radius: 12px; margin-bottom: 15px;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--sub-text-color); margin-bottom: 8px; display: block;">수수료 설정</label>
+                        <div class="btn-group-toggle" style="margin-bottom: 10px;">
+                            <button type="button" id="btnCarCommPercent" class="toggle-btn active-work" onclick="setCarCommType('percent')">퍼센트 (%)</button>
+                            <button type="button" id="btnCarCommDirect" class="toggle-btn" onclick="setCarCommType('direct')">직접입력 (원)</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div id="carCommLabel" style="font-weight: 700; font-size: 0.9rem; white-space: nowrap;">수수료율 (%)</div>
+                            <input type="text" id="newCarCommission" class="input-box" inputmode="numeric" placeholder="비율(%) 입력" oninput="formatCarCommInput(this)" style="flex: 1; margin-top: 0;">
+                        </div>
+                    </div>
+                    <input type="hidden" id="newCarCommType" value="percent">
+
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--sub-text-color); margin-bottom: 8px; display: block;">개인정보 설정</label>
+                    <div class="btn-group-toggle">
+                        <button type="button" id="btnUseExistingInfo" class="toggle-btn active-work" onclick="selectInfoType('existing')">기존 정보 사용</button>
+                        <button type="button" id="btnUseNewInfo" class="toggle-btn" onclick="selectInfoType('new')">새 정보 입력</button>
+                    </div>
+
+                    <div id="newPersonalInfoForm" style="display: none; margin-top: 10px;">
+                        <div class="form-group">
+                            <label for="newDriverName">기사명</label>
+                            <input type="text" id="newDriverName" class="input-box" placeholder="기사명을 입력하세요">
+                        </div>
+                        <div class="form-group">
+                            <label for="newUserName">성명 (대표자)</label>
+                            <input type="text" id="newUserName" class="input-box" placeholder="성명을 입력하세요">
+                        </div>
+                        <div class="form-group">
+                            <label for="newBizNumber">사업자번호</label>
+                            <input type="text" id="newBizNumber" class="input-box" placeholder="사업자번호 입력">
+                        </div>
+                        <div class="form-group">
+                            <label for="newUserPhone">연락처</label>
+                            <input type="tel" id="newUserPhone" class="input-box" placeholder="010-0000-0000" oninput="formatPhoneNumber(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="newBankName">입금 은행</label>
+                            <input type="text" id="newBankName" class="input-box" placeholder="예: OO은행">
+                        </div>
+                        <div class="form-group">
+                            <label for="newAccountNumber">계좌번호</label>
+                            <input type="text" id="newAccountNumber" class="input-box" inputmode="numeric" placeholder="계좌번호 입력">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeCarModal()">취소</button>
+                <button class="modal-btn confirm" onclick="saveNewCar()">저장</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 운송 내역서 차량 선택 모달 -->
+    <div id="reportCarSelectModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-title">출력할 운송비 내역서 차량 선택</div>
+            <div id="reportCarSelectList" style="display: flex; flex-direction: column; gap: 10px;">
+            </div>
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeReportCarSelectModal()">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 거래처 등록 모달 -->
+    <div id="clientModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-title" id="clientModalTitle" style="color: var(--primary-color);">거래처 등록</div>
+            
+            <div class="form-group">
+                <label>업체명 (거래처명)</label>
+                <input type="text" id="clientCompanyName" class="input-box" placeholder="업체명 입력">
+            </div>
+            <div class="form-group">
+                <label>이름 (담당자)</label>
+                <input type="text" id="clientManagerName" class="input-box" placeholder="담당자 이름 입력">
+            </div>
+            <div class="form-group">
+                <label>사업자 번호</label>
+                <input type="text" id="clientBizNumber" class="input-box" placeholder="사업자 번호 입력">
+            </div>
+            <div class="form-group">
+                <label>연락처</label>
+                <input type="tel" id="clientPhone" class="input-box" placeholder="연락처 입력" oninput="formatPhoneNumber(this)">
+            </div>
+            
+            <hr style="margin: 12px 0; border: none; border-top: 1px solid var(--border-color);">
+            
+            <div class="setting-item">
+                <label for="clientPinnedToggle">고정 거래처</label>
+                <label class="switch">
+                    <input type="checkbox" id="clientPinnedToggle" onchange="toggleClientPinned()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div id="clientPinnedSubSettings" class="sub-setting-group tree-line-group" style="display: none;">
+                <div class="setting-item" style="margin-bottom: 0;">
+                    <label for="clientCommToggle">수수료 적용</label>
+                    <label class="switch">
+                        <input type="checkbox" id="clientCommToggle" onchange="toggleClientComm()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div id="clientCommSection" style="display: none; background-color: var(--hover-bg); padding: 12px; border-radius: 12px; margin-top: 14px; margin-bottom: 0;">
+                    <div class="btn-group-toggle" style="margin-bottom: 12px;">
+                        <button type="button" id="btnCommTypePercent" class="toggle-btn active-work" onclick="setClientCommType('percent')">퍼센트 (%)</button>
+                        <button type="button" id="btnCommTypeDirect" class="toggle-btn" onclick="setClientCommType('direct')">직접입력 (원)</button>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div id="commLabel" style="font-weight: 700; font-size: 0.9rem; white-space: nowrap;">수수료율 (%)</div>
+                        <input type="text" id="clientCommValue" class="input-box" inputmode="numeric" placeholder="비율(%) 입력" oninput="formatClientCommValue(this)" style="flex: 1;">
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="clientCommType" value="percent">
+
+            <input type="hidden" id="clientEditIndex" value="-1">
+            
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeClientModal()">취소</button>
+                <button class="modal-btn confirm" onclick="saveClient()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 확인/경고 공통 모달 -->
+    <div id="confirmModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <div class="modal-title" style="color: var(--sunday-color); margin-bottom: 20px;">경고</div>
+            <p id="confirmModalText" style="font-size: 0.95rem; margin-bottom: 24px; white-space: pre-wrap; line-height: 1.4; color: var(--text-color);"></p>
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeConfirmModal()">취소</button>
+                <button class="modal-btn confirm" style="background-color: var(--sunday-color);" onclick="executeConfirm()">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 알림 메시지 -->
+    <div id="toastMessage" class="toast-message">저장되었습니다.</div>
+
+    <!-- 하단 네비게이션 바 -->
+    <div class="bottom-nav-bar">
+        <button class="nav-item active" onclick="showMain()">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>홈</span>
+        </button>
+        <button class="nav-item" onclick="openTodayWorkModal()">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M16 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path><path d="M16 18h.01"></path></svg>
+            <span>일일운행</span>
+        </button>
+        <button class="nav-item" onclick="showSettings('main')">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>설정</span>
+        </button>
+        <button class="nav-item" onclick="toggleMenu()">
+            <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <span>메뉴</span>
+        </button>
+    </div>
+
+    <!-- 혼짐 연결 선택 모달 (3차 팝업) -->
+    <div id="mixedLoadModal" class="modal-overlay hidden" style="z-index: 1100;">
+        <div class="modal-content" style="max-width: 320px;">
+            <div class="modal-title" style="color: var(--primary-color);">혼짐 연결 선택</div>
+            <p style="font-size: 0.85rem; color: var(--sub-text-color); margin-bottom: 16px;">어떤 짐과 함께 운송하나요?</p>
+            
+            <div id="mixedLoadListContainer" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; margin-bottom: 16px;">
+                <!-- 동적 렌더링 영역 -->
+            </div>
+
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeMixedLoadModal()">취소</button>
+                <button class="modal-btn confirm" onclick="saveMixedLoad()">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 외부 JS 연결 -->
+    <script src="script.js"></script>
+</body>
+</html>
