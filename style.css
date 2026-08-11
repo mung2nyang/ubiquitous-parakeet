@@ -4745,3 +4745,219 @@ body.pdf-export-mode .summary-row.total {
     #workModal #modalMaintSection { padding-inline: 12px; }
     #workModal .call-detail-card { padding-inline: 10px; }
 }
+
+/* 일일운행 인라인 세부 입력폼 미세조정 */
+#workModal .call-detail-inline-host .call-detail-modal-content {
+    padding: 10px 0 0;
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+#workModal .call-detail-inline-host .call-detail-modal-title {
+    margin: 0;
+    padding: 0 2px 11px;
+    border-bottom: 0;
+    color: var(--primary-color);
+    font-size: .9rem;
+    text-align: left;
+}
+
+#workModal .call-detail-inline-host .call-detail-panel {
+    margin: 0;
+    padding: 12px 2px;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+#workModal .call-detail-inline-host .call-detail-panel:last-of-type {
+    border-bottom: 0;
+}
+
+#workModal .call-detail-inline-host .call-route-panel,
+#workModal .call-detail-inline-host .call-two-column-panel {
+    gap: 8px;
+}
+
+#workModal .call-detail-inline-host .call-route-panel .form-group,
+#workModal .call-detail-inline-host .call-two-column-panel .form-group {
+    gap: 5px;
+}
+
+#workModal .call-detail-inline-host .load-label,
+#workModal .call-detail-inline-host .unload-label {
+    font-weight: 800;
+}
+
+#workModal .call-detail-inline-host .call-detail-panel .input-box {
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 11px;
+    background: var(--input-bg);
+    font-size: .78rem;
+}
+
+#workModal .call-detail-inline-host .call-route-panel .input-box,
+#workModal .call-detail-inline-host .call-two-column-panel .input-box {
+    width: 100%;
+}
+
+#workModal .call-detail-inline-host .call-inline-field {
+    grid-template-columns: 68px minmax(0, 1fr) 22px;
+    gap: 7px;
+    margin-bottom: 8px;
+}
+
+#workModal .call-detail-inline-host .call-inline-field > label {
+    color: var(--text-color);
+    font-size: .76rem;
+    font-weight: 750;
+}
+
+#workModal .call-detail-inline-host .call-inline-field > span {
+    color: var(--sub-text-color);
+    font-size: .74rem;
+    text-align: center;
+}
+
+#workModal .call-detail-inline-host .call-money-panel #callDetailFare {
+    color: var(--primary-color);
+    font-weight: 800;
+    text-align: right;
+}
+
+#workModal .call-detail-inline-host .platform-main-row {
+    grid-template-columns: 68px minmax(0, 1fr);
+}
+
+#workModal .call-detail-inline-host .call-platform-quick-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+}
+
+#workModal .call-detail-inline-host .call-platform-quick-list .dark-pill-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 34px;
+    padding: 6px 4px;
+    border-radius: 10px;
+    font-size: .7rem;
+    line-height: 1.15;
+}
+
+#workModal .call-detail-inline-host .call-client-panel > label,
+#workModal .call-detail-inline-host #callDetailReceiptSection > label,
+#workModal .call-detail-inline-host .call-remarks-panel > label {
+    margin: 0 0 7px 1px;
+    color: var(--text-color);
+    font-size: .76rem;
+    font-weight: 800;
+}
+
+#workModal .call-detail-inline-host .call-client-row {
+    gap: 7px;
+}
+
+#workModal .call-detail-inline-host .call-client-add-btn {
+    min-width: 56px;
+    min-height: 40px;
+    border-radius: 11px;
+    font-size: .74rem;
+}
+
+#workModal .call-detail-inline-host #callReceiptGroup {
+    gap: 5px;
+}
+
+#workModal .call-detail-inline-host #callReceiptGroup .dark-pill-btn {
+    min-height: 36px;
+    padding: 7px 2px;
+    border-radius: 10px;
+    font-size: .72rem;
+}
+
+#workModal .call-detail-inline-host .call-vat-row {
+    min-height: 40px;
+    margin: 8px 1px;
+    padding: 0;
+}
+
+#workModal .call-detail-inline-host .call-vat-row > label:first-child {
+    color: var(--text-color);
+    font-size: .76rem;
+}
+
+#workModal .call-detail-inline-host .call-vat-row .switch {
+    width: 44px;
+    height: 25px;
+}
+
+#workModal .call-detail-inline-host .call-vat-row .slider::before {
+    width: 19px;
+    height: 19px;
+}
+
+#workModal .call-detail-inline-host .call-vat-row input:checked + .slider::before {
+    transform: translateX(19px);
+}
+
+#workModal .call-detail-inline-host .payment-due-date-box {
+    margin: 9px 0 0;
+    padding: 10px 0 0;
+    border: 0;
+    border-top: 1px dashed var(--border-color);
+    border-radius: 0;
+    background: transparent;
+}
+
+#workModal .call-detail-inline-host .payment-due-date-box .form-group {
+    margin-bottom: 6px;
+}
+
+#workModal .call-detail-inline-host .payment-term-guide {
+    margin-top: 5px;
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+#workModal .call-detail-inline-host .call-remarks-panel {
+    padding-bottom: 8px;
+}
+
+#workModal .call-detail-inline-host .call-remarks-panel .input-box {
+    min-height: 40px;
+}
+
+#workModal .call-detail-inline-host .call-detail-form-actions {
+    position: static;
+    bottom: auto;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 0;
+    background: transparent;
+}
+
+#workModal .call-detail-inline-host .call-detail-form-actions .modal-btn {
+    min-height: 42px;
+    border-radius: 12px;
+    font-size: .78rem;
+}
+
+@media (max-width: 360px) {
+    #workModal .call-detail-inline-host .call-inline-field {
+        grid-template-columns: 64px minmax(0, 1fr) 20px;
+        gap: 6px;
+    }
+    #workModal .call-detail-inline-host .platform-main-row {
+        grid-template-columns: 64px minmax(0, 1fr);
+    }
+}
