@@ -5500,6 +5500,7 @@ body.pdf-export-mode .summary-row.total {
 
 #receivablesManagementPage .receivable-group-head {
     min-width: 0;
+    text-align: left;
 }
 
 #receivablesManagementPage .receivable-group-title,
@@ -5525,10 +5526,12 @@ body.pdf-export-mode .summary-row.total {
 #receivablesManagementPage .receivable-group-summary {
     display: flex;
     align-items: baseline;
+    justify-content: flex-start;
     gap: 5px;
     margin-top: 9px;
     color: var(--text-color);
     line-height: 1.25;
+    text-align: left;
 }
 
 #receivablesManagementPage .receivable-summary-label,
