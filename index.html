@@ -9,7 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <!-- 외부 CSS 연결 -->
-    <link rel="stylesheet" href="style.css?v=20260811-banner-center-6">
+    <link rel="stylesheet" href="style.css?v=20260811-autocomplete-final">
     
 </head>
 <body>
@@ -158,8 +158,8 @@
                     </button>
                     
                     <div class="date-select-group">
-                        <select id="yearSelect" class="date-select" onchange="changeYearMonth()" title="년도 선택"></select>
-                        <select id="monthSelect" class="date-select" onchange="changeYearMonth()" title="월 선택"></select>
+                        <select id="yearSelect" class="date-select" data-app-dropdown onchange="changeYearMonth()" title="년도 선택"></select>
+                        <select id="monthSelect" class="date-select" data-app-dropdown onchange="changeYearMonth()" title="월 선택"></select>
                     </div>
 
                     <button class="arrow-btn" onclick="changeMonth(1)" title="다음 달">
@@ -449,8 +449,8 @@
                     </button>
                     
                     <div class="date-select-group">
-                        <select id="maintYearSelect" class="date-select" onchange="changeMaintYearMonth()"></select>
-                        <select id="maintMonthSelect" class="date-select" onchange="changeMaintYearMonth()"></select>
+                        <select id="maintYearSelect" class="date-select" data-app-dropdown onchange="changeMaintYearMonth()"></select>
+                        <select id="maintMonthSelect" class="date-select" data-app-dropdown onchange="changeMaintYearMonth()"></select>
                     </div>
 
                     <button class="arrow-btn" onclick="changeMaintMonth(1)" title="다음 달">
@@ -469,8 +469,8 @@
                     </button>
                     
                     <div class="date-select-group">
-                        <select id="fuelYearSelect" class="date-select" onchange="changeFuelYearMonth()"></select>
-                        <select id="fuelMonthSelect" class="date-select" onchange="changeFuelYearMonth()"></select>
+                        <select id="fuelYearSelect" class="date-select" data-app-dropdown onchange="changeFuelYearMonth()"></select>
+                        <select id="fuelMonthSelect" class="date-select" data-app-dropdown onchange="changeFuelYearMonth()"></select>
                     </div>
 
                     <button class="arrow-btn" onclick="changeFuelMonth(1)" title="다음 달">
@@ -745,7 +745,7 @@
             <section id="support-inquiry" class="support-panel hidden">
                 <div class="support-card"><div class="support-card-label">1:1 SUPPORT</div><h3>무엇을 도와드릴까요?</h3><p>문의나 개선 의견을 남겨주시면 확인 후 답변드리겠습니다.</p></div>
                 <form class="inquiry-form" onsubmit="submitSupportInquiry(event)">
-                    <label>문의 유형<select id="inquiryType" class="input-box" required><option>문의</option><option>기능 건의</option><option>오류 신고</option></select></label>
+                    <label>문의 유형<select id="inquiryType" class="input-box" data-app-dropdown required><option>문의</option><option>기능 건의</option><option>오류 신고</option></select></label>
                     <label>제목<input id="inquiryTitle" class="input-box" maxlength="50" placeholder="제목을 입력해 주세요" required></label>
                     <label>내용<textarea id="inquiryContent" class="input-box" rows="6" maxlength="1000" placeholder="문의 내용을 자세히 적어주세요" required></textarea></label>
                     <button class="support-submit-btn" type="submit">문의 접수하기</button>
@@ -852,13 +852,13 @@
             <div class="call-detail-panel call-route-panel">
                 <div class="form-group">
                     <label class="load-label">상차지</label>
-                    <input type="text" id="callLoadLoc" list="loadLocList" class="input-box" placeholder="상차지 입력">
+                    <input type="text" id="callLoadLoc" class="input-box" data-app-autocomplete="load" placeholder="상차지 입력">
                     <datalist id="loadLocList"></datalist>
                     <div id="callLoadLocShortcuts" class="location-shortcuts"></div>
                 </div>
                 <div class="form-group">
                     <label class="unload-label">하차지</label>
-                    <input type="text" id="callUnloadLoc" list="unloadLocList" class="input-box" placeholder="하차지 입력">
+                    <input type="text" id="callUnloadLoc" class="input-box" data-app-autocomplete="unload" placeholder="하차지 입력">
                     <datalist id="unloadLocList"></datalist>
                     <div id="callUnloadLocShortcuts" class="location-shortcuts"></div>
                 </div>
@@ -867,7 +867,7 @@
             <div class="call-detail-panel call-money-panel">
                 <div class="call-inline-field">
                     <label for="callDetailFare">운송료</label>
-                    <input type="text" id="callDetailFare" class="input-box" inputmode="numeric" placeholder="운송료 입력" oninput="formatCurrencyInput(this); calculateCallDetailComm();">
+                    <input type="text" id="callDetailFare" class="input-box" data-app-autocomplete="fare" inputmode="numeric" placeholder="운송료 입력" oninput="formatCurrencyInput(this); calculateCallDetailComm();">
                     <span>원</span>
                 </div>
                 <div id="callDetailCommInfo" style="display:none; margin-top: 8px; font-size: 0.85rem; color: var(--sunday-color); text-align: right;">
@@ -927,7 +927,7 @@
             <div class="call-detail-panel call-client-panel">
                 <label for="callClient">거래처</label>
                 <div class="call-client-row">
-                    <input type="text" id="callClient" list="clientDataList" class="input-box" placeholder="직접입력 또는 선택" oninput="calculateCallDetailComm();" onchange="calculateCallDetailComm(); applyClientPaymentTerms();">
+                    <input type="text" id="callClient" class="input-box" data-app-autocomplete="client" placeholder="직접입력 또는 선택" oninput="calculateCallDetailComm();" onchange="calculateCallDetailComm(); applyClientPaymentTerms();">
                     <button type="button" class="call-client-add-btn" onclick="openClientModalFromCallDetail()">+ 추가</button>
                     <datalist id="clientDataList"></datalist>
                 </div>
@@ -985,7 +985,7 @@
             <div class="modal-title" style="color: var(--primary-color);">세부 내역서 조회</div>
             <div class="form-group">
                 <label>거래처 선택</label>
-                <select id="detailReportClientSelect" class="input-box">
+                <select id="detailReportClientSelect" class="input-box" data-app-dropdown>
                 </select>
             </div>
             <div class="modal-btns">
@@ -1293,8 +1293,8 @@
             <hr style="margin: 18px 0 12px; border: none; border-top: 1px solid var(--border-color);">
 
             <div class="form-group">
-                <label for="clientPaymentTerm">결제 주기 방식</label>
-                <select id="clientPaymentTerm" class="input-box" onchange="updateClientPaymentTermControls(); updateClientPaymentTermGuide();">
+                <label data-dropdown-label="clientPaymentTerm">결제 주기 방식</label>
+                <select id="clientPaymentTerm" class="input-box" data-app-dropdown onchange="updateClientPaymentTermControls(); updateClientPaymentTermGuide();">
                     <option value="next_month_end">익월 말일</option>
                     <option value="next_month_day">익월 특정일</option>
                     <option value="after_days">건별(X일 후)</option>
@@ -1371,6 +1371,6 @@
     </div>
 
     <!-- 외부 JS 연결 -->
-    <script src="script.js"></script>
+    <script src="script.js?v=20260811-autocomplete-final"></script>
 </body>
 </html>

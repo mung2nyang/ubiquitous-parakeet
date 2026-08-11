@@ -561,6 +561,305 @@ body {
     }
 }
 
+/* 앱 공통 단순 선택 드롭다운 */
+.app-dropdown {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.app-dropdown > select[data-app-dropdown] {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.app-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text-color);
+    font: inherit;
+    font-size: .82rem;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+.app-dropdown-trigger:focus-visible,
+.app-dropdown.open .app-dropdown-trigger {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(49, 130, 246, .16);
+    outline: none;
+}
+
+.app-dropdown-chevron {
+    width: 8px;
+    height: 8px;
+    margin: -4px 2px 0 12px;
+    border-right: 2px solid var(--subtext-color);
+    border-bottom: 2px solid var(--subtext-color);
+    transform: rotate(45deg);
+    transition: transform .15s ease;
+}
+
+.app-dropdown.open .app-dropdown-chevron {
+    margin-top: 4px;
+    transform: rotate(225deg);
+}
+
+.app-dropdown-menu {
+    position: fixed;
+    z-index: 2300;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--card-bg);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .32);
+    overscroll-behavior: contain;
+}
+
+.app-dropdown-menu[hidden] {
+    display: none !important;
+}
+
+.app-dropdown-option {
+    display: block;
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-color);
+    font: inherit;
+    font-size: .8rem;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+.app-dropdown-option + .app-dropdown-option {
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+
+.app-dropdown-option:hover,
+.app-dropdown-option:focus-visible {
+    background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+    outline: none;
+}
+
+.app-dropdown-option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.date-select-group .app-date-dropdown {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+.date-select-group .app-date-dropdown:first-child { width: 82px; }
+.date-select-group .app-date-dropdown:last-child { width: 58px; }
+
+.date-select-group .app-dropdown-trigger {
+    min-height: 34px;
+    padding: 0 8px;
+    border-color: transparent;
+    background: transparent;
+    font-size: .86rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+/* 거래처 페이지의 순서 편집 버튼은 공통 햄버거 왼쪽에 배치한다. */
+#clientManagementPage #clientOrderEditBtn {
+    position: absolute;
+    top: 50%;
+    right: 52px;
+    margin: 0;
+    transform: translateY(-50%);
+}
+
+/* 날짜·시간 입력도 OS 팝업 대신 필드 아래 앱 선택 패널을 사용한다. */
+.app-temporal {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.app-temporal > input[type="date"],
+.app-temporal > input[type="time"] {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.app-temporal-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text-color);
+    font: inherit;
+    font-size: .82rem;
+    text-align: left;
+}
+
+.app-temporal-trigger:focus-visible,
+.app-temporal.open .app-temporal-trigger {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(49, 130, 246, .16);
+    outline: none;
+}
+
+.app-temporal-icon {
+    width: 14px;
+    height: 14px;
+    margin-left: 10px;
+    border: 1.5px solid var(--subtext-color);
+    border-radius: 3px;
+    background: linear-gradient(var(--subtext-color), var(--subtext-color)) 2px 4px / 8px 1.5px no-repeat;
+}
+
+.app-temporal-time .app-temporal-icon {
+    border-radius: 50%;
+    background: linear-gradient(var(--subtext-color), var(--subtext-color)) 6px 3px / 1.5px 4px no-repeat,
+                linear-gradient(45deg, transparent 45%, var(--subtext-color) 46% 56%, transparent 57%) 6px 6px / 4px 4px no-repeat;
+}
+
+.app-temporal-menu {
+    position: fixed;
+    z-index: 2400;
+    overflow: hidden;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--card-bg);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .34);
+}
+
+.app-temporal-menu[hidden] { display: none !important; }
+
+.app-temporal-columns {
+    display: grid;
+    gap: 5px;
+    height: min(250px, 38vh);
+}
+
+.app-temporal-columns.date-columns { grid-template-columns: 1.2fr .9fr .9fr; }
+.app-temporal-columns.time-columns { grid-template-columns: 1fr 1fr; }
+
+.app-temporal-column {
+    overflow-y: auto;
+    min-width: 0;
+    padding: 2px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--input-bg) 72%, transparent);
+    overscroll-behavior: contain;
+}
+
+.app-temporal-option {
+    display: block;
+    width: 100%;
+    min-height: 36px;
+    padding: 7px 5px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-color);
+    font: inherit;
+    font-size: .78rem;
+    text-align: center;
+}
+
+.app-temporal-option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+/* 최근 입력 자동완성: 세 행만 노출하고 이후 항목은 내부 스크롤한다. */
+.app-autocomplete-menu {
+    position: fixed;
+    z-index: 2450;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 122px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--card-bg);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .32);
+    overscroll-behavior: contain;
+}
+
+.app-autocomplete-menu[hidden] { display: none !important; }
+
+.app-autocomplete-option {
+    display: block;
+    width: 100%;
+    height: 38px;
+    padding: 0 10px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-color);
+    font: inherit;
+    font-size: .8rem;
+    line-height: 38px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-autocomplete-option + .app-autocomplete-option {
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+
+.app-autocomplete-option[aria-selected="true"],
+.app-autocomplete-option:focus-visible {
+    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    color: var(--primary-color);
+    font-weight: 700;
+    outline: none;
+}
+
+/* 메인 연·월을 한 줄의 자연스러운 날짜 문구처럼 정렬한다. */
+.date-select-group {
+    flex-wrap: nowrap;
+    gap: 0;
+    white-space: nowrap;
+}
+
+.date-select-group .app-date-dropdown:first-child { width: 76px; }
+.date-select-group .app-date-dropdown:last-child { width: 54px; }
+.date-select-group .app-dropdown-value { white-space: nowrap; }
+.date-select-group .app-dropdown-chevron { margin-left: 3px; }
+
 /* 날짜 탐색바 */
 .date-navigator {
     display: flex;
@@ -3828,62 +4127,83 @@ body.pdf-export-mode .summary-row.total {
     }
 }
 
-/* 기사차량 설정: 메인 차량 설정과 동일한 카드/컨트롤 구조 */
+/* 기사차량 설정: 앱 설정과 동일한 카드/컨트롤 구조 */
 #subCarSettingsPage {
-    padding-bottom: 32px;
+    padding-bottom: 22px;
 }
 
 #subCarSettingsPage .settings-title {
-    font-size: 1.45rem;
-    font-weight: 800;
-    letter-spacing: -.04em;
+    font-size: 1.08rem;
+    letter-spacing: -.025em;
 }
 
 #subCarSettingsPage .setting-section {
-    margin-bottom: 9px;
-    padding: 18px 20px;
-    border-radius: 28px;
-    box-shadow: 0 3px 5px rgba(0, 0, 0, .22);
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm);
 }
 
 #subCarSettingsPage .setting-section h3 {
-    margin-bottom: 12px;
-    color: var(--sub-text-color);
-    font-size: .94rem;
-    letter-spacing: 0;
-    text-transform: none;
-}
-
-#subCarSettingsPage .setting-item,
-#subCarSettingsPage .tree-line-group .setting-item {
-    min-height: 46px;
     margin-bottom: 10px;
+    color: var(--text-color);
+    font-size: .875rem;
+    font-weight: 800;
+    letter-spacing: -.015em;
 }
 
-#subCarSettingsPage .setting-item label,
-#subCarSettingsPage .tree-line-group .setting-item > label:first-child {
-    font-size: 1rem;
-    font-weight: 750;
+#subCarSettingsPage .settings-main-card .setting-item {
+    min-height: 40px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+}
+
+#subCarSettingsPage .settings-main-card .setting-item > label {
+    color: var(--sub-text-color);
+    font-size: .74rem;
+    font-weight: 700;
 }
 
 #subCarSettingsPage .settings-main-card .setting-item > div {
-    padding: 4px !important;
-    border-radius: 10px !important;
+    padding: 3px !important;
+    border-radius: 11px !important;
+    background: var(--input-bg) !important;
 }
 
 #subCarSettingsPage .settings-main-card .toggle-btn {
-    min-width: 72px !important;
-    min-height: 38px !important;
-    padding-inline: 14px !important;
-    font-size: .9rem !important;
+    min-width: 52px !important;
+    min-height: 30px !important;
+    padding-inline: 10px !important;
+    border-radius: 8px !important;
+    font-size: .76rem !important;
+}
+
+#subCarSettingsPage .settings-detail-card,
+#subCarSettingsPage .settings-fixed-card {
+    padding: 10px 14px 12px;
+}
+
+#subCarSettingsPage .settings-detail-card > .setting-item:first-child,
+#subCarSettingsPage .settings-fixed-card > .setting-item:first-child {
+    min-height: 42px;
+    margin-bottom: 0;
+}
+
+#subCarSettingsPage .settings-detail-card > .setting-item:first-child > label:first-of-type,
+#subCarSettingsPage .settings-fixed-card > .setting-item:first-child > label:first-of-type {
+    color: var(--text-color);
+    font-size: .875rem;
+    font-weight: 800;
 }
 
 #subCarSettingsPage .tree-line-group {
-    margin: 0 3px;
-    padding: 14px 20px;
-    border-radius: 24px;
-    background: var(--hover-bg);
-    box-shadow: 0 3px 5px rgba(0, 0, 0, .28);
+    position: relative;
+    margin: 8px 0 0;
+    padding: 2px 0 0 14px;
+    border-radius: 0;
+    border-left: 2px solid color-mix(in srgb, var(--primary-color) 52%, var(--border-color));
+    background: transparent;
+    box-shadow: none;
 }
 
 #subCarSettingsPage .tree-line-group::before,
@@ -3891,27 +4211,56 @@ body.pdf-export-mode .summary-row.total {
     content: none;
 }
 
+#subCarSettingsPage .tree-line-group .setting-item {
+    min-height: 42px;
+    margin: 0;
+    padding: 4px 0;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+}
+
+#subCarSettingsPage .tree-line-group .setting-item:first-child {
+    border-top: 0;
+}
+
+#subCarSettingsPage .tree-line-group .setting-item > label:first-child {
+    color: var(--text-color);
+    font-size: .78rem;
+    font-weight: 700;
+}
+
 #subCarSettingsPage .switch {
-    width: 54px;
-    height: 30px;
+    width: 44px;
+    height: 25px;
+    flex: 0 0 44px;
 }
 
 #subCarSettingsPage .slider::before {
-    width: 24px;
-    height: 24px;
+    width: 19px;
+    height: 19px;
     left: 3px;
     bottom: 3px;
 }
 
-#subCarSettingsPage input:checked + .slider::before {
-    transform: translateX(24px);
+#subCarSettingsPage input:checked + .slider {
+    background-color: var(--primary-color);
 }
 
-#subCarSettingsPage .tree-line-group .input-box {
-    min-height: 54px;
-    border: 0;
+#subCarSettingsPage input:checked + .slider::before {
+    transform: translateX(19px);
+}
+
+#subCarSettingsPage #subFixedSubSettings .input-box,
+#subCarSettingsPage #subPalletSubSettings .input-box,
+#subCarSettingsPage .run-count-preset-setting .input-box {
+    width: 118px;
+    min-height: 38px;
+    margin: 0;
+    padding: 7px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     background: var(--input-bg);
-    font-size: 1rem;
+    font-size: .78rem;
+    text-align: right;
 }
 
 #subCarSettingsPage #subRunCountPresetSettings {
@@ -3939,7 +4288,7 @@ body.pdf-export-mode .summary-row.total {
 }
 
 [data-theme="dark"] #subCarSettingsPage .tree-line-group {
-    background: #3a3a3a;
+    background: transparent;
 }
 
 /* 메인 화면 기준 컨트롤 스케일 통일 */
@@ -4959,5 +5308,299 @@ body.pdf-export-mode .summary-row.total {
     }
     #workModal .call-detail-inline-host .platform-main-row {
         grid-template-columns: 64px minmax(0, 1fr);
+    }
+}
+
+/* 사이드 메뉴 최종 밀도 정리 */
+.side-menu {
+    right: -270px;
+    width: 270px;
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+    box-shadow: -3px 0 16px rgba(0, 0, 0, .14);
+}
+
+.side-menu-header {
+    min-height: 80px;
+    padding: 16px 16px 2px;
+}
+
+.side-menu .menu-banner-wrap {
+    height: 58px;
+}
+
+.side-menu .menu-banner-light,
+.side-menu .menu-banner-dark {
+    top: 3px;
+    left: -10px;
+    height: 56px !important;
+}
+
+.side-menu-sections {
+    gap: 8px;
+    padding: 6px 10px 18px;
+}
+
+.side-menu-section {
+    padding: 7px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--input-bg) 82%, var(--card-bg));
+}
+
+.side-menu-section-title {
+    gap: 6px;
+    margin: 0 4px 5px;
+    font-size: .68rem;
+    letter-spacing: .1em;
+}
+
+.side-menu-section-title::before {
+    width: 6px;
+    height: 6px;
+}
+
+.side-menu .dropdown-item {
+    min-height: 44px;
+    margin: 3px 0;
+    padding: 8px 11px;
+    gap: 9px !important;
+    border-radius: 12px;
+    font-size: .84rem;
+    font-weight: 650;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+.side-menu .dropdown-item svg,
+.side-menu .dropdown-item[style] svg {
+    width: 18px !important;
+    height: 18px !important;
+    stroke-width: 2;
+}
+
+.side-menu .dropdown-item:hover {
+    transform: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+}
+
+.side-menu .menu-item-wrapper {
+    margin: 4px 0;
+    gap: 6px;
+}
+
+.side-menu .menu-item-gear {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    padding: 10px;
+}
+
+@media (max-width: 360px) {
+    .side-menu { width: 270px; }
+}
+
+/* 앱 전체 최종 정렬: 공통 서브헤더 */
+#appContent .page .settings-header {
+    position: relative;
+}
+
+#appContent .page .settings-header > .settings-title {
+    position: absolute;
+    top: 50%;
+    left: calc(50vw - 16px);
+    width: max-content;
+    max-width: calc(100vw - 112px);
+    overflow: hidden;
+    transform: translate(-50%, -50%);
+    color: var(--text-color);
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -.025em;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 메인 배너는 트럭과 제목을 하나의 묶음으로 중앙 정렬 */
+#mainPage .banner-container {
+    position: relative;
+    left: calc(50vw - 50% - 16px);
+    width: max-content;
+    min-height: 52px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+#mainPage #mainBannerText,
+#mainPage #mainBannerImage {
+    position: static;
+    inset: auto;
+    transform: none;
+}
+
+#mainPage #mainBannerText {
+    width: auto;
+}
+
+@media (max-width: 380px) {
+    #mainPage #mainBannerImage {
+        height: 42px;
+    }
+}
+
+/* 메인 달력 카드 간격 통일 */
+#mainPage .header,
+#mainPage .calendar-grid,
+#mainPage .unpaid-summary-card {
+    margin-bottom: 10px;
+}
+
+#mainPage .unpaid-summary-card {
+    margin-top: 0;
+}
+
+/* 미수금/정산 관리: 360px 기준 컴팩트 관리형 UI */
+#receivablesManagementPage .receivable-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    margin: 0 0 10px;
+    padding: 3px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--input-bg);
+}
+
+#receivablesManagementPage .receivable-tab {
+    min-height: 32px;
+    padding: 5px 7px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--sub-text-color);
+    font-size: .72rem;
+    font-weight: 750;
+    line-height: 1.2;
+    box-shadow: none;
+}
+
+#receivablesManagementPage .receivable-tab.active {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 2px 5px color-mix(in srgb, var(--primary-color) 24%, transparent);
+}
+
+#receivablesManagementPage .receivable-group-card,
+#receivablesManagementPage .receivable-item-card {
+    margin-bottom: 8px;
+    padding: 12px 13px 10px;
+    border-radius: 15px;
+    box-shadow: var(--shadow-sm);
+}
+
+#receivablesManagementPage .receivable-group-head {
+    min-width: 0;
+}
+
+#receivablesManagementPage .receivable-group-title,
+#receivablesManagementPage .receivable-item-client {
+    margin: 0;
+    overflow: hidden;
+    color: var(--text-color);
+    font-size: .86rem;
+    font-weight: 800;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#receivablesManagementPage .receivable-group-period {
+    margin-top: 2px;
+    color: var(--sub-text-color);
+    font-size: .7rem;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+#receivablesManagementPage .receivable-group-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    margin-top: 9px;
+    color: var(--text-color);
+    line-height: 1.25;
+}
+
+#receivablesManagementPage .receivable-summary-label,
+#receivablesManagementPage .receivable-summary-count {
+    color: var(--sub-text-color);
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+#receivablesManagementPage .receivable-summary-amount {
+    color: var(--primary-color);
+    font-size: .96rem;
+    font-weight: 850;
+    letter-spacing: -.02em;
+}
+
+#receivablesManagementPage .receivable-summary-separator {
+    color: var(--border-color);
+    font-size: .75rem;
+}
+
+#receivablesManagementPage .receivable-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 9px;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+}
+
+#receivablesManagementPage .receivable-complete-btn {
+    width: auto;
+    min-height: 30px;
+    margin: 0;
+    padding: 5px 10px;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg));
+    color: var(--primary-color);
+    font-size: .7rem;
+    font-weight: 800;
+}
+
+#receivablesManagementPage .receivable-item-row {
+    align-items: flex-start;
+    gap: 10px;
+}
+
+#receivablesManagementPage .receivable-item-info {
+    margin-top: 2px;
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+#receivablesManagementPage .receivable-item-amount {
+    color: var(--primary-color);
+    font-size: .88rem;
+    font-weight: 850;
+}
+
+#receivablesManagementPage .receivable-dday {
+    margin-top: 5px;
+    font-size: .68rem;
+}
+
+#receivablesManagementPage .receivable-empty {
+    padding: 26px 12px;
+    font-size: .76rem;
+}
+
+@media (max-width: 360px) {
+    #receivablesManagementPage .receivable-group-card,
+    #receivablesManagementPage .receivable-item-card {
+        padding-inline: 12px;
     }
 }
