@@ -676,13 +676,34 @@ body {
 .date-select-group .app-date-dropdown:last-child { width: 58px; }
 
 .date-select-group .app-dropdown-trigger {
+    position: relative;
     min-height: 34px;
     padding: 0 8px;
     border-color: transparent;
     background: transparent;
-    font-size: .86rem;
+    font-size: .9rem;
     font-weight: 800;
     text-align: center;
+}
+
+.date-select-group .app-dropdown-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max-content;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.date-select-group .app-dropdown-chevron {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    margin: -5px 0 0;
+}
+
+.date-select-group .app-dropdown.open .app-dropdown-chevron {
+    margin-top: 1px;
 }
 
 /* 거래처 페이지의 순서 편집 버튼은 공통 햄버거 왼쪽에 배치한다. */
@@ -859,7 +880,7 @@ body {
 .date-select-group .app-date-dropdown:first-child { width: 76px; }
 .date-select-group .app-date-dropdown:last-child { width: 54px; }
 .date-select-group .app-dropdown-value { white-space: nowrap; }
-.date-select-group .app-dropdown-chevron { margin-left: 3px; }
+.date-select-group .app-dropdown-chevron { margin-left: 0; }
 
 /* 날짜 탐색바 */
 .date-navigator {
@@ -3983,6 +4004,133 @@ body.pdf-export-mode .summary-row.total {
     line-height: 1.45;
 }
 
+/* 거래처 등록: 고정 거래처의 수수료 설정 카드 */
+#clientModal .client-pinned-settings {
+    margin: 8px 0 12px;
+}
+
+#clientModal .client-commission-toggle {
+    min-height: 40px;
+    margin-bottom: 0;
+}
+
+#clientModal .client-commission-card {
+    position: relative;
+    margin-top: 12px;
+    padding: 14px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-color));
+    border-radius: 16px;
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--primary-color) 7%, var(--card-bg)),
+        var(--card-bg) 58%);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .1);
+}
+
+#clientModal .client-commission-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 35%, transparent));
+}
+
+#clientModal .client-commission-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 13px;
+}
+
+#clientModal .client-commission-card-icon {
+    display: grid;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--primary-color) 15%, var(--input-bg));
+    color: var(--primary-color);
+    font-size: .82rem;
+    font-weight: 850;
+}
+
+#clientModal .client-commission-card-head div {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+#clientModal .client-commission-card-head strong {
+    color: var(--text-color);
+    font-size: .82rem;
+    font-weight: 800;
+}
+
+#clientModal .client-commission-card-head span:last-child {
+    color: var(--sub-text-color);
+    font-size: .68rem;
+    line-height: 1.35;
+}
+
+#clientModal .client-commission-type {
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--input-bg) 82%, transparent);
+}
+
+#clientModal .client-commission-type .toggle-btn {
+    min-height: 34px;
+    padding: 7px 8px;
+    border-color: transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--sub-text-color);
+    box-shadow: none;
+}
+
+#clientModal .client-commission-type .toggle-btn.active-work {
+    border-color: color-mix(in srgb, var(--primary-color) 78%, white);
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 4px 10px color-mix(in srgb, var(--primary-color) 24%, transparent);
+}
+
+#clientModal .client-commission-value-row {
+    display: grid;
+    grid-template-columns: minmax(82px, auto) minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+}
+
+#clientModal .client-commission-value-row label {
+    color: var(--text-color);
+    font-size: .74rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+#clientModal .client-commission-value-row .input-box {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    text-align: right;
+}
+
+@media (max-width: 360px) {
+    #clientModal .client-commission-card { padding: 12px; }
+    #clientModal .client-commission-value-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    #clientModal .client-commission-value-row .input-box { text-align: left; }
+}
+
 .receivable-tabs {
     display: flex;
     gap: 8px;
@@ -4805,12 +4953,12 @@ body.pdf-export-mode .summary-row.total {
 
 /* 일일운행 상세 페이지 최종 UI 정리 */
 #workModal {
-    padding-top: 10px;
+    padding-top: 20px;
 }
 
 #workModal .settings-header {
-    min-height: 50px;
-    margin-bottom: 8px;
+    min-height: 48px;
+    margin: 4px 0 20px;
 }
 
 #workModal .settings-title {
@@ -5426,11 +5574,12 @@ body.pdf-export-mode .summary-row.total {
 /* 메인 배너는 트럭과 제목을 하나의 묶음으로 중앙 정렬 */
 #mainPage .banner-container {
     position: relative;
-    left: calc(50vw - 50% - 16px);
+    left: auto;
     width: max-content;
     min-height: 52px;
     margin-right: auto;
     margin-left: auto;
+    transform: none;
 }
 
 #mainPage #mainBannerText,
