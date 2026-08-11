@@ -393,6 +393,87 @@ async function downloadPDF() {
     }
 }
 
+async function prepareReportExport() {
+    document.body.classList.add('pdf-export-mode');
+    if (!isDetailReportView) buildReportPage(true);
+    else viewDetailReport(true);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    return document.getElementById('reportContentToExport');
+}
+
+function finishReportExport() {
+    document.body.classList.remove('pdf-export-mode');
+    if (!isDetailReportView) buildReportPage(false);
+    else viewDetailReport(false);
+}
+
+function getReportFileBaseName() {
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth() + 1;
+    if (!isDetailReportView) return `${year}년_${month}월_운송비내역서`;
+    const title = document.getElementById('reportMonthTitle').textContent;
+    const client = title.match(/\((.*?)\)/)?.[1] || '전체';
+    return `${year}년_${month}월_운송비내역서(세부)_${client}`;
+}
+
+async function createReportCanvas() {
+    const element = await prepareReportExport();
+    return html2canvas(element, { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0, backgroundColor: '#ffffff', windowWidth: element.scrollWidth, windowHeight: element.scrollHeight });
+}
+
+async function downloadReportImage() {
+    try {
+        const canvas = await createReportCanvas();
+        const link = document.createElement('a');
+        link.download = `${getReportFileBaseName()}.png`;
+        link.href = canvas.toDataURL('image/png', 1);
+        link.click();
+    } catch (error) {
+        showToastMessage('이미지 저장에 실패했습니다.');
+    } finally {
+        finishReportExport();
+    }
+}
+
+function openReportShareModal() { document.getElementById('reportShareModal').classList.remove('hidden'); }
+function closeReportShareModal() { document.getElementById('reportShareModal').classList.add('hidden'); }
+
+async function createReportFile(type) {
+    const element = await prepareReportExport();
+    const baseName = getReportFileBaseName();
+    if (type === 'image') {
+        const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0, backgroundColor: '#ffffff', windowWidth: element.scrollWidth, windowHeight: element.scrollHeight });
+        const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('image')), 'image/png', 1));
+        return new File([blob], `${baseName}.png`, { type: 'image/png' });
+    }
+    const opt = { margin:[12,10,12,10], image:{type:'jpeg',quality:.98}, html2canvas:{scale:2,useCORS:true,logging:false,scrollX:0,scrollY:0,backgroundColor:'#ffffff'}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'} };
+    const blob = await html2pdf().set(opt).from(element).outputPdf('blob');
+    return new File([blob], `${baseName}.pdf`, { type: 'application/pdf' });
+}
+
+async function shareReportFile(type) {
+    closeReportShareModal();
+    let file;
+    try {
+        showToastMessage('내역서 파일을 준비하고 있습니다.');
+        file = await createReportFile(type);
+        if (navigator.share && (!navigator.canShare || navigator.canShare({ files:[file] }))) {
+            await navigator.share({ files:[file], title:'운송비 내역서', text:'운송비 내역서를 보내드립니다.' });
+        } else {
+            const link = document.createElement('a');
+            link.download = file.name;
+            link.href = URL.createObjectURL(file);
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+            showToastMessage('파일을 저장했습니다. 문자에서 첨부해 주세요.');
+        }
+    } catch (error) {
+        if (error?.name !== 'AbortError') showToastMessage('파일 공유에 실패했습니다.');
+    } finally {
+        finishReportExport();
+    }
+}
+
 function hideAllPages() {
     document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
     
@@ -2547,13 +2628,9 @@ function openReportCarSelectModal(cars) {
     cars.forEach(car => {
         if (car.type === 'main' || (car.type === 'sub' && car.logEnabled)) {
             const btn = document.createElement('button');
-            btn.className = 'btn-add'; 
-            btn.style.borderColor = 'var(--primary-color)';
-            btn.style.color = 'var(--primary-color)';
-            btn.style.fontWeight = '700';
-            
-            let displayName = car.type === 'main' ? `메인차량(${car.number})` : `기사차량(${car.number})`;
-            btn.textContent = displayName;
+            btn.className = 'report-car-option';
+            const typeLabel = car.type === 'main' ? '메인차량' : '기사차량';
+            btn.innerHTML = `<span class="report-car-option-mark" aria-hidden="true"></span><span class="report-car-option-copy"><strong>${typeLabel}</strong><small>${escapeDetailText(car.number)}</small></span><span class="report-car-option-arrow" aria-hidden="true">›</span>`;
             btn.onclick = () => {
                 closeReportCarSelectModal();
                 executeShowReport(car.type === 'main' ? 'main' : car.number);
@@ -3794,6 +3871,9 @@ function renderCallDetailSummaryInMainModal() {
                 ? `<a href="tel:${client.phone}" class="call-phone-btn detail-call-phone" onclick="event.stopPropagation()" title="전화걸기">${callPhoneSvg()}</a>`
                 : `<button type="button" class="call-phone-btn detail-call-phone" onclick="showConfirmModal('거래처에 등록된 연락처가 없습니다.', null); event.stopPropagation()" title="연락처 없음">${callPhoneSvg()}</button>`)
             : '';
+        const messageButton = settings.paymentOn && unpaid
+            ? `<button type="button" class="call-phone-btn detail-message-btn" onclick="openMessageTemplate(${index}); event.stopPropagation()" title="문자 보내기">${messageSvg()}</button>`
+            : '';
         const badges = [
             settings.platformOn && item.platform ? item.platform : '',
             settings.paymentOn && item.receipt ? item.receipt : ''
@@ -3818,16 +3898,8 @@ function renderCallDetailSummaryInMainModal() {
             <div class="detail-meta-line">거래처: ${escapeDetailText(item.client || '-')} ${commission.label ? `<span class="commission-rate">수수료 ${escapeDetailText(commission.label)}</span>` : ''}</div>
             ${specs ? `<div class="detail-meta-line">${specs}</div>` : ''}
             <div class="detail-meta-line">비고:${escapeDetailText(item.remarks || '-')}</div>
-            <div class="call-detail-money-grid">
-                <strong class="detail-fare">운송료: ${fare.toLocaleString()}원</strong>
-                <div class="detail-calculation">
-                    ${commission.amount ? `<span class="commission-row"><b>수수료</b><b>- ${commission.amount.toLocaleString()}원</b></span>` : ''}
-                    ${insuranceFee ? `<span class="commission-row"><b>산재보험료</b><b>- ${insuranceFee.toLocaleString()}원</b></span>` : ''}
-                    <span><b>부가세</b><b>${vat.toLocaleString()}원</b></span>
-                    <span class="detail-total"><b>계</b><b>${finalTotal.toLocaleString()}원</b></span>
-                </div>
-            </div>
-            <div class="call-detail-card-foot"><div class="detail-badges">${badges}</div><div class="detail-payment-actions">${phoneButton}${settings.paymentOn ? `<button type="button" onclick="toggleCallPaymentStatus(${index})" class="payment-toggle-btn ${unpaid ? 'unpaid' : 'paid'}">${unpaid ? '미수' : '수금'}</button>` : ''}</div></div>
+            <div class="call-detail-fare-line"><span>운송료</span><strong>${fare.toLocaleString()}원</strong></div>
+            <div class="call-detail-card-foot"><div class="detail-badges">${badges}</div><div class="detail-payment-actions">${phoneButton}${messageButton}${settings.paymentOn ? `<button type="button" onclick="toggleCallPaymentStatus(${index})" class="payment-toggle-btn ${unpaid ? 'unpaid' : 'paid'}">${unpaid ? '미수' : '수금'}</button>` : ''}</div></div>
         </article>`;
     }).join('');
 
@@ -3849,6 +3921,44 @@ function escapeDetailText(value) {
 
 function callPhoneSvg() {
     return '<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 1 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+}
+
+function messageSvg() {
+    return '<svg viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path><path d="M8 9h8M8 13h5"></path></svg>';
+}
+
+function openMessageTemplate(index) {
+    const item = currentTempCallDetails[index];
+    const settings = getActiveLogSettings();
+    const client = settings.clients?.find(entry => entry.companyName === item.client);
+    if (!client?.phone) {
+        showConfirmModal('거래처에 등록된 연락처가 없습니다.', null);
+        return;
+    }
+    document.getElementById('messageTemplateSheet')?.remove();
+    const fare = parseCurrencyValue(item.fare).toLocaleString();
+    const company = item.client || '거래처';
+    const route = `${item.loadLoc || '상차지'} → ${item.unloadLoc || '하차지'}`;
+    const templates = [
+        { title: '미수금 안내', body: `안녕하세요, ${company} 담당자님. ${route} 운송료 ${fare}원이 미수 상태입니다. 확인 부탁드립니다.` },
+        { title: '입금 요청', body: `안녕하세요. ${route} 운송 건 운송료 ${fare}원 입금 부탁드립니다. 감사합니다.` },
+        { title: '운행 완료', body: `안녕하세요, ${company} 담당자님. ${route} 운행이 완료되었습니다. 이용해 주셔서 감사합니다.` }
+    ];
+    const sheet = document.createElement('div');
+    sheet.id = 'messageTemplateSheet';
+    sheet.className = 'message-template-overlay';
+    sheet.onclick = event => { if (event.target === sheet) sheet.remove(); };
+    sheet.innerHTML = `<section class="message-template-sheet" role="dialog" aria-modal="true" aria-label="문자 양식 선택"><div class="message-template-head"><div><strong>문자 보내기</strong><span>${escapeDetailText(company)} · ${escapeDetailText(client.phone)}</span></div><button type="button" onclick="this.closest('.message-template-overlay').remove()" aria-label="닫기">×</button></div><p class="message-template-help">보낼 양식을 선택하면 문자 앱에서 내용을 확인하고 수정할 수 있습니다.</p><div class="message-template-list">${templates.map((template, templateIndex) => `<button type="button" onclick="sendMessageTemplate('${client.phone}', ${templateIndex})"><strong>${template.title}</strong><span>${escapeDetailText(template.body)}</span></button>`).join('')}</div></section>`;
+    sheet._templates = templates;
+    document.body.appendChild(sheet);
+}
+
+function sendMessageTemplate(phone, templateIndex) {
+    const sheet = document.getElementById('messageTemplateSheet');
+    const body = sheet?._templates?.[templateIndex]?.body || '';
+    const separator = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
+    window.location.href = `sms:${phone}${separator}body=${encodeURIComponent(body)}`;
+    sheet?.remove();
 }
 
 function editDetailSvg() {

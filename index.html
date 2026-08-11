@@ -59,6 +59,12 @@
                             <path d="M9 15l3 3 3-3"></path>
                         </svg>
                     </button>
+                    <button class="icon-btn" onclick="downloadReportImage(); togglePdfMenu();" title="한 장 이미지 저장">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg>
+                    </button>
+                    <button class="icon-btn" onclick="openReportShareModal(); togglePdfMenu();" title="거래처에 파일 보내기">
+                        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"></path></svg>
+                    </button>
                 </div>
             </div>
             
@@ -242,7 +248,7 @@
                 <button class="icon-btn" onclick="handleReportBack()" title="뒤로가기">
                     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
-                <div class="settings-title"></div>
+                <div class="settings-title">운송비 내역서</div>
                 <div style="width: 40px;"></div>
             </div>
 
@@ -1226,13 +1232,29 @@
 
     <!-- 운송 내역서 차량 선택 모달 -->
     <div id="reportCarSelectModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-title">출력할 운송비 내역서 차량 선택</div>
-            <div id="reportCarSelectList" style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="modal-content report-car-select-content">
+            <div class="report-car-select-head">
+                <div class="report-car-select-icon" aria-hidden="true">▤</div>
+                <div>
+                    <div class="modal-title">운송비 내역서</div>
+                    <p>출력할 차량을 선택해 주세요.</p>
+                </div>
             </div>
+            <div id="reportCarSelectList" class="report-car-select-list"></div>
             <div class="modal-btns">
                 <button class="modal-btn cancel" onclick="closeReportCarSelectModal()">취소</button>
             </div>
+        </div>
+    </div>
+
+    <div id="reportShareModal" class="modal-overlay hidden">
+        <div class="modal-content report-share-content">
+            <div class="report-share-head"><strong>내역서 보내기</strong><p>파일 형식을 선택하면 휴대폰 공유 화면이 열립니다.</p></div>
+            <div class="report-share-options">
+                <button type="button" onclick="shareReportFile('pdf')"><span class="report-share-file-icon">PDF</span><span><strong>PDF 파일</strong><small>문서 품질로 한 페이지 전송</small></span><b>›</b></button>
+                <button type="button" onclick="shareReportFile('image')"><span class="report-share-file-icon image">IMG</span><span><strong>이미지 파일</strong><small>라이트 모드 한 장 이미지 전송</small></span><b>›</b></button>
+            </div>
+            <button type="button" class="report-share-cancel" onclick="closeReportShareModal()">취소</button>
         </div>
     </div>
 
