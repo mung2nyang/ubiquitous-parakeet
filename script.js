@@ -46,6 +46,28 @@ function formatFareShort(amount) {
 function getUserSettings() {
     return JSON.parse(localStorage.getItem('userSettings')) || {};
 }
+
+function getActiveLogSettings() {
+    const settings = getUserSettings();
+    if (activeLogId === 'main') return settings;
+
+    return {
+        ...settings,
+        inputMode: settings.subInputMode,
+        fixedOn: settings.subFixedOn,
+        unitPrice: settings.subUnitPrice,
+        palletOn: settings.subPalletOn,
+        palletPrice: settings.subPalletPrice,
+        callDetailOn: settings.subCallDetailOn,
+        paymentOn: settings.subPaymentOn,
+        timeOn: settings.subTimeOn,
+        platformOn: settings.subPlatformOn,
+        distanceOn: settings.subDistanceOn,
+        cargoTonnageOn: settings.hasOwnProperty('subCargoTonnageOn') ? settings.subCargoTonnageOn : true,
+        runCountToggle: settings.subRunCountToggle,
+        runCountPresets: settings.subRunCountPresets
+    };
+}
 function setUserSettings(settings) {
     localStorage.setItem('userSettings', JSON.stringify(settings));
 }
@@ -101,19 +123,20 @@ function renderSubCarMenu() {
             const btn = document.createElement('button');
             btn.className = 'dropdown-item';
             const shortNum = getShortCarNum(car.number);
-            const driverLabel = car.personalInfo && car.personalInfo.driverName ? ` (${car.personalInfo.driverName})` : '';
+            const driverName = car.personalInfo && car.personalInfo.driverName ? car.personalInfo.driverName : '';
+            btn.title = driverName ? `${car.number} · ${driverName} 운행일지` : `${car.number} 운행일지`;
             
             if (activeLogId === car.number) {
                 btn.style.cssText = 'display: flex; align-items: center; gap: 10px; color: var(--sub-text-color); padding-right: 0; opacity: 0.4; cursor: default;';
                 btn.innerHTML = `
                     <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                    ${shortNum}${driverLabel} 운행일지
+                    <span class="sub-car-menu-label">${escapeDetailText(shortNum)} 일지</span>
                 `;
             } else {
                 btn.style.cssText = 'display: flex; align-items: center; gap: 10px; color: var(--sub-text-color); padding-right: 0;';
                 btn.innerHTML = `
                     <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                    ${shortNum}${driverLabel} 운행일지
+                    <span class="sub-car-menu-label">${escapeDetailText(shortNum)} 일지</span>
                 `;
                 btn.onclick = () => switchCarLog(car.number);
             }
@@ -141,7 +164,7 @@ function showSubCarSettings(carNum) {
     hideAllPages();
     loadSettings(); 
     document.getElementById('subCarSettingsPage').classList.remove('hidden');
-    document.getElementById('subCarSettingsTitle').innerText = `${getShortCarNum(carNum)} 운행 일지 설정`;
+    document.getElementById('subCarSettingsTitle').innerText = `${getShortCarNum(carNum)} 기사차량 운행 일지 설정`;
 }
 
 function switchCarLog(carNum) {
@@ -182,31 +205,52 @@ function saveDataToStorage() {
 
 function normalizeLegacyData() {
     let dataChanged = false;
+
     for (let key in workData) {
         if (workData[key] === 'off') {
             workData[key] = {
-            isOff: true,
-            fixedCount: 0,
-            palletCount: 0,
-            callFares: [],
-            maintItems: [],
-            fuelItems: [],
-            callDetails: []
-        };
-        dataChanged = true;
-    } 
-    
-    if (!workData[key].callDetails) {
-        workData[key].callDetails = [];
-        dataChanged = true;
+                isOff: true,
+                fixedCount: 0,
+                palletCount: 0,
+                callFares: [],
+                maintItems: [],
+                fuelItems: [],
+                callDetails: [],
+                startOdometer: '',
+                endOdometer: '',
+                dailyDistance: 0
+            };
+            dataChanged = true;
+        }
+
+        if (!workData[key].callDetails) {
+            workData[key].callDetails = [];
+            dataChanged = true;
+        }
+
+        if (!workData[key].fuelItems) {
+            workData[key].fuelItems = [];
+            dataChanged = true;
+        }
+
+        if (!workData[key].hasOwnProperty('startOdometer')) {
+            workData[key].startOdometer = '';
+            dataChanged = true;
+        }
+
+        if (!workData[key].hasOwnProperty('endOdometer')) {
+            workData[key].endOdometer = '';
+            dataChanged = true;
+        }
+
+        if (!workData[key].hasOwnProperty('dailyDistance')) {
+            workData[key].dailyDistance = 0;
+            dataChanged = true;
+        }
     }
-    if (!workData[key].fuelItems) {
-        workData[key].fuelItems = [];
-        dataChanged = true;
-    }
-    }
+
     if (dataChanged) {
-        saveDataToStorage(); 
+        saveDataToStorage();
     }
 }
 
@@ -352,6 +396,9 @@ async function downloadPDF() {
 function hideAllPages() {
     document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
     
+    const workModal = document.getElementById('workModal');
+    if(workModal) workModal.classList.add('hidden');
+    
     document.getElementById('sideMenu').classList.remove('open');
     document.getElementById('sideMenuOverlay').classList.remove('show');
     
@@ -364,6 +411,25 @@ function hideAllPages() {
 
     const backBtn = document.getElementById('subCarBackBtn');
     if (backBtn) backBtn.style.display = 'none';
+
+    const notificationBtn = document.getElementById('notificationBtn');
+    if (notificationBtn) notificationBtn.style.display = 'none';
+}
+
+function setActiveNav(pageId) {
+    document.querySelectorAll('.bottom-nav-bar .nav-item').forEach(item => item.classList.remove('active'));
+    const navItems = document.querySelectorAll('.bottom-nav-bar .nav-item');
+    if (navItems.length >= 3) {
+        if (pageId === 'main') {
+            navItems[0].classList.add('active');
+        } else if (pageId === 'workModal') {
+            navItems[1].classList.add('active');
+        } else if (pageId === 'settings') {
+            navItems[2].classList.add('active');
+        } else if (pageId === 'personal' && navItems[3]) {
+            navItems[3].classList.add('active');
+        }
+    }
 }
 
 function toggleMenu() {
@@ -397,6 +463,9 @@ function showMain(skipRedirect = false) {
 
     hideAllPages();
     document.getElementById('mainPage').classList.remove('hidden');
+
+    const notificationBtn = document.getElementById('notificationBtn');
+    if (notificationBtn) notificationBtn.style.display = 'flex';
     
     const backBtn = document.getElementById('subCarBackBtn');
     if (backBtn && activeLogId !== 'main') {
@@ -404,11 +473,56 @@ function showMain(skipRedirect = false) {
     }
 
     document.getElementById('menuReportBtn').style.display = 'flex';
+    setActiveNav('main');
 }
 
 function showPersonalInfo() {
     hideAllPages();
     document.getElementById('personalInfoPage').classList.remove('hidden');
+    setActiveNav('personal');
+}
+
+function showCustomerCenter() {
+    hideAllPages();
+    document.getElementById('customerCenterPage').classList.remove('hidden');
+}
+
+function openSupportTab(tabName, button) {
+    document.querySelectorAll('.support-panel').forEach(panel => panel.classList.add('hidden'));
+    document.querySelectorAll('.support-tab').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(`support-${tabName}`).classList.remove('hidden');
+    button.classList.add('active');
+}
+
+function toggleSupportItem(item) {
+    item.classList.toggle('open');
+    const icon = item.querySelector('i');
+    if (icon) icon.textContent = item.classList.contains('open') ? '−' : '+';
+}
+
+function submitSupportInquiry(event) {
+    event.preventDefault();
+    const inquiry = {
+        type: document.getElementById('inquiryType').value,
+        title: document.getElementById('inquiryTitle').value.trim(),
+        content: document.getElementById('inquiryContent').value.trim(),
+        createdAt: new Date().toISOString()
+    };
+    const inquiries = JSON.parse(localStorage.getItem('supportInquiries') || '[]');
+    inquiries.unshift(inquiry);
+    localStorage.setItem('supportInquiries', JSON.stringify(inquiries));
+    event.target.reset();
+    showToastMessage('문의가 접수되었습니다.');
+}
+
+function requestWithdrawal() {
+    if (confirm('회원탈퇴는 모든 데이터에 영향을 줄 수 있습니다. 탈퇴 안내를 확인하시겠습니까?')) {
+        showToastMessage('회원탈퇴 문의는 1:1 문의를 이용해 주세요.');
+        const tab = document.querySelectorAll('.support-tab')[1];
+        openSupportTab('inquiry', tab);
+        document.getElementById('inquiryType').value = '문의';
+        document.getElementById('inquiryTitle').value = '회원탈퇴 요청';
+    }
 }
 
 function showCarManagement() {
@@ -484,15 +598,15 @@ function renderClientList() {
         let badges = '';
         // 고정 거래처 표시 뱃지
         if (client.isPinned) {
-            badges += `<span style="font-size:0.75rem; color:#ffffff; background:var(--primary-color); padding:2px 6px; border-radius:4px; margin-left:6px;">고정</span>`;
+            badges += `<span class="management-badge pinned">고정</span>`;
         }
         if (client.commEnabled) {
             const badgeText = client.commType === 'direct' ? `${client.commValue}원` : `${client.commValue}%`;
-            badges += `<span style="font-size:0.75rem; color:#c05621; background:#feebc8; padding:2px 6px; border-radius:4px; margin-left:4px;">수수료 ${badgeText}</span>`;
+            badges += `<span class="management-badge commission">수수료 ${escapeDetailText(badgeText)}</span>`;
         }
 
         const div = document.createElement('div');
-        div.className = 'car-card'; 
+        div.className = 'car-card management-list-card client-list-card'; 
         // 편집 모드이면 전용 클래스 부착
         if (clientOrderEditMode) {
             div.classList.add('edit-mode-active');
@@ -532,18 +646,19 @@ function renderClientList() {
         });
 
         div.innerHTML = `
-            <div style="display: flex; align-items: center; width: 100%;">
+            <div class="management-card-inner">
                 <div class="order-control-btns">
                     <button onclick="moveClientOrder(${idx}, -1); event.stopPropagation();">▲</button>
                     <button onclick="moveClientOrder(${idx}, 1); event.stopPropagation();">▼</button>
                 </div>
-                <div style="flex: 1;">
-                    <div class="car-info-text">${client.companyName} ${client.managerName ? '(' + client.managerName + ')' : ''} ${badges}</div>
-                    <div class="car-sub-text">사업자: ${client.bizNumber || '-'} | 연락처: ${client.phone || '-'}</div>
+                <div class="management-card-copy">
+                    <div class="car-info-text">${escapeDetailText(client.companyName)} ${client.managerName ? '(' + escapeDetailText(client.managerName) + ')' : ''} ${badges}</div>
+                    <div class="car-sub-text">사업자: ${escapeDetailText(client.bizNumber || '-')} · 연락처: ${escapeDetailText(client.phone || '-')}</div>
+                    <div class="car-sub-text">결제주기: ${escapeDetailText(getPaymentTermLabel(client.paymentTerm || 'next_month_end', client.paymentTermValue || ''))}</div>
                 </div>
                 <div class="car-action-btns">
-                    <button class="btn-edit" onclick="openClientModal(${idx}); event.stopPropagation();">수정</button>
-                    <button class="btn-del" style="padding: 8px 12px;" onclick="deleteClient(${idx}); event.stopPropagation();">삭제</button>
+                    <button type="button" class="action-icon-btn" onclick="openClientModal(${idx}); event.stopPropagation();" title="수정">${editDetailSvg()}</button>
+                    <button type="button" class="action-icon-btn del" onclick="deleteClient(${idx}); event.stopPropagation();" title="삭제">${deleteDetailSvg()}</button>
                 </div>
             </div>
         `;
@@ -556,7 +671,7 @@ function toggleClientPinned() {
     const subSettings = document.getElementById('clientPinnedSubSettings');
     // 고정 거래처 하위 항목(수수료 토글) 노출 여부
     if (subSettings) {
-        subSettings.style.display = isPinned ? 'block' : 'none';
+        setSettingsGroupExpanded(subSettings, isPinned);
     }
     // 고정 거래처가 OFF가 되면 종속되어있는 수수료 적용 항목도 강제로 리셋 및 OFF 처리
     if (!isPinned) {
@@ -567,7 +682,7 @@ function toggleClientPinned() {
 
 function toggleClientComm() {
     const isChecked = document.getElementById('clientCommToggle').checked;
-    document.getElementById('clientCommSection').style.display = isChecked ? 'block' : 'none';
+    setSettingsGroupExpanded(document.getElementById('clientCommSection'), isChecked);
 }
 
 function formatCommValue(input) {
@@ -672,6 +787,11 @@ function closeClientModal() {
     document.getElementById('clientModal').classList.add('hidden');
 }
 
+function cancelClientModal() {
+    clientModalOpenedFromCallDetail = false;
+    closeClientModal();
+}
+
 function saveClient() {
     const companyName = document.getElementById('clientCompanyName').value.trim();
     const managerName = document.getElementById('clientManagerName').value.trim();
@@ -712,6 +832,33 @@ function saveClient() {
     renderClientList(); // 이곳에서 자동 재정렬 됨
     buildCalendar(); 
 }
+
+// 화면 디자인을 바꾸지 않고 폼 요소의 접근성 이름을 보완한다.
+function enhanceAccessibility() {
+    document.querySelectorAll('img:not([alt])').forEach(image => {
+        image.alt = '';
+    });
+
+    document.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach(field => {
+        if (field.labels && field.labels.length > 0) return;
+        if (field.hasAttribute('aria-label') || field.hasAttribute('aria-labelledby')) return;
+
+        const group = field.closest('.form-group, .setting-item, .call-inline-field, .price-setting');
+        const nearbyLabel = group ? group.querySelector('label') : null;
+        const accessibleName = (nearbyLabel && nearbyLabel.textContent.trim())
+            || field.getAttribute('placeholder')
+            || field.getAttribute('title')
+            || '입력 항목';
+
+        field.setAttribute('aria-label', accessibleName);
+    });
+}
+
+enhanceAccessibility();
+new MutationObserver(enhanceAccessibility).observe(document.body, {
+    childList: true,
+    subtree: true
+});
 
 function deleteClient(idx) {
     showConfirmModal('해당 업체를 삭제하시겠습니까?', () => {
@@ -780,6 +927,87 @@ function populateLocationDataLists() {
     }
 }
 
+function getRecentLocations(type) {
+    const field = type === 'load' ? 'loadLoc' : 'unloadLoc';
+    const recent = [];
+    const addLocation = value => {
+        const location = String(value || '').trim();
+        if (location && !recent.includes(location)) recent.push(location);
+    };
+
+    [...currentTempCallDetails].reverse().forEach(item => addLocation(item[field]));
+    Object.keys(workData).sort().reverse().forEach(dateKey => {
+        const details = workData[dateKey]?.callDetails || [];
+        [...details].reverse().forEach(item => addLocation(item[field]));
+    });
+    return recent;
+}
+
+function renderLocationShortcuts() {
+    renderLocationShortcutGroup('load');
+    renderLocationShortcutGroup('unload');
+}
+
+function renderLocationShortcutGroup(type) {
+    const settings = getUserSettings();
+    const settingKey = type === 'load' ? 'pinnedLoadLocations' : 'pinnedUnloadLocations';
+    const containerId = type === 'load' ? 'callLoadLocShortcuts' : 'callUnloadLocShortcuts';
+    const pinned = Array.isArray(settings[settingKey]) ? settings[settingKey].filter(Boolean) : [];
+    const locations = [...pinned, ...getRecentLocations(type).filter(location => !pinned.includes(location))].slice(0, 5);
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = '';
+    container.style.display = locations.length ? 'flex' : 'none';
+    locations.forEach(location => {
+        const chip = document.createElement('span');
+        chip.className = `location-chip${pinned.includes(location) ? ' pinned' : ''}`;
+
+        const selectButton = document.createElement('button');
+        selectButton.type = 'button';
+        selectButton.className = 'location-chip-select';
+        selectButton.textContent = location;
+        selectButton.addEventListener('click', () => selectLocationShortcut(type, location));
+
+        const pinButton = document.createElement('button');
+        pinButton.type = 'button';
+        pinButton.className = 'location-chip-pin';
+        pinButton.textContent = pinned.includes(location) ? '★' : '☆';
+        pinButton.title = pinned.includes(location) ? '고정 해제' : '장소 고정';
+        pinButton.setAttribute('aria-label', `${location} ${pinButton.title}`);
+        pinButton.addEventListener('click', () => togglePinnedLocation(type, location));
+
+        chip.append(selectButton, pinButton);
+        container.appendChild(chip);
+    });
+}
+
+function selectLocationShortcut(type, location) {
+    const input = document.getElementById(type === 'load' ? 'callLoadLoc' : 'callUnloadLoc');
+    if (input) input.value = location;
+}
+
+function togglePinnedLocation(type, location) {
+    const settings = getUserSettings();
+    const settingKey = type === 'load' ? 'pinnedLoadLocations' : 'pinnedUnloadLocations';
+    const pinned = Array.isArray(settings[settingKey]) ? [...settings[settingKey]] : [];
+    const index = pinned.indexOf(location);
+
+    if (index >= 0) {
+        pinned.splice(index, 1);
+    } else {
+        if (pinned.length >= 5) {
+            showToastMessage('고정 장소는 최대 5개까지 등록할 수 있습니다.');
+            return;
+        }
+        pinned.push(location);
+    }
+
+    settings[settingKey] = pinned;
+    setUserSettings(settings);
+    renderLocationShortcutGroup(type);
+}
+
 function loadCarList() {
     const settings = getUserSettings();
     
@@ -801,26 +1029,34 @@ function loadCarList() {
     } else {
         settings.cars.forEach((car, idx) => {
             const typeBadge = car.type === 'main' 
-                ? '<span style="color:var(--primary-color); font-size:0.8rem; border:1px solid var(--primary-color); padding:2px 4px; border-radius:4px; margin-right:6px;">메인</span>' 
-                : '<span style="color:#3182ce; font-size:0.8rem; border:1px solid #3182ce; padding:2px 4px; border-radius:4px; margin-right:6px;">기사</span>';
+                ? '<span class="management-badge car-type main">메인</span>' 
+                : '<span class="management-badge car-type sub">기사차량</span>';
             
             const driverInfo = car.type === 'sub' && car.personalInfo && car.personalInfo.driverName ? ` [기사: ${car.personalInfo.driverName}]` : '';
 
             const div = document.createElement('div');
-            div.className = 'car-card';
+            div.className = 'car-card management-list-card car-list-card';
             div.innerHTML = `
-                <div>
-                    <div class="car-info-text">${typeBadge}${car.number}${driverInfo}</div>
-                    <div class="car-sub-text">${car.tonnage ? '(' + car.tonnage + ')' : ''}</div>
+                <div class="management-card-copy">
+                    <div class="car-info-text">${typeBadge}${escapeDetailText(car.number)}${escapeDetailText(driverInfo)}${car.type === 'sub' && car.logEnabled ? '<span class="management-badge log-enabled">운행일지</span>' : ''}</div>
+                    <div class="car-sub-text">${car.tonnage ? '(' + escapeDetailText(car.tonnage) + ')' : ''}${car.commEnabled && car.commission ? ' · 수수료 ' + escapeDetailText(car.commission) + (car.commType === 'direct' ? '원' : '%') : ''}</div>
                 </div>
                 <div class="car-action-btns">
-                    <button class="btn-edit" onclick="editCar(${idx})">수정</button>
-                    <button class="btn-del" style="padding: 8px 12px;" onclick="deleteCar(${idx})">삭제</button>
+                    <button type="button" class="action-icon-btn" onclick="editCar(${idx})" title="수정">${editDetailSvg()}</button>
+                    <button type="button" class="action-icon-btn del" onclick="deleteCar(${idx})" title="삭제">${deleteDetailSvg()}</button>
                 </div>
             `;
             container.appendChild(div);
         });
     }
+}
+
+function toggleCarAddMenu() {
+    document.getElementById('carAddMenu')?.classList.toggle('hidden');
+}
+
+function closeCarAddMenu() {
+    document.getElementById('carAddMenu')?.classList.add('hidden');
 }
 
 function openCarModal(mode = 'main') {
@@ -895,6 +1131,11 @@ function formatCarCommInput(input) {
     }
 }
 
+function toggleNewCarCommSettings() {
+    const isChecked = document.getElementById('newCarCommToggle').checked;
+    setSettingsGroupExpanded(document.getElementById('newCarCommSettings'), isChecked);
+}
+
 function saveNewCar() {
     const num = document.getElementById('newCarNumber').value.trim();
     const ton = document.getElementById('newCarTonnage').value.trim();
@@ -911,8 +1152,10 @@ function saveNewCar() {
 
     const logEnabled = carType === 'main' ? true : document.getElementById('newLogToggle').checked;
     const insuranceOn = carType === 'sub' ? document.getElementById('newCarInsuranceToggle').checked : false;
+    
+    const commEnabled = document.getElementById('newCarCommToggle') ? document.getElementById('newCarCommToggle').checked : false;
     const commType = document.getElementById('newCarCommType').value;
-    const commission = document.getElementById('newCarCommission').value.trim();
+    const commission = commEnabled ? document.getElementById('newCarCommission').value.trim() : '';
     
     let infoType = 'existing';
     let personalInfo = null;
@@ -940,6 +1183,7 @@ function saveNewCar() {
         insuranceOn: insuranceOn,
         commType: commType,
         commission: commission,
+        commEnabled: commEnabled,
         infoType: infoType,
         personalInfo: personalInfo
     };
@@ -979,21 +1223,46 @@ function deleteCar(idx) {
 }
 
 function showMaintManagement() {
-    hideAllPages();
-    document.getElementById('maintManagementPage').classList.remove('hidden');
-    
-    maintViewDate = new Date(viewDate.getTime());
-    updateMaintDateSelects();
-    renderMaintList();
+    showMaintFuelManagement('maint');
 }
 
 function showFuelManagement() {
+    showMaintFuelManagement('fuel');
+}
+
+function showMaintFuelManagement(tab = 'maint') {
     hideAllPages();
-    document.getElementById('fuelManagementPage').classList.remove('hidden');
-    
+    document.getElementById('maintManagementPage').classList.remove('hidden');
+
+    maintViewDate = new Date(viewDate.getTime());
     fuelViewDate = new Date(viewDate.getTime());
+
+    updateMaintDateSelects();
     updateFuelDateSelects();
-    renderFuelList();
+    selectMaintFuelTab(tab);
+}
+
+function selectMaintFuelTab(tab) {
+    const maintTabBtn = document.getElementById('maintTabBtn');
+    const fuelTabBtn = document.getElementById('fuelTabBtn');
+    const maintTabPanel = document.getElementById('maintTabPanel');
+    const fuelTabPanel = document.getElementById('fuelTabPanel');
+
+    const isMaintTab = tab === 'maint';
+
+    maintTabBtn.classList.toggle('active-work', isMaintTab);
+    fuelTabBtn.classList.toggle('active-work', !isMaintTab);
+
+    maintTabPanel.style.display = isMaintTab ? 'block' : 'none';
+    fuelTabPanel.style.display = isMaintTab ? 'none' : 'block';
+
+    if (isMaintTab) {
+        updateMaintDateSelects();
+        renderMaintList();
+    } else {
+        updateFuelDateSelects();
+        renderFuelList();
+    }
 }
 
 function updateFuelDateSelects() {
@@ -1046,7 +1315,7 @@ function selectMaintPayment(btnEl, value) {
     document.getElementById('maintRecordPayment').value = value;
 }
 
-function renderMaintList() {
+function renderMaintListLegacy() {
     const y = maintViewDate.getFullYear();
     const m = String(maintViewDate.getMonth() + 1).padStart(2, '0');
     const prefix = `${y}-${m}-`;
@@ -1077,9 +1346,13 @@ function renderMaintList() {
                 <span style="font-weight: 600;">${item.name || '정비 항목'}</span>
                 <div style="display:flex; align-items:center; gap: 10px;">
                     <strong style="color:var(--sunday-color);">${parseCurrencyValue(item.fare).toLocaleString()} 원</strong>
-                    <div style="display:flex; gap: 6px;">
-                        <button class="btn-del" style="background:var(--sub-text-color); padding:6px 10px; min-height:auto;" onclick="openMaintRecordModal('${date}', ${item.index})">수정</button>
-                        <button class="btn-del" style="padding:6px 10px; min-height:auto;" onclick="deleteMaintRecord('${date}', ${item.index})">삭제</button>
+                    <div style="display:flex; gap: 2px;">
+                        <button type="button" class="action-icon-btn" onclick="openMaintRecordModal('${date}', ${item.index})" title="수정">
+                            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button type="button" class="action-icon-btn del" onclick="deleteMaintRecord('${date}', ${item.index})" title="삭제">
+                            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1100,7 +1373,7 @@ function renderMaintList() {
 
 function openMaintRecordModal(date = null, index = null) {
     let item = null;
-    const isFromWorkModal = document.getElementById('workModal').classList.contains('open');
+    const isFromWorkModal = !document.getElementById('workModal').classList.contains('hidden');
 
     if (date !== null && index !== null) {
         if (isFromWorkModal && date === selectedDateKey && currentTempMaintItems[index]) {
@@ -1164,11 +1437,13 @@ function openMaintRecordModal(date = null, index = null) {
         document.getElementById('maintRecordOriginalDate').value = '';
         document.getElementById('maintRecordOriginalIndex').value = '';
     }
-    document.getElementById('maintRecordModal').classList.remove('hidden');
+    const maintModal = document.getElementById('maintRecordModal');
+    maintModal.classList.remove('hidden');
+    if (isFromWorkModal) openMaintFuelInlinePanel(maintModal);
 }
 
 function closeMaintRecordModal() {
-    document.getElementById('maintRecordModal').classList.add('hidden');
+    closeMaintFuelInlinePanel(document.getElementById('maintRecordModal'));
 }
 
 function saveMaintRecord() {
@@ -1200,7 +1475,7 @@ function saveMaintRecord() {
         payment: payment
     };
 
-    if (document.getElementById('workModal').classList.contains('open')) {
+    if (!document.getElementById('workModal').classList.contains('hidden')) {
         if (origIndex !== '') {
             currentTempMaintItems[origIndex] = newItem;
         } else {
@@ -1247,7 +1522,7 @@ function deleteMaintRecord(date, index) {
 }
 
 // ========== 주유 내역 관련 로직 ==========
-function renderFuelList() {
+function renderFuelListLegacy() {
     const y = fuelViewDate.getFullYear();
     const m = String(fuelViewDate.getMonth() + 1).padStart(2, '0');
     const prefix = `${y}-${m}-`;
@@ -1278,9 +1553,13 @@ function renderFuelList() {
                 <span style="font-weight: 600;">${item.type || '주유'} ${item.liter ? `(${item.liter}L)` : ''}</span>
                 <div style="display:flex; align-items:center; gap: 10px;">
                     <strong style="color:var(--primary-color);">${parseCurrencyValue(item.cost).toLocaleString()} 원</strong>
-                    <div style="display:flex; gap: 6px;">
-                        <button class="btn-del" style="background:var(--sub-text-color); padding:6px 10px; min-height:auto;" onclick="openFuelDetailModal('${date}', ${item.index})">수정</button>
-                        <button class="btn-del" style="padding:6px 10px; min-height:auto;" onclick="deleteFuelRecord('${date}', ${item.index})">삭제</button>
+                    <div style="display:flex; gap: 2px;">
+                        <button type="button" class="action-icon-btn" onclick="openFuelDetailModal('${date}', ${item.index})" title="수정">
+                            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button type="button" class="action-icon-btn del" onclick="deleteFuelRecord('${date}', ${item.index})" title="삭제">
+                            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1299,26 +1578,157 @@ function renderFuelList() {
     });
 }
 
+function renderMaintList() {
+    renderMaintFuelManagementList('maint');
+}
+
+function renderFuelList() {
+    renderMaintFuelManagementList('fuel');
+}
+
+function renderMaintFuelManagementList(kind) {
+    const isMaint = kind === 'maint';
+    const targetDate = isMaint ? maintViewDate : fuelViewDate;
+    const year = targetDate.getFullYear();
+    const monthNumber = targetDate.getMonth() + 1;
+    const month = String(monthNumber).padStart(2, '0');
+    const prefix = `${year}-${month}-`;
+    const container = document.getElementById(isMaint ? 'maintListContainer' : 'fuelListContainer');
+    const grouped = [];
+    let monthlyTotal = 0;
+
+    Object.keys(workData).filter(date => date.startsWith(prefix)).sort().forEach(date => {
+        const source = isMaint ? workData[date].maintItems : workData[date].fuelItems;
+        if (!source?.length) return;
+        const items = source.map((item, index) => ({ ...item, index }));
+        const dailyTotal = items.reduce((sum, item) => sum + parseCurrencyValue(isMaint ? item.fare : item.cost), 0);
+        monthlyTotal += dailyTotal;
+        grouped.push({ date, items, dailyTotal });
+    });
+
+    if (grouped.length === 0) {
+        container.innerHTML = `<div class="empty-state">이번 달 등록된 ${isMaint ? '정비' : '주유'} 내역이 없습니다.</div>`;
+    } else {
+        container.innerHTML = grouped.map(group => {
+            const itemHtml = group.items.map(item => {
+                const amount = parseCurrencyValue(isMaint ? item.fare : item.cost);
+                const title = isMaint
+                    ? escapeDetailText(item.name || '정비')
+                    : `${escapeDetailText(item.type || '주유')}${item.liter ? ` (${escapeDetailText(item.liter)}L)` : ''}`;
+                const noteParts = isMaint
+                    ? [item.payment || '카드', item.category, item.mileage ? `누적 ${item.mileage}km` : '']
+                    : [item.mileage ? `누적 ${item.mileage}km` : '', item.subsidy ? `보조금 ${parseCurrencyValue(item.subsidy).toLocaleString()}원` : ''];
+                const notes = noteParts.filter(Boolean).map(value => `<span>${escapeDetailText(value)}</span>`).join('');
+                const icon = isMaint
+                    ? '<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>'
+                    : '<svg viewBox="0 0 24 24"><path d="M3 22v-8c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v8M11 22H3M15 22v-5l-3-3V6c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2M20 9v5l-3 3"></path></svg>';
+                const editAction = isMaint ? `openMaintRecordModal('${group.date}', ${item.index})` : `openFuelDetailModal('${group.date}', ${item.index})`;
+                const deleteAction = isMaint ? `deleteMaintRecord('${group.date}', ${item.index})` : `deleteFuelRecord('${group.date}', ${item.index})`;
+                return `<div class="management-record-item ${isMaint ? 'maint-record' : 'fuel-record'}">
+                    <div class="management-record-head"><div class="management-record-title">${icon}<strong>${title}</strong></div><div class="management-record-actions"><button type="button" class="action-icon-btn" onclick="${editAction}" title="수정">${editDetailSvg()}</button><button type="button" class="action-icon-btn del" onclick="${deleteAction}" title="삭제">${deleteDetailSvg()}</button></div></div>
+                    <div class="management-record-info"><div>${notes}</div><strong>${amount.toLocaleString()}원</strong></div>
+                </div>`;
+            }).join('');
+            return `<section class="management-day-card ${isMaint ? 'maint-day' : 'fuel-day'}">
+                <div class="management-day-head"><strong>${group.date}</strong><div><span>${isMaint ? '정비' : '주유'} 합계</span><b>${group.dailyTotal.toLocaleString()}원</b></div></div>
+                <div class="management-day-items">${itemHtml}</div>
+            </section>`;
+        }).join('');
+    }
+
+    const label = document.getElementById('maintFuelMonthLabel');
+    const total = document.getElementById('maintFuelMonthTotal');
+    if (label) {
+        label.textContent = `${monthNumber}월 ${isMaint ? '정비' : '주유'}`;
+        label.classList.toggle('fuel-color', !isMaint);
+    }
+    if (total) total.textContent = `${monthlyTotal.toLocaleString()}원`;
+}
+
+function openMaintFuelCurrentAdd() {
+    const isMaint = document.getElementById('maintTabPanel').style.display !== 'none';
+    if (isMaint) openMaintRecordModal();
+    else openFuelDetailModal();
+}
+
 function openMaintFuelSelectModal() {
-    document.getElementById('maintFuelSelectModal').classList.remove('hidden');
+    const selectModal = document.getElementById('maintFuelSelectModal');
+    selectModal.classList.remove('hidden');
+    if (!document.getElementById('workModal').classList.contains('hidden')) {
+        openMaintFuelInlinePanel(selectModal);
+    }
 }
 
 function closeMaintFuelSelectModal() {
-    document.getElementById('maintFuelSelectModal').classList.add('hidden');
+    closeMaintFuelInlinePanel(document.getElementById('maintFuelSelectModal'));
 }
 
 function selectMaintOption() {
-    closeMaintFuelSelectModal();
+    hideMaintFuelInlinePanelImmediately(document.getElementById('maintFuelSelectModal'));
     openMaintRecordModal();
 }
 
 function selectFuelOption() {
-    closeMaintFuelSelectModal();
+    hideMaintFuelInlinePanelImmediately(document.getElementById('maintFuelSelectModal'));
     openFuelDetailModal(selectedDateKey);
 }
 
+function openMaintFuelInlinePanel(panel) {
+    const host = document.getElementById('maintFuelInlineHost');
+    if (!host || !panel) return;
+
+    ['maintFuelSelectModal', 'maintRecordModal', 'fuelDetailModal'].forEach(id => {
+        const other = document.getElementById(id);
+        if (other && other !== panel) {
+            other.classList.add('hidden');
+            other.classList.remove('inline-expanded', 'is-visible');
+        }
+    });
+
+    host.appendChild(panel);
+    panel.classList.remove('hidden');
+    panel.classList.add('inline-expanded');
+    host.classList.add('is-open');
+    host.setAttribute('aria-hidden', 'false');
+    host.style.maxHeight = '0px';
+
+    requestAnimationFrame(() => {
+        panel.classList.add('is-visible');
+        host.style.maxHeight = `${panel.scrollHeight}px`;
+        setTimeout(() => {
+            host.style.maxHeight = `${panel.scrollHeight}px`;
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 80);
+    });
+}
+
+function hideMaintFuelInlinePanelImmediately(panel) {
+    const host = document.getElementById('maintFuelInlineHost');
+    if (!panel || !panel.classList.contains('inline-expanded')) return;
+    panel.classList.add('hidden');
+    panel.classList.remove('inline-expanded', 'is-visible');
+    if (host) host.style.maxHeight = '0px';
+}
+
+function closeMaintFuelInlinePanel(panel) {
+    const host = document.getElementById('maintFuelInlineHost');
+    if (!panel || !host || !panel.classList.contains('inline-expanded')) {
+        panel?.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('is-visible');
+    host.style.maxHeight = '0px';
+    host.setAttribute('aria-hidden', 'true');
+    window.setTimeout(() => {
+        panel.classList.add('hidden');
+        panel.classList.remove('inline-expanded');
+        host.classList.remove('is-open');
+    }, 420);
+}
+
 function openFuelDetailModal(date = null, index = null) {
-    let isFromWorkModal = false;
+    let isFromWorkModal = !document.getElementById('workModal').classList.contains('hidden');
     
     let targetDate = date;
     if (!date) {
@@ -1326,8 +1736,6 @@ function openFuelDetailModal(date = null, index = null) {
         const m = String(fuelViewDate.getMonth() + 1).padStart(2, '0');
         const d = String(new Date().getDate()).padStart(2, '0');
         targetDate = `${y}-${m}-${d}`;
-    } else if (date === selectedDateKey && index === null) {
-        isFromWorkModal = true;
     }
 
     document.getElementById('fuelDetailDate').value = targetDate;
@@ -1340,8 +1748,8 @@ function openFuelDetailModal(date = null, index = null) {
     document.getElementById('fuelDetailMileage').value = '';
     selectFuelType(document.querySelector('#fuelTypeGroup .pill-btn'), '주유');
 
-    if (date && index !== null) {
-        const item = workData[date]?.fuelItems[index];
+    if (isFromWorkModal && index !== null && currentTempFuelItems[index]) {
+        const item = currentTempFuelItems[index];
         if (item) {
             document.getElementById('fuelDetailCost').value = item.cost || '';
             document.getElementById('fuelDetailSubsidy').value = item.subsidy || '';
@@ -1351,8 +1759,8 @@ function openFuelDetailModal(date = null, index = null) {
             const targetBtn = Array.from(btns).find(b => b.textContent === item.type);
             selectFuelType(targetBtn || btns[0], item.type || '주유');
         }
-    } else if (isFromWorkModal && index !== null && currentTempFuelItems[index]) {
-        const item = currentTempFuelItems[index];
+    } else if (date && index !== null) {
+        const item = workData[date]?.fuelItems[index];
         document.getElementById('fuelDetailCost').value = item.cost || '';
         document.getElementById('fuelDetailSubsidy').value = item.subsidy || '';
         document.getElementById('fuelDetailLiter').value = item.liter || '';
@@ -1362,11 +1770,13 @@ function openFuelDetailModal(date = null, index = null) {
         selectFuelType(targetBtn || btns[0], item.type || '주유');
     }
 
-    document.getElementById('fuelDetailModal').classList.remove('hidden');
+    const fuelModal = document.getElementById('fuelDetailModal');
+    fuelModal.classList.remove('hidden');
+    if (isFromWorkModal) openMaintFuelInlinePanel(fuelModal);
 }
 
 function closeFuelDetailModal() {
-    document.getElementById('fuelDetailModal').classList.add('hidden');
+    closeMaintFuelInlinePanel(document.getElementById('fuelDetailModal'));
 }
 
 function selectFuelType(btnEl, type) {
@@ -1397,7 +1807,7 @@ function saveFuelDetail() {
 
     const newItem = { date, cost, subsidy, type, liter, mileage };
 
-    if (document.getElementById('workModal').classList.contains('open')) {
+    if (!document.getElementById('workModal').classList.contains('hidden')) {
         if (origIndex !== '') {
             currentTempFuelItems[origIndex] = newItem;
         } else {
@@ -1442,7 +1852,63 @@ function deleteFuelRecord(date, index) {
     });
 }
 
-function renderFuelSummaryInMainModal() {
+function renderMaintSummaryInMainModalLegacy() {
+    const container = document.getElementById('maintSummaryContainer');
+    const listCard = document.getElementById('maintSummaryList');
+
+    if (currentTempMaintItems.length === 0) {
+        container.style.display = 'none';
+        listCard.innerHTML = '';
+    } else {
+        container.style.display = 'block';
+        let html = '';
+        let total = 0;
+        currentTempMaintItems.forEach((item, idx) => {
+            const fareVal = parseCurrencyValue(item.fare);
+            total += fareVal;
+            
+            let subInfo = [];
+            if(item.category) subInfo.push(item.category);
+            if(item.mileage) subInfo.push(`누적 ${item.mileage}km`);
+            let subInfoHtml = subInfo.length > 0 ? `<div style="font-size: 0.8rem; color: var(--sub-text-color); margin-top: 4px;">${subInfo.join(' | ')}</div>` : '';
+
+            html += `
+                <div class="maint-summary-item" style="align-items: flex-start; padding: 8px 12px; margin-bottom: 6px; border-radius:12px; background-color: var(--card-bg); border: 1px solid var(--border-color); flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start;">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:6px; font-weight: 700;">
+                                <svg class="inline-icon sm" viewBox="0 0 24 24" style="stroke: var(--sunday-color);"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                                ${item.name || '정비 항목'}
+                            </div>
+                            ${subInfoHtml}
+                        </div>
+                        <div style="display:flex; gap: 2px; flex-shrink: 0; margin-top: -4px; margin-right: -4px;">
+                            <button type="button" class="action-icon-btn" onclick="openMaintRecordModal('${selectedDateKey}', ${idx})" title="수정">
+                                <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                            <button type="button" class="action-icon-btn del" onclick="currentTempMaintItems.splice(${idx}, 1); renderMaintSummaryInMainModal(); autoSaveWorkRecord();" title="삭제">
+                                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="width: 100%; display:flex; justify-content: space-between; align-items: flex-end; margin-top: 8px;">
+                        <span style="font-size: 0.75rem; color: var(--sub-text-color); background: var(--input-bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color);">${item.payment || '카드'}</span>
+                        <span style="font-weight: 700;">${fareVal.toLocaleString()}원</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += `
+            <div class="maint-summary-item" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); font-weight:800; color: var(--sunday-color);">
+                <span>정비 합계</span>
+                <span>${total.toLocaleString()}원</span>
+            </div>
+        `;
+        listCard.innerHTML = html;
+    }
+}
+
+function renderFuelSummaryInMainModalLegacy() {
     const container = document.getElementById('fuelSummaryContainer');
     const listCard = document.getElementById('fuelSummaryList');
 
@@ -1462,7 +1928,7 @@ function renderFuelSummaryInMainModal() {
             let subInfoHtml = subInfo.length > 0 ? `<div style="font-size: 0.8rem; color: var(--sub-text-color); margin-top: 4px;">${subInfo.join(' | ')}</div>` : '';
 
             html += `
-                <div class="maint-summary-item" style="align-items: flex-start; padding:12px; margin-bottom:8px; border-radius:12px; background-color: var(--card-bg); border: 1px solid var(--border-color); flex-direction: column;">
+                <div class="maint-summary-item" style="align-items: flex-start; padding: 8px 12px; margin-bottom: 6px; border-radius:12px; background-color: var(--card-bg); border: 1px solid var(--border-color); flex-direction: column;">
                     <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start;">
                         <div>
                             <div style="display:flex; align-items:center; gap:6px; font-weight: 700;">
@@ -1496,11 +1962,66 @@ function renderFuelSummaryInMainModal() {
     }
 }
 
+function renderMaintSummaryInMainModal() {
+    const container = document.getElementById('maintSummaryContainer');
+    const listCard = document.getElementById('maintSummaryList');
+    if (!container || !listCard) return;
+    if (currentTempMaintItems.length === 0) {
+        container.style.display = 'none';
+        listCard.innerHTML = '';
+        return;
+    }
+
+    container.style.display = 'block';
+    let total = 0;
+    const items = currentTempMaintItems.map((item, idx) => {
+        const amount = parseCurrencyValue(item.fare);
+        total += amount;
+        const detail = [item.category, item.mileage ? `누적 ${item.mileage}km` : ''].filter(Boolean).map(escapeDetailText).join(' · ');
+        return `<div class="maint-fuel-item maint-item-card">
+            <div class="maint-fuel-head">
+                <div class="maint-fuel-title maint-title-color"><svg class="maint-fuel-icon" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg><strong>${escapeDetailText(item.name || '정비')}</strong></div>
+                <div class="maint-fuel-actions"><button type="button" class="action-icon-btn" onclick="openMaintRecordModal('${selectedDateKey}', ${idx})" title="수정">${editDetailSvg()}</button><button type="button" class="action-icon-btn del" onclick="currentTempMaintItems.splice(${idx}, 1); renderMaintSummaryInMainModal(); autoSaveWorkRecord();" title="삭제">${deleteDetailSvg()}</button></div>
+            </div>
+            <div class="maint-fuel-info"><div><span class="maint-payment-badge">${escapeDetailText(item.payment || '카드')}</span>${detail ? `<span class="maint-fuel-note">${detail}</span>` : ''}</div><strong>${amount.toLocaleString()}원</strong></div>
+        </div>`;
+    }).join('');
+    listCard.innerHTML = `${items}<div class="maint-fuel-total maint-total-color"><strong>정비 합계</strong><strong>${total.toLocaleString()}원</strong></div>`;
+}
+
+function renderFuelSummaryInMainModal() {
+    const container = document.getElementById('fuelSummaryContainer');
+    const listCard = document.getElementById('fuelSummaryList');
+    if (!container || !listCard) return;
+    if (currentTempFuelItems.length === 0) {
+        container.style.display = 'none';
+        listCard.innerHTML = '';
+        return;
+    }
+
+    container.style.display = 'block';
+    let total = 0;
+    const items = currentTempFuelItems.map((item, idx) => {
+        const amount = parseCurrencyValue(item.cost);
+        total += amount;
+        const note = [item.mileage ? `누적 ${item.mileage}km` : '', item.subsidy ? `보조금 ${parseCurrencyValue(item.subsidy).toLocaleString()}원` : ''].filter(Boolean).join(' · ');
+        return `<div class="maint-fuel-item fuel-item-card">
+            <div class="maint-fuel-head">
+                <div class="maint-fuel-title fuel-title-color"><svg class="maint-fuel-icon" viewBox="0 0 24 24"><path d="M3 22v-8c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v8M11 22H3M15 22v-5l-3-3V6c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2M20 9v5l-3 3"></path></svg><strong>${escapeDetailText(item.type || '주유')}${item.liter ? ` (${escapeDetailText(item.liter)}L)` : ''}</strong></div>
+                <div class="maint-fuel-actions"><button type="button" class="action-icon-btn" onclick="openFuelDetailModal('${selectedDateKey}', ${idx})" title="수정">${editDetailSvg()}</button><button type="button" class="action-icon-btn del" onclick="currentTempFuelItems.splice(${idx}, 1); renderFuelSummaryInMainModal(); autoSaveWorkRecord();" title="삭제">${deleteDetailSvg()}</button></div>
+            </div>
+            <div class="maint-fuel-info"><div>${note ? `<span class="maint-fuel-note">${escapeDetailText(note)}</span>` : ''}</div><strong>${amount.toLocaleString()}원</strong></div>
+        </div>`;
+    }).join('');
+    listCard.innerHTML = `${items}<div class="maint-fuel-total fuel-total-color"><strong>주유 합계</strong><strong>${total.toLocaleString()}원</strong></div>`;
+}
+
 function showSettings(fromPage) {
     if (fromPage) previousPage = fromPage;
     loadSettings();
     hideAllPages();
     document.getElementById('settingsPage').classList.remove('hidden');
+    setActiveNav('settings');
 }
 
 function goBackFromSettings() {
@@ -1574,7 +2095,7 @@ function openReportCarSelectModal(cars) {
             btn.style.color = 'var(--primary-color)';
             btn.style.fontWeight = '700';
             
-            let displayName = car.type === 'main' ? `메인차량(${car.number})` : `보조차량(${car.number})`;
+            let displayName = car.type === 'main' ? `메인차량(${car.number})` : `기사차량(${car.number})`;
             btn.textContent = displayName;
             btn.onclick = () => {
                 closeReportCarSelectModal();
@@ -1615,18 +2136,60 @@ function setTheme(theme) {
 
 function toggleFixedSubSettings() {
     const checked = document.getElementById('fixedToggle').checked;
-    document.getElementById('fixedSubSettings').style.display = checked ? 'block' : 'none';
+    setSettingsGroupExpanded(document.getElementById('fixedSubSettings'), checked);
 }
 
 function toggleSubFixedSettings() {
     const checked = document.getElementById('subFixedToggle').checked;
     const subFixedSection = document.getElementById('subFixedSubSettings');
-    if(subFixedSection) subFixedSection.style.display = checked ? 'block' : 'none';
+    setSettingsGroupExpanded(subFixedSection, checked);
+}
+
+function setSettingsGroupExpanded(element, expanded, displayMode = 'block') {
+    if (!element) return;
+    window.clearTimeout(element._settingsCollapseTimer);
+    element.classList.add('smooth-settings-group');
+
+    // 숨겨진 페이지/모달을 초기화할 때는 최종 상태만 적용하고,
+    // 사용자가 실제로 보고 있는 화면에서 토글할 때만 애니메이션을 실행한다.
+    const parentIsVisible = !!element.parentElement?.getClientRects().length;
+    if (!parentIsVisible) {
+        element.style.display = expanded ? displayMode : 'none';
+        element.style.maxHeight = expanded ? 'none' : '0px';
+        element.style.opacity = expanded ? '1' : '0';
+        return;
+    }
+
+    if (expanded) {
+        if (element.style.display !== 'none' && element.style.maxHeight === 'none') return;
+        element.style.display = displayMode;
+        element.style.maxHeight = '0px';
+        element.style.opacity = '0';
+        requestAnimationFrame(() => {
+            element.style.maxHeight = `${element.scrollHeight}px`;
+            element.style.opacity = '1';
+        });
+        element._settingsCollapseTimer = window.setTimeout(() => {
+            if (element.style.display !== 'none') element.style.maxHeight = 'none';
+        }, 440);
+        return;
+    }
+
+    if (element.style.display === 'none') return;
+    element.style.maxHeight = `${element.scrollHeight}px`;
+    element.style.opacity = '1';
+    requestAnimationFrame(() => {
+        element.style.maxHeight = '0px';
+        element.style.opacity = '0';
+    });
+    element._settingsCollapseTimer = window.setTimeout(() => {
+        element.style.display = 'none';
+    }, 420);
 }
 
 function togglePalletSubSettings() {
     const checked = document.getElementById('palletToggle').checked;
-    document.getElementById('palletSubSettings').style.display = checked ? 'flex' : 'none';
+    setSettingsGroupExpanded(document.getElementById('palletSubSettings'), checked, 'flex');
 }
 
 function setInputMode(mode, target) {
@@ -1659,7 +2222,18 @@ function setInputMode(mode, target) {
 
 function toggleSubPalletSubSettings() {
     const checked = document.getElementById('subPalletToggle').checked;
-    document.getElementById('subPalletSubSettings').style.display = checked ? 'flex' : 'none';
+    setSettingsGroupExpanded(document.getElementById('subPalletSubSettings'), checked, 'flex');
+}
+
+function normalizeSubRunCountPresetInput() {
+    const input = document.getElementById('subRunCountPresets');
+    if (input) input.value = normalizeRunCountPresets(input.value).join(', ');
+}
+
+function toggleSubRunCountPresetSettings() {
+    const toggle = document.getElementById('subRunCountToggle');
+    const setting = document.getElementById('subRunCountPresetSettings');
+    setSettingsGroupExpanded(setting, !!toggle?.checked, 'flex');
 }
 
 function showToastMessage(msg = "저장되었습니다.") {
@@ -1669,6 +2243,14 @@ function showToastMessage(msg = "저장되었습니다.") {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 1200);
+}
+
+let smoothSettingsSaveTimer = null;
+function saveSettingsSmoothly() {
+    window.clearTimeout(smoothSettingsSaveTimer);
+    smoothSettingsSaveTimer = window.setTimeout(() => {
+        saveSettings();
+    }, 430);
 }
 
 function saveSettings() {
@@ -1683,6 +2265,8 @@ function saveSettings() {
     settings.unitPrice = document.getElementById('unitPrice').value;
     settings.palletOn = document.getElementById('palletToggle').checked;
     settings.palletPrice = document.getElementById('palletPrice').value;
+    settings.runCountToggle = document.getElementById('runCountToggle') ? document.getElementById('runCountToggle').checked : false;
+    settings.runCountPresets = normalizeRunCountPresets(document.getElementById('runCountPresets')?.value);
     
     // 조건 항목 저장
     settings.callDetailOn = document.getElementById('callDetailToggle').checked;
@@ -1690,6 +2274,7 @@ function saveSettings() {
     settings.timeOn = document.getElementById('timeToggle') ? document.getElementById('timeToggle').checked : false;
     settings.platformOn = document.getElementById('platformToggle') ? document.getElementById('platformToggle').checked : false;
     settings.distanceOn = document.getElementById('distanceToggle') ? document.getElementById('distanceToggle').checked : false;
+    settings.cargoTonnageOn = document.getElementById('cargoTonnageToggle') ? document.getElementById('cargoTonnageToggle').checked : true;
 
     if (document.getElementById('subFixedToggle')) {
         const subInputModeBtn = document.getElementById('btnSubInputModeFare');
@@ -1702,9 +2287,15 @@ function saveSettings() {
         settings.subPalletOn = document.getElementById('subPalletToggle').checked;
         settings.subPalletPrice = document.getElementById('subPalletPrice').value;
         
-        // 보조 조건 항목 저장
+        // 기사차량 조건 항목 저장
         settings.subCallDetailOn = document.getElementById('subCallDetailToggle').checked;
         settings.subPaymentOn = document.getElementById('subPaymentToggle') ? document.getElementById('subPaymentToggle').checked : false;
+        settings.subTimeOn = document.getElementById('subTimeToggle') ? document.getElementById('subTimeToggle').checked : false;
+        settings.subPlatformOn = document.getElementById('subPlatformToggle') ? document.getElementById('subPlatformToggle').checked : false;
+        settings.subDistanceOn = document.getElementById('subDistanceToggle') ? document.getElementById('subDistanceToggle').checked : false;
+        settings.subCargoTonnageOn = document.getElementById('subCargoTonnageToggle') ? document.getElementById('subCargoTonnageToggle').checked : true;
+        settings.subRunCountToggle = document.getElementById('subRunCountToggle') ? document.getElementById('subRunCountToggle').checked : false;
+        settings.subRunCountPresets = normalizeRunCountPresets(document.getElementById('subRunCountPresets')?.value);
     }
 
     setUserSettings(settings);
@@ -1713,6 +2304,8 @@ function saveSettings() {
 
 function savePersonalInfo() {
     const settings = getUserSettings();
+    settings.bizName = document.getElementById('bizName').value;
+    settings.bizNumber = document.getElementById('bizNumber').value;
     settings.userName = document.getElementById('userName').value;
     settings.userPhone = document.getElementById('userPhone').value;
     settings.bankName = document.getElementById('bankName').value;
@@ -1738,6 +2331,8 @@ function loadSettings() {
         document.getElementById('unitPrice').value = savedSettings.unitPrice || '';
         document.getElementById('palletToggle').checked = !!savedSettings.palletOn;
         document.getElementById('palletPrice').value = savedSettings.palletPrice || '';
+        if (document.getElementById('runCountToggle')) document.getElementById('runCountToggle').checked = !!savedSettings.runCountToggle;
+        if (document.getElementById('runCountPresets')) document.getElementById('runCountPresets').value = normalizeRunCountPresets(savedSettings.runCountPresets).join(', ');
 
         // 세부 입력은 항상 켜져 있는 상태를 기본으로 처리
         document.getElementById('callDetailToggle').checked = savedSettings.hasOwnProperty('callDetailOn') ? !!savedSettings.callDetailOn : true;
@@ -1745,6 +2340,9 @@ function loadSettings() {
         if(document.getElementById('timeToggle')) document.getElementById('timeToggle').checked = !!savedSettings.timeOn;
         if(document.getElementById('platformToggle')) document.getElementById('platformToggle').checked = !!savedSettings.platformOn;
         if(document.getElementById('distanceToggle')) document.getElementById('distanceToggle').checked = !!savedSettings.distanceOn;
+        if(document.getElementById('cargoTonnageToggle')) {
+            document.getElementById('cargoTonnageToggle').checked = savedSettings.hasOwnProperty('cargoTonnageOn') ? !!savedSettings.cargoTonnageOn : true;
+        }
 
         if (document.getElementById('subFixedToggle')) {
             if (savedSettings.subInputMode === 'fare') {
@@ -1760,12 +2358,21 @@ function loadSettings() {
 
             document.getElementById('subCallDetailToggle').checked = savedSettings.hasOwnProperty('subCallDetailOn') ? !!savedSettings.subCallDetailOn : true;
             if(document.getElementById('subPaymentToggle')) document.getElementById('subPaymentToggle').checked = !!savedSettings.subPaymentOn;
+            if(document.getElementById('subTimeToggle')) document.getElementById('subTimeToggle').checked = !!savedSettings.subTimeOn;
+            if(document.getElementById('subPlatformToggle')) document.getElementById('subPlatformToggle').checked = !!savedSettings.subPlatformOn;
+            if(document.getElementById('subDistanceToggle')) document.getElementById('subDistanceToggle').checked = !!savedSettings.subDistanceOn;
+            if(document.getElementById('subCargoTonnageToggle')) document.getElementById('subCargoTonnageToggle').checked = savedSettings.hasOwnProperty('subCargoTonnageOn') ? !!savedSettings.subCargoTonnageOn : true;
+            if(document.getElementById('subRunCountToggle')) document.getElementById('subRunCountToggle').checked = !!savedSettings.subRunCountToggle;
+            if(document.getElementById('subRunCountPresets')) document.getElementById('subRunCountPresets').value = normalizeRunCountPresets(savedSettings.subRunCountPresets).join(', ');
             
             toggleSubFixedSettings();
             toggleSubPalletSubSettings();
+            toggleSubRunCountPresetSettings();
             updateToggleDependencies('sub');
         }
 
+        if(document.getElementById('bizName')) document.getElementById('bizName').value = savedSettings.bizName || '';
+        if(document.getElementById('bizNumber')) document.getElementById('bizNumber').value = savedSettings.bizNumber || '';
         document.getElementById('userName').value = savedSettings.userName || '';
         document.getElementById('userPhone').value = savedSettings.userPhone || '';
         document.getElementById('bankName').value = savedSettings.bankName || '';
@@ -1773,6 +2380,7 @@ function loadSettings() {
 
         toggleFixedSubSettings();
         togglePalletSubSettings();
+        toggleRunCountPresetSettings();
         updateToggleDependencies('main');
     }
 }
@@ -1802,19 +2410,26 @@ function updateToggleDependencies(type) {
         // 조건 1: 운행 일지 세부 입력 토글 상태에 따른 하위 그룹 표시/숨김
         if (callDetailSubSettings) {
             if (!callDetailToggle.checked) {
-                callDetailSubSettings.style.display = 'none';
+                setSettingsGroupExpanded(callDetailSubSettings, false);
                 if(paymentToggle) paymentToggle.checked = false;
                 if(timeToggle) timeToggle.checked = false;
                 if(platformToggle) platformToggle.checked = false;
                 if(distanceToggle) distanceToggle.checked = false;
             } else {
-                callDetailSubSettings.style.display = 'block';
+                setSettingsGroupExpanded(callDetailSubSettings, true);
             }
         }
     } else {
         const subFixedToggle = document.getElementById('subFixedToggle');
         const subCallDetailToggle = document.getElementById('subCallDetailToggle');
-        const subCallDetailSubSettings = document.getElementById('subCallDetailSubSettings');
+        const subCallDetailSubSettings = document.getElementById('subCallDetailSubSettings') || document.getElementById('subPaymentToggleContainer');
+        const subDetailToggles = [
+            'subPaymentToggle',
+            'subTimeToggle',
+            'subPlatformToggle',
+            'subDistanceToggle',
+            'subCargoTonnageToggle'
+        ].map(id => document.getElementById(id));
 
         if (!subFixedToggle || !subCallDetailToggle) return;
 
@@ -1827,9 +2442,12 @@ function updateToggleDependencies(type) {
 
         if (subCallDetailSubSettings) {
             if (!subCallDetailToggle.checked) {
-                subCallDetailSubSettings.style.display = 'none';
+                setSettingsGroupExpanded(subCallDetailSubSettings, false);
+                subDetailToggles.forEach(toggle => {
+                    if (toggle) toggle.checked = false;
+                });
             } else {
-                subCallDetailSubSettings.style.display = 'block';
+                setSettingsGroupExpanded(subCallDetailSubSettings, true);
             }
         }
     }
@@ -1927,10 +2545,12 @@ function buildCalendar() {
     let monthTotalFare = 0;
     let monthTotalPalletFare = 0;
     let monthTotalMaintFare = 0;
+    let monthTotalFuelFare = 0;
     let monthTotalCommission = 0;
     let monthTotalDistance = 0; 
     let monthTotalUnpaid = 0; // 미수금 총액 합산 변수 추가
 
+    let fixedBaseFare = 0;
     let defaultBaseFare = 0; 
     let monthFareByClient = {}; 
     let monthCommByClient = {};
@@ -1997,6 +2617,7 @@ function buildCalendar() {
                 let dayWorkCount = 0;
                 let dayFare = 0;
                 let dayPalletFare = 0;
+                let dayFixedFare = 0;
                 let dayDefaultFare = 0; 
                 let hasUnpaidToday = false; // 오늘 하루에 미수 건이 하나라도 있는지 확인
 
@@ -2004,7 +2625,7 @@ function buildCalendar() {
                     dayWorkCount += parseInt(record.fixedCount, 10);
                     let fAmount = record.fixedCount * fixedUnitPrice;
                     dayFare += fAmount;
-                    dayDefaultFare += fAmount;
+                    dayFixedFare += fAmount;
                 }
                 
                 if (record.palletCount > 0 && activeFixedOn && activePalletOn) {
@@ -2017,6 +2638,8 @@ function buildCalendar() {
                     dayFare += callSum;
                     dayDefaultFare += callSum;
                 }
+
+                monthTotalDistance += parseFloat(record.dailyDistance) || 0;
                 
                 if (record.callDetails && record.callDetails.length > 0) {
                     record.callDetails.forEach(detail => {
@@ -2030,8 +2653,6 @@ function buildCalendar() {
                         } else {
                             dayWorkCount += 1;
                         }
-
-                        monthTotalDistance += parseFloat(detail.distanceKm) || 0;
 
                         let gross = parseCurrencyValue(detail.fare);
                         
@@ -2076,42 +2697,44 @@ function buildCalendar() {
                     });
                 }
                 
+                fixedBaseFare += dayFixedFare;
                 defaultBaseFare += dayDefaultFare;
 
-                if (dayWorkCount > 0) {
+                // 설정의 횟수/금액 표시 방식에 맞춰 홈 달력에는 한 가지만 표시
+                if (dayWorkCount > 0 || dayFare > 0 || dayPalletFare > 0) {
                     monthTotalWork += dayWorkCount;
                     monthTotalFare += dayFare;
+                    monthTotalPalletFare += dayPalletFare;
 
                     const badge = document.createElement('span');
                     badge.classList.add('work-badge');
-                    
+
                     if (displayMode === 'fare') {
                         badge.textContent = formatFareShort(dayFare + dayPalletFare);
                     } else {
                         badge.textContent = `${dayWorkCount}회`;
                     }
-                    
+
                     cell.appendChild(badge);
-                } else if (dayPalletFare > 0) {
-                    monthTotalPalletFare += dayPalletFare;
-                    
-                    if (displayMode === 'fare') {
-                        const badge = document.createElement('span');
-                        badge.classList.add('work-badge');
-                        badge.textContent = formatFareShort(dayPalletFare);
-                        cell.appendChild(badge);
-                    }
                 }
 
+                let dayMaintSum = 0;
+                let dayFuelSum = 0;
+                
                 if (record.maintItems && record.maintItems.length > 0) {
-                    const maintSum = record.maintItems.reduce((a, b) => a + parseCurrencyValue(b.fare), 0);
-                    if (maintSum > 0) {
-                        monthTotalMaintFare += maintSum;
-                        const maintBadge = document.createElement('span');
-                        maintBadge.classList.add('maint-badge');
-                        maintBadge.textContent = formatFareShort(maintSum);
-                        cell.appendChild(maintBadge);
-                    }
+                    dayMaintSum = record.maintItems.reduce((a, b) => a + parseCurrencyValue(b.fare), 0);
+                }
+                if (record.fuelItems && record.fuelItems.length > 0) {
+                    dayFuelSum = record.fuelItems.reduce((a, b) => a + parseCurrencyValue(b.cost), 0);
+                }
+                
+                if (dayMaintSum > 0 || dayFuelSum > 0) {
+                    monthTotalMaintFare += dayMaintSum;
+                    monthTotalFuelFare += dayFuelSum;
+                    const expBadge = document.createElement('span');
+                    expBadge.classList.add('maint-badge');
+                    expBadge.textContent = formatFareShort(dayMaintSum + dayFuelSum);
+                    cell.appendChild(expBadge);
                 }
 
                 // 당일에 미수 건이 있을 경우 빨간 점 추가
@@ -2145,7 +2768,7 @@ function buildCalendar() {
     }
 
     let subCarComm = 0;
-    let subCarCommLabel = '보조차량 수수료';
+    let subCarCommLabel = '기사차량 수수료';
     if (activeLogId !== 'main') {
         const currentCar = savedSettings.cars?.find(c => c.number === activeLogId);
         if (currentCar && currentCar.logEnabled && currentCar.commission) {
@@ -2157,11 +2780,11 @@ function buildCalendar() {
         }
     }
 
-    const isDistanceOn = !!savedSettings.distanceOn;
-    updateSummary(monthTotalWork, monthTotalFare, monthTotalPalletFare, monthTotalMaintFare, monthTotalCommission, subCarComm, subCarCommLabel, defaultBaseFare, monthFareByClient, monthCommByClient, clientCommLabels, monthTotalDistance, isDistanceOn);
+    const isDistanceOn = activeLogId === 'main' ? !!savedSettings.distanceOn : !!savedSettings.subDistanceOn;
+    updateSummary(monthTotalWork, monthTotalFare, monthTotalPalletFare, monthTotalMaintFare, monthTotalFuelFare, monthTotalCommission, subCarComm, subCarCommLabel, fixedBaseFare, defaultBaseFare, monthFareByClient, monthCommByClient, clientCommLabels, monthTotalDistance, isDistanceOn);
 }
 
-function updateSummary(totalCount, fareTotal, palletTotal, maintTotal, commissionTotal = 0, subCarComm = 0, subCarCommLabel = '', defaultBaseFare = 0, monthFareByClient = {}, monthCommByClient = {}, clientCommLabels = {}, monthTotalDistance = 0, isDistanceOn = false) {
+function updateSummary(totalCount, fareTotal, palletTotal, maintTotal, fuelTotal = 0, commissionTotal = 0, subCarComm = 0, subCarCommLabel = '', fixedBaseFare = 0, defaultBaseFare = 0, monthFareByClient = {}, monthCommByClient = {}, clientCommLabels = {}, monthTotalDistance = 0, isDistanceOn = false) {
     document.getElementById('summaryTotalWork').textContent = `총 ${totalCount}회 운행`;
     
     const distanceRow = document.getElementById('summaryDistanceRow');
@@ -2178,10 +2801,18 @@ function updateSummary(totalCount, fareTotal, palletTotal, maintTotal, commissio
     const baseFareContainer = document.getElementById('dynamicBaseFareContainer');
     if (baseFareContainer) {
         let html = '';
-        if (defaultBaseFare > 0 || Object.keys(monthFareByClient).length === 0) {
+        if (fixedBaseFare > 0) {
             html += `
                 <div class="summary-row">
-                    <span>기본 운송료</span>
+                    <span>고정 기본 운송료</span>
+                    <span class="summary-value">${fixedBaseFare.toLocaleString()} 원</span>
+                </div>
+            `;
+        }
+        if (defaultBaseFare > 0) {
+            html += `
+                <div class="summary-row">
+                    <span>미지정 거래처 운송료</span>
                     <span class="summary-value">${defaultBaseFare.toLocaleString()} 원</span>
                 </div>
             `;
@@ -2241,11 +2872,77 @@ function updateSummary(totalCount, fareTotal, palletTotal, maintTotal, commissio
     } else {
         maintRow.style.display = 'none';
     }
+
+    const fuelRow = document.getElementById('summaryFuelRow');
+    if (fuelTotal > 0 && fuelRow) {
+        fuelRow.style.display = 'flex';
+        document.getElementById('summaryFuelFare').textContent = `${fuelTotal.toLocaleString()} 원`;
+    } else if (fuelRow) {
+        fuelRow.style.display = 'none';
+    }
+}
+
+function setFixedCount(count) {
+    const input = document.getElementById('modalFixedCountInput');
+    if (!input) return;
+    const currentCount = parseInt(input.value, 10) || 0;
+    input.value = currentCount === count ? '' : count;
+    syncFixedCountQuickButtons();
+    autoSaveWorkRecord();
+}
+
+function syncFixedCountQuickButtons() {
+    const input = document.getElementById('modalFixedCountInput');
+    const selectedCount = input ? parseInt(input.value, 10) : 0;
+    document.querySelectorAll('.fixed-count-quick-buttons button').forEach(button => {
+        button.classList.toggle('active', selectedCount === parseInt(button.dataset.count, 10));
+    });
+}
+
+function normalizeRunCountPresets(value) {
+    const source = Array.isArray(value) ? value : String(value || '').split(/[\s,]+/);
+    const values = [];
+    source.forEach(item => {
+        const count = parseInt(item, 10);
+        if (count > 0 && !values.includes(count) && values.length < 5) values.push(count);
+    });
+    return values.length ? values : [1, 2, 3, 4, 5];
+}
+
+function normalizeRunCountPresetInput() {
+    const input = document.getElementById('runCountPresets');
+    if (input) input.value = normalizeRunCountPresets(input.value).join(', ');
+}
+
+function toggleRunCountPresetSettings() {
+    const toggle = document.getElementById('runCountToggle');
+    const setting = document.getElementById('runCountPresetSettings');
+    setSettingsGroupExpanded(setting, !!toggle?.checked, 'flex');
+}
+
+function renderFixedCountQuickButtons(settings, isMain) {
+    const container = document.getElementById('fixedCountQuickButtons');
+    if (!container) return;
+    const enabled = isMain ? !!settings.runCountToggle : !!settings.subRunCountToggle;
+    container.style.display = enabled ? 'grid' : 'none';
+    container.innerHTML = '';
+    if (!enabled) return;
+
+    const presets = isMain ? settings.runCountPresets : settings.subRunCountPresets;
+    normalizeRunCountPresets(presets).forEach(count => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.count = count;
+        button.textContent = `${count}회`;
+        button.addEventListener('click', () => setFixedCount(count));
+        container.appendChild(button);
+    });
 }
 
 function openModal(dateKey, month, day) {
     selectedDateKey = dateKey;
-    document.getElementById('modalTitle').textContent = `${month}월 ${day}일 운행 내역 입력`;
+    appState.selectedDateKey = dateKey; // appState 객체 동기화 추가
+    document.getElementById('modalTitle').textContent = `${month}월 ${day}일 운행 일지`;
 
     const savedSettings = getUserSettings();
     const isMain = activeLogId === 'main';
@@ -2258,6 +2955,7 @@ function openModal(dateKey, month, day) {
     document.getElementById('modalPalletSection').style.display = (fixedOn && palletOn) ? 'block' : 'none';
     document.getElementById('modalCallSection').style.display = callOn ? 'block' : 'none';
     document.getElementById('modalCallDetailSection').style.display = callDetailOn ? 'block' : 'none';
+    renderFixedCountQuickButtons(savedSettings, isMain);
 
     const record = workData[dateKey];
     const callContainer = document.getElementById('callListContainer');
@@ -2290,10 +2988,15 @@ function openModal(dateKey, month, day) {
         document.getElementById('modalPalletCount').value = '';
     }
 
+    syncFixedCountQuickButtons();
+
     renderMaintSummaryInMainModal();
     renderFuelSummaryInMainModal();
     renderCallDetailSummaryInMainModal();
-    document.getElementById('workModal').classList.add('open');
+    
+    hideAllPages();
+    document.getElementById('workModal').classList.remove('hidden');
+    setActiveNav('workModal');
 }
 
 function toggleOffState() {
@@ -2317,6 +3020,63 @@ function setOffState(off) {
     }
 }
 
+function updateOdometerDistance(shouldSave = true) {
+    const startInput = document.getElementById('modalStartOdometer');
+    const endInput = document.getElementById('modalEndOdometer');
+    const resultEl = document.getElementById('modalDailyDistanceResult');
+
+    if (!startInput || !endInput || !resultEl) {
+        return 0;
+    }
+
+    const startValue = parseCurrencyValue(startInput.value);
+    const endValue = parseCurrencyValue(endInput.value);
+    const hasStartValue = startInput.value.trim() !== '';
+    const hasEndValue = endInput.value.trim() !== '';
+
+    resultEl.classList.remove('error');
+
+    if (!hasStartValue || !hasEndValue) {
+        resultEl.textContent = '입력 대기';
+        return 0;
+    }
+
+    if (endValue < startValue) {
+        resultEl.textContent = '계기판 수치 확인';
+        resultEl.classList.add('error');
+        return 0;
+    }
+
+    const dailyDistance = endValue - startValue;
+    resultEl.textContent = `${dailyDistance.toLocaleString()} km`;
+
+    if (shouldSave && !isOffSelected) {
+        autoSaveWorkRecord();
+    }
+
+    return dailyDistance;
+}
+
+function handleOdometerPhoto(input, type) {
+    const file = input.files && input.files[0];
+
+    if (!file) {
+        return;
+    }
+
+    const previewId = type === 'start' ? 'startOdometerPreview' : 'endOdometerPreview';
+    const preview = document.getElementById(previewId);
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+        preview.src = event.target.result;
+        preview.classList.remove('hidden');
+        showToastMessage('계기판 사진이 선택되었습니다. AI/OCR API 연결 후 숫자가 자동 입력됩니다.');
+    };
+
+    reader.readAsDataURL(file);
+}
+
 function addCallInputRow(val = '') {
     if (isOffSelected) setOffState(false);
     const container = document.getElementById('callListContainer');
@@ -2330,7 +3090,7 @@ function addCallInputRow(val = '') {
     autoSaveWorkRecord();
 }
 
-function renderCallDetailSummaryInMainModal() {
+function renderCallDetailSummaryInMainModalLegacy() {
     const container = document.getElementById('callDetailSummaryContainer');
     const listCard = document.getElementById('callDetailSummaryList');
     const dailyDistanceEl = document.getElementById('modalDailyDistance');
@@ -2346,7 +3106,7 @@ function renderCallDetailSummaryInMainModal() {
         let dailyDist = 0;
         let totalComm = 0; 
         
-        const settings = getUserSettings();
+        const settings = getActiveLogSettings();
         
         currentTempCallDetails.forEach((item, index) => {
             const fareVal = parseCurrencyValue(item.fare);
@@ -2403,6 +3163,7 @@ function renderCallDetailSummaryInMainModal() {
             let badgesHtml = '';
             if (settings.paymentOn && item.receipt) badgesHtml += `<span class="detail-badge">${item.receipt}</span>`;
             if (settings.platformOn && item.platform) badgesHtml += `<span class="detail-badge">${item.platform}</span>`;
+            if (settings.cargoTonnageOn && item.cargoTonnage) badgesHtml += `<span class="detail-badge">${item.cargoTonnage}톤</span>`;
 
             // 결제 상태 (미수/수금)
             let payStatus = item.paymentStatus || '미수';
@@ -2504,6 +3265,141 @@ function renderCallDetailSummaryInMainModal() {
         
         if (dailyDistanceEl) dailyDistanceEl.style.display = 'none';
     }
+}
+
+function renderCallDetailSummaryInMainModal() {
+    const container = document.getElementById('callDetailSummaryContainer');
+    const listCard = document.getElementById('callDetailSummaryList');
+    const dailyDistanceEl = document.getElementById('modalDailyDistance');
+    if (!container || !listCard) return;
+
+    if (currentTempCallDetails.length === 0) {
+        container.style.display = 'none';
+        listCard.innerHTML = '';
+        if (dailyDistanceEl) dailyDistanceEl.textContent = '일일 운행거리: 0 km';
+        return;
+    }
+
+    container.style.display = 'block';
+    const settings = getActiveLogSettings();
+    let totalFare = 0;
+    let totalCommission = 0;
+    let totalInsuranceFee = 0;
+    let totalVat = 0;
+    let totalDistance = 0;
+
+    const formatTime = value => {
+        if (!value) return '-';
+        const [hourText, minute = '00'] = value.split(':');
+        const hour = Number(hourText);
+        return `${hour < 12 ? 'AM' : 'PM'}${hour % 12 || 12}시${minute === '00' ? '' : minute + '분'}`;
+    };
+    const durationText = (start, end) => {
+        if (!start || !end) return '';
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        let minutes = eh * 60 + em - (sh * 60 + sm);
+        if (minutes < 0) minutes += 1440;
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        return ` (${hours ? hours + '시간' : ''}${mins ? mins + '분' : ''})`;
+    };
+    const getClientInfo = name => settings.clients?.find(client => client.companyName === name);
+    const getCommission = (item, fare) => {
+        const client = getClientInfo(item.client);
+        if (!client?.commEnabled) return { amount: 0, label: '' };
+        const amount = client.commType === 'direct'
+            ? parseCurrencyValue(client.commValue)
+            : Math.floor(fare * (parseFloat(client.commValue) || 0) / 100);
+        const label = client.commType === 'direct'
+            ? `${parseCurrencyValue(client.commValue).toLocaleString()}원`
+            : `${client.commValue}%`;
+        return { amount, label };
+    };
+
+    const cardsHtml = currentTempCallDetails.map((item, index) => {
+        const fare = parseCurrencyValue(item.fare);
+        const commission = getCommission(item, fare);
+        const vat = item.vatExempt ? 0 : Math.round(fare * 0.1);
+        const insuranceFee = parseCurrencyValue(item.insuranceFee);
+        const finalTotal = fare - commission.amount - insuranceFee + vat;
+        const distance = parseFloat(item.distanceKm) || 0;
+        const client = getClientInfo(item.client);
+        const unpaid = (item.paymentStatus || '미수') === '미수';
+        totalFare += fare;
+        totalCommission += commission.amount;
+        totalInsuranceFee += insuranceFee;
+        totalVat += vat;
+        totalDistance += distance;
+
+        const phoneButton = settings.paymentOn && unpaid
+            ? (client?.phone
+                ? `<a href="tel:${client.phone}" class="call-phone-btn detail-call-phone" onclick="event.stopPropagation()" title="전화걸기">${callPhoneSvg()}</a>`
+                : `<button type="button" class="call-phone-btn detail-call-phone" onclick="showConfirmModal('거래처에 등록된 연락처가 없습니다.', null); event.stopPropagation()" title="연락처 없음">${callPhoneSvg()}</button>`)
+            : '';
+        const badges = [
+            settings.platformOn && item.platform ? item.platform : '',
+            settings.paymentOn && item.receipt ? item.receipt : ''
+        ].filter(Boolean).map(value => `<span class="detail-badge">${escapeDetailText(value)}</span>`).join('');
+        const timeRow = settings.timeOn && (item.departureTime || item.arrivalTime)
+            ? `<div class="detail-meta-line">출발:${formatTime(item.departureTime)} ➜ 도착:${formatTime(item.arrivalTime)}${durationText(item.departureTime, item.arrivalTime)}</div>`
+            : '';
+        const specs = [
+            settings.distanceOn && distance ? `운행거리:${distance}km` : '',
+            settings.cargoTonnageOn && item.cargoTonnage ? `${escapeDetailText(item.cargoTonnage)}톤` : ''
+        ].filter(Boolean).join('　');
+
+        return `<article class="call-detail-card ${unpaid ? 'unpaid-card' : ''}">
+            <div class="call-detail-card-head">
+                <div class="call-detail-route"><strong>${escapeDetailText(item.loadLoc || '상차지 미상')}</strong><span>➜</span><strong>${escapeDetailText(item.unloadLoc || '하차지 미상')}</strong></div>
+                <div class="call-detail-actions">
+                    <button type="button" class="action-icon-btn" onclick="openCallDetailModal(${index})" title="수정">${editDetailSvg()}</button>
+                    <button type="button" class="action-icon-btn del" onclick="deleteCallDetail(${index})" title="삭제">${deleteDetailSvg()}</button>
+                </div>
+            </div>
+            ${timeRow}
+            <div class="detail-meta-line">거래처: ${escapeDetailText(item.client || '-')} ${commission.label ? `<span class="commission-rate">수수료 ${escapeDetailText(commission.label)}</span>` : ''}</div>
+            ${specs ? `<div class="detail-meta-line">${specs}</div>` : ''}
+            <div class="detail-meta-line">비고:${escapeDetailText(item.remarks || '-')}</div>
+            <div class="call-detail-money-grid">
+                <strong class="detail-fare">운송료: ${fare.toLocaleString()}원</strong>
+                <div class="detail-calculation">
+                    ${commission.amount ? `<span class="commission-row"><b>수수료</b><b>- ${commission.amount.toLocaleString()}원</b></span>` : ''}
+                    ${insuranceFee ? `<span class="commission-row"><b>산재보험료</b><b>- ${insuranceFee.toLocaleString()}원</b></span>` : ''}
+                    <span><b>부가세</b><b>${vat.toLocaleString()}원</b></span>
+                    <span class="detail-total"><b>계</b><b>${finalTotal.toLocaleString()}원</b></span>
+                </div>
+            </div>
+            <div class="call-detail-card-foot"><div class="detail-badges">${badges}</div><div class="detail-payment-actions">${phoneButton}${settings.paymentOn ? `<button type="button" onclick="toggleCallPaymentStatus(${index})" class="payment-toggle-btn ${unpaid ? 'unpaid' : 'paid'}">${unpaid ? '미수' : '수금'}</button>` : ''}</div></div>
+        </article>`;
+    }).join('');
+
+    const grandTotal = totalFare - totalCommission - totalInsuranceFee + totalVat;
+    listCard.innerHTML = `${cardsHtml}
+        <div class="call-detail-daily-summary">
+            <div><b>일일 운행거리</b><strong>${totalDistance} km</strong></div>
+            ${totalCommission ? `<div class="commission-row"><b>수수료</b><strong>- ${totalCommission.toLocaleString()}원</strong></div>` : ''}
+            ${totalInsuranceFee ? `<div class="commission-row"><b>산재보험료</b><strong>- ${totalInsuranceFee.toLocaleString()}원</strong></div>` : ''}
+            <div><b>부가세(10%)</b><strong>${totalVat.toLocaleString()}원</strong></div>
+            <div class="summary-grand-total"><b>세부 내역 합계 (${currentTempCallDetails.length}건)</b><strong>${grandTotal.toLocaleString()}원</strong></div>
+        </div>`;
+    if (dailyDistanceEl) dailyDistanceEl.style.display = 'none';
+}
+
+function escapeDetailText(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+function callPhoneSvg() {
+    return '<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 1 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
+}
+
+function editDetailSvg() {
+    return '<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+}
+
+function deleteDetailSvg() {
+    return '<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
 }
 
 function calculateCallDetailComm() {
@@ -2623,18 +3519,15 @@ function saveMixedLoad() {
     closeMixedLoadModal();
 }
 
-function openCallDetailModal(index = -1, skipPlatform = false, selectedPlatform = '') {
+function openCallDetailModal(index = -1) {
     if (isOffSelected) setOffState(false);
     
-    const settings = getUserSettings();
-
-    if (settings.platformOn && !skipPlatform && index === -1) {
-        openPlatformSelectModal(index);
-        return;
-    }
+    const settings = getActiveLogSettings();
 
     populateClientDataList();
     populateLocationDataLists();
+    renderPinnedClientShortcuts();
+    renderLocationShortcuts();
 
     const titleEl = document.getElementById('callDetailModalTitle');
     if (titleEl && selectedDateKey) {
@@ -2649,10 +3542,15 @@ function openCallDetailModal(index = -1, skipPlatform = false, selectedPlatform 
     const distEl = document.getElementById('callDetailDistanceSection');
     const platformEl = document.getElementById('callPlatformContainer');
     
-    if(timeEl) timeEl.style.display = settings.timeOn ? 'flex' : 'none';
+    if(timeEl) timeEl.style.display = settings.timeOn ? 'grid' : 'none';
     if(receiptEl) receiptEl.style.display = settings.paymentOn ? 'block' : 'none';
-    if(distEl) distEl.style.display = settings.distanceOn ? 'block' : 'none';
+    if(distEl) distEl.style.display = settings.distanceOn ? 'grid' : 'none';
     if(platformEl) platformEl.style.display = settings.platformOn ? 'block' : 'none';
+
+    const cargoTonnageSection = document.getElementById('callCargoTonnageSection');
+    if (cargoTonnageSection) {
+        cargoTonnageSection.style.display = settings.hasOwnProperty('cargoTonnageOn') ? (settings.cargoTonnageOn ? 'grid' : 'none') : 'grid';
+    }
 
     document.getElementById('callDetailEditIndex').value = index;
     
@@ -2661,10 +3559,16 @@ function openCallDetailModal(index = -1, skipPlatform = false, selectedPlatform 
     document.getElementById('callDetailFare').value = '';
     document.getElementById('callClient').value = '';
     document.getElementById('callRemarks').value = '';
+    if(document.getElementById('callCargoTonnage')) document.getElementById('callCargoTonnage').value = '';
     
     if(document.getElementById('callDepartureTime')) document.getElementById('callDepartureTime').value = '';
     if(document.getElementById('callArrivalTime')) document.getElementById('callArrivalTime').value = '';
     if(document.getElementById('callDistanceKm')) document.getElementById('callDistanceKm').value = '';
+    if(document.getElementById('callStartOdometer')) document.getElementById('callStartOdometer').value = '';
+    if(document.getElementById('callEndOdometer')) document.getElementById('callEndOdometer').value = '';
+    if(document.getElementById('callVatExemptToggle')) document.getElementById('callVatExemptToggle').checked = false;
+    if(document.getElementById('callInsuranceFee')) document.getElementById('callInsuranceFee').value = '';
+    if(document.getElementById('callPaymentDueDate')) document.getElementById('callPaymentDueDate').value = '';
     
     if(document.getElementById('callReceiptValue')) document.getElementById('callReceiptValue').value = '';
     if(document.getElementById('callDistanceType')) document.getElementById('callDistanceType').value = '';
@@ -2672,68 +3576,126 @@ function openCallDetailModal(index = -1, skipPlatform = false, selectedPlatform 
     if(document.getElementById('callPlatform')) document.getElementById('callPlatform').value = '';
     
     document.querySelectorAll('#callReceiptGroup .dark-pill-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('#callDistanceGroup .dark-pill-btn').forEach(b => b.classList.remove('active'));
-
-    if (selectedPlatform) {
-        document.getElementById('callPlatform').value = selectedPlatform;
-    } else if (index >= 0 && currentTempCallDetails[index]) {
+    if (index >= 0 && currentTempCallDetails[index]) {
         const item = currentTempCallDetails[index];
         document.getElementById('callLoadLoc').value = item.loadLoc || '';
         document.getElementById('callUnloadLoc').value = item.unloadLoc || '';
         document.getElementById('callDetailFare').value = parseCurrencyValue(item.fare).toLocaleString() || '';
         document.getElementById('callClient').value = item.client || '';
         document.getElementById('callRemarks').value = item.remarks || '';
+        if(document.getElementById('callCargoTonnage')) document.getElementById('callCargoTonnage').value = item.cargoTonnage || '';
         
         if(item.departureTime && document.getElementById('callDepartureTime')) document.getElementById('callDepartureTime').value = item.departureTime;
         if(item.arrivalTime && document.getElementById('callArrivalTime')) document.getElementById('callArrivalTime').value = item.arrivalTime;
         if(item.distanceKm && document.getElementById('callDistanceKm')) document.getElementById('callDistanceKm').value = item.distanceKm;
+        if(document.getElementById('callStartOdometer')) document.getElementById('callStartOdometer').value = item.startOdometer || '';
+        if(document.getElementById('callEndOdometer')) document.getElementById('callEndOdometer').value = item.endOdometer || '';
+        if(document.getElementById('callVatExemptToggle')) document.getElementById('callVatExemptToggle').checked = !!item.vatExempt;
+        if(document.getElementById('callInsuranceFee')) document.getElementById('callInsuranceFee').value = item.insuranceFee ? parseCurrencyValue(item.insuranceFee).toLocaleString() : '';
+        if(document.getElementById('callPaymentDueDate')) document.getElementById('callPaymentDueDate').value = item.paymentDueDate || '';
         
         if (item.receipt) selectCallDetailBtn('receipt', item.receipt, true);
-        if (item.distanceType) {
-            if (item.distanceType === '혼짐') {
-                document.getElementById('callDistanceType').value = '혼짐';
-                document.getElementById('callDistanceGroup').querySelectorAll('.dark-pill-btn').forEach(b => b.classList.remove('active'));
-                const btn = Array.from(document.getElementById('callDistanceGroup').querySelectorAll('.dark-pill-btn')).find(b => b.textContent.trim() === '혼짐');
-                if (btn) btn.classList.add('active');
-                if (document.getElementById('callLinkedLoadIndex')) document.getElementById('callLinkedLoadIndex').value = item.linkedLoadIndex || '-1';
-            } else {
-                selectCallDetailBtn('distance', item.distanceType, true);
-            }
-        }
         if (item.platform && document.getElementById('callPlatform')) document.getElementById('callPlatform').value = item.platform;
     }
     
-    document.getElementById('callDetailModal').classList.remove('hidden');
+    const detailContainer = document.getElementById('callDetailModal');
+    const inlineHost = document.getElementById('callDetailInlineHost');
+    if (detailContainer && inlineHost) {
+        if (!detailContainer.dataset.originalParentReady) {
+            detailContainer.dataset.originalParentReady = 'true';
+        }
+        inlineHost.appendChild(detailContainer);
+        detailContainer.classList.remove('hidden');
+        detailContainer.classList.add('inline-expanded');
+        inlineHost.classList.add('is-open');
+        inlineHost.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => {
+            detailContainer.classList.add('is-visible');
+            inlineHost.style.maxHeight = `${detailContainer.scrollHeight}px`;
+            setTimeout(() => {
+                inlineHost.style.maxHeight = `${detailContainer.scrollHeight}px`;
+                detailContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 80);
+        });
+    }
     calculateCallDetailComm();
 }
 
 function closeCallDetailModal() {
-    document.getElementById('callDetailModal').classList.add('hidden');
+    const detailContainer = document.getElementById('callDetailModal');
+    const inlineHost = document.getElementById('callDetailInlineHost');
+    if (!detailContainer || !inlineHost || !detailContainer.classList.contains('inline-expanded')) {
+        detailContainer?.classList.add('hidden');
+        return;
+    }
+
+    detailContainer.classList.remove('is-visible');
+    inlineHost.style.maxHeight = '0px';
+    inlineHost.setAttribute('aria-hidden', 'true');
+    window.setTimeout(() => {
+        detailContainer.classList.add('hidden');
+        detailContainer.classList.remove('inline-expanded');
+        inlineHost.classList.remove('is-open');
+    }, 420);
 }
 
-let pendingCallDetailIndex = -1;
-
-function openPlatformSelectModal(index) {
-    pendingCallDetailIndex = index;
-    document.getElementById('platformDirectInput').value = '';
-    document.getElementById('platformSelectModal').classList.remove('hidden');
+function setCallPlatform(platformName) {
+    const input = document.getElementById('callPlatform');
+    if (!input) return;
+    input.value = input.value === platformName ? '' : platformName;
+    document.querySelectorAll('.call-platform-quick-list .dark-pill-btn').forEach(button => {
+        button.classList.toggle('active', button.textContent.trim() === input.value);
+    });
 }
 
-function closePlatformSelectModal() {
-    document.getElementById('platformSelectModal').classList.add('hidden');
+function updateCallDetailDistance() {
+    const startInput = document.getElementById('callStartOdometer');
+    const endInput = document.getElementById('callEndOdometer');
+    const distanceInput = document.getElementById('callDistanceKm');
+    if (!startInput || !endInput || !distanceInput) return;
+
+    const hasBoth = startInput.value.trim() !== '' && endInput.value.trim() !== '';
+    const start = parseCurrencyValue(startInput.value);
+    const end = parseCurrencyValue(endInput.value);
+    distanceInput.value = hasBoth && end >= start ? end - start : '';
+    endInput.classList.toggle('input-error', hasBoth && end < start);
 }
 
-// 퀵버튼(화물맨 등) 클릭 시: 값을 세팅하고 모달을 끈 뒤, 세부 일지 모달로 진입
-function selectPlatformQuick(platformName) {
-    closePlatformSelectModal();
-    openCallDetailModal(pendingCallDetailIndex, true, platformName); 
+function renderPinnedClientShortcuts() {
+    const settings = getUserSettings();
+    const container = document.getElementById('callClientShortcuts');
+    if (!container) return;
+
+    const pinnedClients = (settings.clients || []).filter(client => client.isPinned && client.companyName);
+    container.innerHTML = '';
+    container.style.display = pinnedClients.length ? 'flex' : 'none';
+
+    pinnedClients.forEach(client => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'dark-pill-btn';
+        button.textContent = client.companyName;
+        button.addEventListener('click', () => selectPinnedClient(client.companyName));
+        container.appendChild(button);
+    });
 }
 
-// 직접입력 후 '저장' 클릭 시
-function savePlatformDirect() {
-    const val = document.getElementById('platformDirectInput').value.trim();
-    closePlatformSelectModal();
-    openCallDetailModal(pendingCallDetailIndex, true, val);
+function selectPinnedClient(companyName) {
+    const input = document.getElementById('callClient');
+    if (!input) return;
+    input.value = companyName;
+    document.querySelectorAll('#callClientShortcuts .dark-pill-btn').forEach(button => {
+        button.classList.toggle('active', button.textContent.trim() === companyName);
+    });
+    calculateCallDetailComm();
+    applyClientPaymentTerms();
+}
+
+let clientModalOpenedFromCallDetail = false;
+
+function openClientModalFromCallDetail() {
+    clientModalOpenedFromCallDetail = true;
+    openClientModal(-1);
 }
 
 function saveCallDetail() {
@@ -2743,12 +3705,18 @@ function saveCallDetail() {
     const fare = document.getElementById('callDetailFare').value.trim();
     const client = document.getElementById('callClient').value.trim();
     const remarks = document.getElementById('callRemarks').value.trim();
-    
+    const paymentDueDate = document.getElementById('callPaymentDueDate').value;
+    const cargoTonnage = document.getElementById('callCargoTonnage') ? document.getElementById('callCargoTonnage').value.trim() : '';
+
     const departureTime = document.getElementById('callDepartureTime') ? document.getElementById('callDepartureTime').value : '';
     const arrivalTime = document.getElementById('callArrivalTime') ? document.getElementById('callArrivalTime').value : '';
     const receipt = document.getElementById('callReceiptValue') ? document.getElementById('callReceiptValue').value : '';
     const distanceType = document.getElementById('callDistanceType') ? document.getElementById('callDistanceType').value : '';
     const distanceKm = document.getElementById('callDistanceKm') ? document.getElementById('callDistanceKm').value.trim() : '';
+    const startOdometer = document.getElementById('callStartOdometer') ? document.getElementById('callStartOdometer').value.trim() : '';
+    const endOdometer = document.getElementById('callEndOdometer') ? document.getElementById('callEndOdometer').value.trim() : '';
+    const vatExempt = document.getElementById('callVatExemptToggle') ? document.getElementById('callVatExemptToggle').checked : false;
+    const insuranceFee = document.getElementById('callInsuranceFee') ? document.getElementById('callInsuranceFee').value.trim() : '';
     const linkedLoadIndex = document.getElementById('callLinkedLoadIndex') ? document.getElementById('callLinkedLoadIndex').value : '-1';
     const platform = document.getElementById('callPlatform') ? document.getElementById('callPlatform').value.trim() : '';
 
@@ -2757,13 +3725,30 @@ function saveCallDetail() {
         return;
     }
 
-    // 기존 결제 상태 유지 (신규면 '미수')
-    const existingPaymentStatus = (idx >= 0 && currentTempCallDetails[idx]) ? (currentTempCallDetails[idx].paymentStatus || '미수') : '미수';
+    const existingItem = idx >= 0 && currentTempCallDetails[idx] ? currentTempCallDetails[idx] : null;
+    const paymentStatus = existingItem ? (existingItem.paymentStatus || '미수') : '미수';
 
-    const newItem = { 
-        loadLoc, unloadLoc, fare, client, remarks,
-        departureTime, arrivalTime, receipt, distanceType, distanceKm, linkedLoadIndex, platform,
-        paymentStatus: existingPaymentStatus
+    const newItem = {
+        loadLoc,
+        unloadLoc,
+        fare,
+        client,
+        remarks,
+        departureTime,
+        arrivalTime,
+        receipt,
+        distanceType,
+        distanceKm,
+        startOdometer,
+        endOdometer,
+        vatExempt,
+        insuranceFee,
+        linkedLoadIndex,
+        platform,
+        paymentStatus,
+        paymentDueDate,
+        cargoTonnage,
+        workDate: selectedDateKey
     };
 
     if (idx >= 0) {
@@ -2773,7 +3758,7 @@ function saveCallDetail() {
     }
 
     renderCallDetailSummaryInMainModal();
-    if (document.getElementById('workModal').classList.contains('open')) {
+    if (!document.getElementById('workModal').classList.contains('hidden')) {
         autoSaveWorkRecord();
     }
     closeCallDetailModal();
@@ -2783,70 +3768,25 @@ function deleteCallDetail(index) {
     showConfirmModal('삭제하시겠습니까?', () => {
         currentTempCallDetails.splice(index, 1);
         renderCallDetailSummaryInMainModal();
-        if (document.getElementById('workModal').classList.contains('open')) {
+        if (!document.getElementById('workModal').classList.contains('hidden')) {
             autoSaveWorkRecord();
         }
     });
 }
 
-function renderMaintSummaryInMainModal() {
-    const container = document.getElementById('maintSummaryContainer');
-    const listCard = document.getElementById('maintSummaryList');
-
-    if (currentTempMaintItems.length === 0) {
-        container.style.display = 'none';
-        listCard.innerHTML = '';
-    } else {
-        container.style.display = 'block';
-        let html = '';
-        let total = 0;
-        currentTempMaintItems.forEach((item, idx) => {
-            const fareVal = parseCurrencyValue(item.fare);
-            total += fareVal;
-            
-            let subInfo = [];
-            if(item.category) subInfo.push(item.category);
-            if(item.mileage) subInfo.push(`누적 ${item.mileage}km`);
-            let subInfoHtml = subInfo.length > 0 ? `<div style="font-size: 0.8rem; color: var(--sub-text-color); margin-top: 4px;">${subInfo.join(' | ')}</div>` : '';
-
-            html += `
-                <div class="maint-summary-item" style="align-items: flex-start; padding:12px; margin-bottom:8px; border-radius:12px; background-color: var(--card-bg); border: 1px solid var(--border-color); flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: flex-start;">
-                        <div>
-                            <div style="display:flex; align-items:center; gap:6px; font-weight: 700;">
-                                <svg class="inline-icon sm" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
-                                ${item.name || '정비 항목'}
-                            </div>
-                            ${subInfoHtml}
-                        </div>
-                        <div style="display:flex; gap: 2px; flex-shrink: 0; margin-top: -4px; margin-right: -4px;">
-                            <button type="button" class="action-icon-btn" onclick="openMaintRecordModal('${selectedDateKey}', ${idx})" title="수정">
-                                <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                            </button>
-                            <button type="button" class="action-icon-btn del" onclick="currentTempMaintItems.splice(${idx}, 1); renderMaintSummaryInMainModal(); autoSaveWorkRecord();" title="삭제">
-                                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div style="width: 100%; text-align: right; font-weight: 700; margin-top: 8px;">
-                        ${fareVal.toLocaleString()}원
-                    </div>
-                </div>
-            `;
-        });
-        html += `
-            <div class="maint-summary-item" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); font-weight:800; color: var(--sunday-color);">
-                <span>정비 합계</span>
-                <span>${total.toLocaleString()}원</span>
-            </div>
-        `;
-        listCard.innerHTML = html;
-    }
-}
-
-
 function closeModal() {
-    document.getElementById('workModal').classList.remove('open');
+    const openDetail = document.getElementById('callDetailModal');
+    if (openDetail?.classList.contains('inline-expanded')) {
+        closeCallDetailModal();
+    }
+    ['maintFuelSelectModal', 'maintRecordModal', 'fuelDetailModal'].forEach(id => {
+        const panel = document.getElementById(id);
+        if (panel?.classList.contains('inline-expanded')) {
+            closeMaintFuelInlinePanel(panel);
+        }
+    });
+    document.getElementById('workModal').classList.add('hidden');
+    showMain();
 }
 
 function autoSaveWorkRecord() {
@@ -2865,6 +3805,7 @@ function autoSaveWorkRecord() {
     if (!isOffSelected) {
         if (fixedOn) {
             fixedCount = parseInt(document.getElementById('modalFixedCountInput').value, 10) || 0;
+
             if (palletOn) {
                 palletCount = parseInt(document.getElementById('modalPalletCount').value, 10) || 0;
             }
@@ -2872,6 +3813,7 @@ function autoSaveWorkRecord() {
 
         if (callOn) {
             const inputs = document.querySelectorAll('.call-fare-input');
+
             inputs.forEach(input => {
                 if (input.value.trim() !== '') {
                     callFares.push(input.value.trim());
@@ -2898,7 +3840,7 @@ function autoSaveWorkRecord() {
         };
     }
 
-    saveDataToStorage(); 
+    saveDataToStorage();
     buildCalendar();
 }
 
@@ -3032,6 +3974,8 @@ function buildReportPage(isForExport = false) {
                     dayDefaultFare += cAmt;
                 }
 
+                totalMonthDistance += parseFloat(record.dailyDistance) || 0;
+
                 if (record.callDetails && record.callDetails.length > 0) {
                     record.callDetails.forEach(detail => {
                         let type = detail.distanceType || '';
@@ -3044,8 +3988,6 @@ function buildReportPage(isForExport = false) {
                         } else {
                             dayWorkCount += 1;
                         }
-
-                        totalMonthDistance += parseFloat(detail.distanceKm) || 0;
 
                         let gross = parseCurrencyValue(detail.fare);
                         let comm = 0;
@@ -3125,7 +4067,7 @@ function buildReportPage(isForExport = false) {
     }
 
     let subCarComm = 0;
-    let subCarCommLabel = '보조차량 수수료';
+    let subCarCommLabel = '기사차량 수수료';
     if (activeLogId !== 'main') {
         const currentCar = savedSettings.cars?.find(c => c.number === activeLogId);
         if (currentCar && currentCar.logEnabled && currentCar.commission) {
@@ -3372,7 +4314,7 @@ function viewDetailReport(isForExport) {
     document.getElementById('reportTableContainer').innerHTML = tableHTML;
     
     let subCarComm = 0;
-    let subCarCommLabel = '보조차량 수수료';
+    let subCarCommLabel = '기사차량 수수료';
     if (activeLogId !== 'main') {
         const currentCar = savedSettings.cars?.find(c => c.number === activeLogId);
         if (currentCar && currentCar.logEnabled && currentCar.commission) {
@@ -3437,7 +4379,7 @@ let editingCarIndex = -1;
 
 function toggleNewLogSettings() {
     const isChecked = document.getElementById('newLogToggle').checked;
-    document.getElementById('newLogSettings').style.display = isChecked ? 'block' : 'none';
+    setSettingsGroupExpanded(document.getElementById('newLogSettings'), isChecked);
 }
 
 function selectInfoType(type) {
@@ -3464,8 +4406,14 @@ function resetCarForm() {
     document.getElementById('newLogToggle').checked = false;
     toggleNewLogSettings();
     document.getElementById('newCarInsuranceToggle').checked = false;
+    
+    if (document.getElementById('newCarCommToggle')) {
+        document.getElementById('newCarCommToggle').checked = false;
+        toggleNewCarCommSettings();
+    }
     setCarCommType('percent');
     document.getElementById('newCarCommission').value = ''; 
+    
     selectInfoType('existing');
     document.getElementById('newDriverName').value = '';
     document.getElementById('newUserName').value = '';
@@ -3497,6 +4445,11 @@ function editCar(idx) {
     
     if (car.type === 'sub') {
         document.getElementById('newCarInsuranceToggle').checked = !!car.insuranceOn;
+        
+        if (document.getElementById('newCarCommToggle')) {
+            document.getElementById('newCarCommToggle').checked = !!car.commEnabled;
+            toggleNewCarCommSettings();
+        }
         setCarCommType(car.commType || 'percent');
         document.getElementById('newCarCommission').value = car.commission || '';
 
@@ -3539,16 +4492,22 @@ renderSubCarMenu();
 // 스플래시 화면(시작 화면) 제어 로직
 window.addEventListener('load', () => {
     const splashScreen = document.getElementById('splashScreen');
+
     if (splashScreen) {
-        // 1.5초 뒤에 페이드 아웃 애니메이션 시작
         setTimeout(() => {
             splashScreen.style.opacity = '0';
             splashScreen.style.transition = 'opacity 0.5s ease';
-            
-            // 애니메이션이 끝난 후 화면에서 완전히 숨김
+
             setTimeout(() => {
                 splashScreen.style.display = 'none';
-            }, 500); 
+
+                const settings = getUserSettings();
+                const isFirstStart = !settings.onboardingCompleted && !settings.userName && !settings.bizName && !settings.driverType;
+
+                if (isFirstStart) {
+                    showPersonalInfo();
+                }
+            }, 500);
         }, 1500);
     }
 });
@@ -3571,7 +4530,7 @@ function toggleCallPaymentStatus(index) {
         
         // UI 즉시 업데이트
         renderCallDetailSummaryInMainModal();
-        if (document.getElementById('workModal').classList.contains('open')) {
+        if (!document.getElementById('workModal').classList.contains('hidden')) {
             autoSaveWorkRecord();
         }
     }
@@ -3586,33 +4545,396 @@ function openTodayWorkModal() {
     openModal(dateKey, currentMonth, currentDay);
 }
 
-// 스와이프 제스처 이벤트 처리 (일일 운행내역 패널 열기/닫기)
-let touchStartX = 0;
-let touchEndX = 0;
+function formatDateToYmd(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
-function handleGesture() {
-    const swipeThreshold = 50; 
-    
-    // Swipe Right (왼쪽에서 오른쪽으로 스와이프): 홈 화면에서 일일운행 열기
-    if (touchEndX > touchStartX + swipeThreshold) {
-        if (!document.getElementById('mainPage').classList.contains('hidden') && !document.getElementById('workModal').classList.contains('open')) {
-            openTodayWorkModal();
-        }
+function getPaymentTermLabel(term, value) {
+    if (term === 'next_month_end') return '익월 말일';
+    if (term === 'next_month_day') return `익월 ${value || ''}일`;
+    if (term === 'after_days') return `운행일 기준 ${value || ''}일 후`;
+    return '당일 및 수시 정산';
+}
+
+function calculatePaymentDueDate(workDate, paymentTerm, paymentTermValue) {
+    const date = new Date(`${workDate}T00:00:00`);
+
+    if (paymentTerm === 'next_month_end') {
+        return formatDateToYmd(new Date(date.getFullYear(), date.getMonth() + 2, 0));
     }
-    
-    // Swipe Left (오른쪽에서 왼쪽으로 스와이프): 일일운행에서 홈 화면으로 닫기
-    if (touchEndX < touchStartX - swipeThreshold) {
-        if (document.getElementById('workModal').classList.contains('open')) {
-            closeModal();
-        }
+
+    if (paymentTerm === 'next_month_day') {
+        const selectedDay = Math.max(1, Math.min(31, parseInt(paymentTermValue, 10) || 1));
+        const nextMonthLastDay = new Date(date.getFullYear(), date.getMonth() + 2, 0).getDate();
+        return formatDateToYmd(new Date(date.getFullYear(), date.getMonth() + 1, Math.min(selectedDay, nextMonthLastDay)));
+    }
+
+    if (paymentTerm === 'after_days') {
+        const days = Math.max(0, parseInt(paymentTermValue, 10) || 0);
+        date.setDate(date.getDate() + days);
+        return formatDateToYmd(date);
+    }
+
+    return formatDateToYmd(date);
+}
+
+function updateClientPaymentTermControls() {
+    const term = document.getElementById('clientPaymentTerm').value;
+    const valueWrap = document.getElementById('clientPaymentTermValueWrap');
+    const valueLabel = document.getElementById('clientPaymentTermValueLabel');
+    const valueInput = document.getElementById('clientPaymentTermValue');
+
+    if (term === 'next_month_day') {
+        valueWrap.style.display = 'block';
+        valueLabel.textContent = '익월 입금일';
+        valueInput.min = '1';
+        valueInput.max = '31';
+        valueInput.placeholder = '1~31';
+    } else if (term === 'after_days') {
+        valueWrap.style.display = 'block';
+        valueLabel.textContent = '운행 후 경과일';
+        valueInput.min = '0';
+        valueInput.max = '';
+        valueInput.placeholder = '예: 30';
+    } else {
+        valueWrap.style.display = 'none';
+        valueInput.value = '';
     }
 }
 
-document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-}, {passive: true});
+function updateClientPaymentTermGuide() {
+    const term = document.getElementById('clientPaymentTerm').value;
+    const value = document.getElementById('clientPaymentTermValue').value;
+    const guide = document.getElementById('clientPaymentTermGuide');
+    const exampleWorkDate = '2026-07-15';
+    const dueDate = calculatePaymentDueDate(exampleWorkDate, term, value);
 
-document.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleGesture();
-}, {passive: true});
+    if (term === 'next_month_day' && !value) {
+        guide.textContent = '입금일을 1일부터 31일 사이에서 입력해 주세요.';
+        return;
+    }
+
+    if (term === 'after_days' && value === '') {
+        guide.textContent = '운행 후 며칠 뒤 입금되는지 입력해 주세요.';
+        return;
+    }
+
+    guide.textContent = `예시: 2026년 7월 운행 내역은 ${dueDate.replace(/-/g, '.')} 입금 예정으로 자동 생성됩니다.`;
+}
+
+function applyClientPaymentTerms() {
+    const clientName = document.getElementById('callClient').value.trim();
+    const dueDateInput = document.getElementById('callPaymentDueDate');
+    const guide = document.getElementById('callPaymentDueGuide');
+    const editIndex = parseInt(document.getElementById('callDetailEditIndex').value, 10);
+    const settings = getUserSettings();
+    const client = (settings.clients || []).find(item => item.companyName === clientName);
+
+    if (!client) {
+        guide.textContent = '등록된 거래처를 선택하면 결제 조건에 맞춰 자동 입력됩니다.';
+        if (editIndex < 0) dueDateInput.value = '';
+        return;
+    }
+
+    const term = client.paymentTerm || 'next_month_end';
+    const value = client.paymentTermValue || '';
+
+    if (editIndex >= 0 && currentTempCallDetails[editIndex] && currentTempCallDetails[editIndex].paymentDueDate) {
+        dueDateInput.value = currentTempCallDetails[editIndex].paymentDueDate;
+    } else {
+        dueDateInput.value = calculatePaymentDueDate(selectedDateKey, term, value);
+    }
+
+    guide.textContent = `${getPaymentTermLabel(term, value)} 조건이 적용되었습니다. 필요하면 입금 예정일을 직접 수정할 수 있습니다.`;
+}
+
+function showReceivablesManagement() {
+    hideAllPages();
+    document.getElementById('receivablesManagementPage').classList.remove('hidden');
+    selectReceivableTab('monthly');
+}
+
+function selectReceivableTab(tab) {
+    document.getElementById('receivableMonthlyTab').classList.toggle('active', tab === 'monthly');
+    document.getElementById('receivableDueTab').classList.toggle('active', tab === 'due');
+    renderReceivablesManagement(tab);
+}
+
+function getReceivableItems() {
+    const items = [];
+
+    Object.keys(workData).forEach(dateKey => {
+        const record = workData[dateKey];
+
+        if (!record || record.isOff || !record.callDetails) {
+            return;
+        }
+
+        record.callDetails.forEach((detail, detailIndex) => {
+            if ((detail.paymentStatus || '미수') !== '미수') {
+                return;
+            }
+
+            items.push({
+                dateKey,
+                detailIndex,
+                client: detail.client || '미지정 거래처',
+                fare: parseCurrencyValue(detail.fare),
+                paymentDueDate: detail.paymentDueDate || '',
+                workDate: detail.workDate || dateKey
+            });
+        });
+    });
+
+    return items;
+}
+
+function getDdayText(paymentDueDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dueDate = new Date(`${paymentDueDate}T00:00:00`);
+    dueDate.setHours(0, 0, 0, 0);
+
+    const difference = Math.round((dueDate - today) / 86400000);
+
+    if (difference === 0) return 'D-Day';
+    if (difference > 0) return `D-${difference}`;
+    return `D+${Math.abs(difference)} 연체`;
+}
+
+function renderReceivablesManagement(tab) {
+    const container = document.getElementById('receivablesListContainer');
+    const items = getReceivableItems();
+
+    if (tab === 'monthly') {
+        const grouped = {};
+
+        items.forEach(item => {
+            const monthKey = item.workDate.slice(0, 7);
+            const groupKey = `${item.client}|${monthKey}`;
+
+            if (!grouped[groupKey]) {
+                grouped[groupKey] = {
+                    client: item.client,
+                    monthKey,
+                    total: 0,
+                    count: 0,
+                    items: []
+                };
+            }
+
+            grouped[groupKey].total += item.fare;
+            grouped[groupKey].count += 1;
+            grouped[groupKey].items.push(item);
+        });
+
+        const groups = Object.values(grouped).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+
+        if (groups.length === 0) {
+            container.innerHTML = '<div class="receivable-empty">미수금 내역이 없습니다.</div>';
+            return;
+        }
+
+        container.innerHTML = groups.map(group => {
+            const [year, month] = group.monthKey.split('-');
+            return `
+                <div class="receivable-group-card">
+                    <div class="receivable-group-title">[${group.client}] ${year}년 ${parseInt(month, 10)}월 운행분</div>
+                    <div class="receivable-group-summary">총 미수금: ${group.total.toLocaleString()}원 (총 ${group.count}건)</div>
+                    <button type="button" class="receivable-complete-btn" onclick="markMonthlyReceivablesPaid('${group.client.replace(/'/g, "\\'")}', '${group.monthKey}')">${parseInt(month, 10)}월분 일괄 입금 완료</button>
+                </div>
+            `;
+        }).join('');
+
+        return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dueItems = items
+        .filter(item => {
+            if (!item.paymentDueDate) return false;
+            const dueDate = new Date(`${item.paymentDueDate}T00:00:00`);
+            dueDate.setHours(0, 0, 0, 0);
+            const difference = Math.round((dueDate - today) / 86400000);
+            return difference <= 3;
+        })
+        .sort((a, b) => a.paymentDueDate.localeCompare(b.paymentDueDate));
+
+    if (dueItems.length === 0) {
+        container.innerHTML = '<div class="receivable-empty">D-3 이내 또는 연체된 미수금이 없습니다.</div>';
+        return;
+    }
+
+    container.innerHTML = dueItems.map(item => {
+        const workMonth = item.workDate.slice(0, 7).replace('-', '년 ') + '월';
+        return `
+            <div class="receivable-item-card">
+                <div class="receivable-item-row">
+                    <div>
+                        <div class="receivable-item-client">${item.client}</div>
+                        <div class="receivable-item-info">${workMonth} 운행분</div>
+                        <div class="receivable-item-info">입금 예정일: ${item.paymentDueDate.replace(/-/g, '.')}</div>
+                        <div class="receivable-dday">${getDdayText(item.paymentDueDate)}</div>
+                    </div>
+                    <div class="receivable-item-amount">${item.fare.toLocaleString()}원</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function markMonthlyReceivablesPaid(clientName, monthKey) {
+    Object.keys(workData).forEach(dateKey => {
+        const record = workData[dateKey];
+
+        if (!record || !record.callDetails) {
+            return;
+        }
+
+        record.callDetails.forEach(detail => {
+            const workDate = detail.workDate || dateKey;
+
+            if (
+                (detail.paymentStatus || '미수') === '미수' &&
+                (detail.client || '미지정 거래처') === clientName &&
+                workDate.slice(0, 7) === monthKey
+            ) {
+                detail.paymentStatus = '수금 완료';
+            }
+        });
+    });
+
+    saveDataToStorage();
+    buildCalendar();
+    renderReceivablesManagement('monthly');
+    showToastMessage(`${clientName} ${parseInt(monthKey.slice(5, 7), 10)}월분 미수금을 수금 완료 처리했습니다.`);
+}
+
+function openClientModal(index = -1) {
+    editingClientIndex = index;
+    const settings = getUserSettings();
+    const clients = settings.clients || [];
+
+    if (index >= 0 && clients[index]) {
+        const client = clients[index];
+
+        document.getElementById('clientModalTitle').textContent = '거래처 수정';
+        document.getElementById('clientCompanyName').value = client.companyName || '';
+        document.getElementById('clientManagerName').value = client.managerName || '';
+        document.getElementById('clientBizNumber').value = client.bizNumber || '';
+        document.getElementById('clientPhone').value = client.phone || '';
+        document.getElementById('clientPinnedToggle').checked = !!client.isPinned;
+        toggleClientPinned();
+
+        document.getElementById('clientCommToggle').checked = !!client.commEnabled;
+        setClientCommType(client.commType || 'percent');
+        document.getElementById('clientCommValue').value = client.commValue || '';
+        toggleClientComm();
+
+        document.getElementById('clientPaymentTerm').value = client.paymentTerm || 'next_month_end';
+        document.getElementById('clientPaymentTermValue').value = client.paymentTermValue || '';
+    } else {
+        document.getElementById('clientModalTitle').textContent = '거래처 등록';
+        document.getElementById('clientCompanyName').value = '';
+        document.getElementById('clientManagerName').value = '';
+        document.getElementById('clientBizNumber').value = '';
+        document.getElementById('clientPhone').value = '';
+        document.getElementById('clientPinnedToggle').checked = false;
+        toggleClientPinned();
+
+        document.getElementById('clientCommToggle').checked = false;
+        setClientCommType('percent');
+        document.getElementById('clientCommValue').value = '';
+
+        document.getElementById('clientPaymentTerm').value = 'next_month_end';
+        document.getElementById('clientPaymentTermValue').value = '';
+        toggleClientComm();
+    }
+
+    updateClientPaymentTermControls();
+    updateClientPaymentTermGuide();
+    document.getElementById('clientModal').classList.remove('hidden');
+}
+
+function saveClient() {
+    const companyName = document.getElementById('clientCompanyName').value.trim();
+    const managerName = document.getElementById('clientManagerName').value.trim();
+    const bizNumber = document.getElementById('clientBizNumber').value.trim();
+    const phone = document.getElementById('clientPhone').value.trim();
+    const isPinned = document.getElementById('clientPinnedToggle').checked;
+    const commEnabled = isPinned ? document.getElementById('clientCommToggle').checked : false;
+    const commType = document.getElementById('clientCommType').value;
+    const commValue = document.getElementById('clientCommValue').value.trim();
+    const paymentTerm = document.getElementById('clientPaymentTerm').value;
+    const paymentTermValue = document.getElementById('clientPaymentTermValue').value.trim();
+
+    if (!companyName) {
+        showConfirmModal('거래처명을 입력해 주세요.', null);
+        return;
+    }
+
+    if (commEnabled && !commValue) {
+        showConfirmModal('수수료 수치 또는 금액을 입력해 주세요.', null);
+        return;
+    }
+
+    if (paymentTerm === 'next_month_day' && (!paymentTermValue || parseInt(paymentTermValue, 10) < 1 || parseInt(paymentTermValue, 10) > 31)) {
+        showConfirmModal('익월 특정일은 1일부터 31일 사이로 입력해 주세요.', null);
+        return;
+    }
+
+    if (paymentTerm === 'after_days' && paymentTermValue === '') {
+        showConfirmModal('운행 후 경과일을 입력해 주세요.', null);
+        return;
+    }
+
+    const settings = getUserSettings();
+
+    if (!settings.clients) {
+        settings.clients = [];
+    }
+
+    const clientData = {
+        companyName,
+        managerName,
+        bizNumber,
+        phone,
+        isPinned,
+        commEnabled,
+        commType,
+        commValue,
+        paymentTerm,
+        paymentTermValue
+    };
+
+    if (editingClientIndex >= 0) {
+        settings.clients[editingClientIndex] = clientData;
+        showToastMessage('수정했습니다.');
+    } else {
+        settings.clients.push(clientData);
+        showToastMessage('등록했습니다.');
+    }
+
+    setUserSettings(settings);
+    closeClientModal();
+    renderClientList();
+    buildCalendar();
+
+    if (clientModalOpenedFromCallDetail) {
+        clientModalOpenedFromCallDetail = false;
+        populateClientDataList();
+        renderPinnedClientShortcuts();
+        const callClientInput = document.getElementById('callClient');
+        if (callClientInput) {
+            callClientInput.value = companyName;
+            calculateCallDetailComm();
+            applyClientPaymentTerms();
+        }
+    }
+}
