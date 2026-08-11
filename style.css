@@ -773,6 +773,174 @@ body {
     font-weight: 700;
 }
 
+/* 개인정보 페이지 전용 UI */
+#personalInfoPage {
+    padding-bottom: 10px;
+}
+
+#personalInfoPage .settings-header {
+    margin-bottom: 10px;
+}
+
+#personalInfoPage .settings-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.personal-intro {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 10px;
+    padding: 14px 16px 13px;
+    border: 1px solid color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
+    border-radius: 22px;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 13%, var(--card-bg)), var(--card-bg) 72%);
+    box-shadow: var(--shadow-sm);
+    text-align: left;
+}
+
+.personal-intro::after {
+    content: "";
+    position: absolute;
+    width: 92px;
+    height: 92px;
+    top: -42px;
+    right: -28px;
+    border: 18px solid color-mix(in srgb, var(--primary-color) 11%, transparent);
+    border-radius: 50%;
+}
+
+.personal-intro-kicker {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--primary-color);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.personal-intro strong {
+    display: block;
+    font-size: 1.12rem;
+    line-height: 1.38;
+    letter-spacing: -0.025em;
+}
+
+.personal-intro p {
+    margin-top: 5px;
+    color: var(--sub-text-color);
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
+.personal-card-grid {
+    display: grid;
+    gap: 8px;
+}
+
+#personalInfoPage .personal-card {
+    margin-bottom: 0;
+    padding: 14px 15px;
+    border-radius: 20px;
+}
+
+.personal-card-heading {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 11px;
+}
+
+.personal-card-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    height: 30px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--input-bg));
+    color: color-mix(in srgb, var(--primary-color) 78%, var(--sub-text-color));
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+#personalInfoPage .personal-card-heading h3 {
+    margin: 0 0 2px;
+    color: var(--text-color);
+    font-size: 0.94rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    text-transform: none;
+}
+
+.personal-card-heading p {
+    color: color-mix(in srgb, var(--sub-text-color) 82%, transparent);
+    font-size: 0.68rem;
+    line-height: 1.3;
+}
+
+#personalInfoPage .form-group {
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+#personalInfoPage .form-group:last-child {
+    margin-bottom: 0;
+}
+
+#personalInfoPage .form-group label {
+    padding-left: 2px;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+#personalInfoPage .input-box {
+    min-height: 42px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.88rem;
+}
+
+#personalInfoPage .input-box:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 14%, transparent);
+}
+
+.personal-account-card {
+    background: linear-gradient(145deg, var(--card-bg), color-mix(in srgb, var(--primary-color) 6%, var(--card-bg)));
+}
+
+.personal-account-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+#personalInfoPage .personal-account-actions .save-btn {
+    min-height: 42px;
+    margin: 0;
+    padding: 10px 16px;
+    border-radius: 14px;
+    font-size: 0.88rem;
+}
+
+.personal-logout-btn {
+    min-height: 42px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--input-bg);
+    color: var(--sub-text-color);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.personal-logout-btn:hover {
+    background: var(--hover-bg);
+    color: var(--text-color);
+}
+
 .setting-section {
     background-color: var(--card-bg);
     border-radius: 24px;
@@ -2493,6 +2661,236 @@ input:checked + .slider:before {
     padding-bottom: 155px;
 }
 
+/* 앱 설정 페이지 최종 UI 정리 */
+#settingsPage {
+    padding-bottom: 22px;
+}
+
+#settingsPage .settings-header {
+    min-height: 56px;
+    margin: 0 0 10px;
+}
+
+#settingsPage .settings-title {
+    font-size: 1.18rem;
+    letter-spacing: -.025em;
+}
+
+#settingsPage .setting-section {
+    margin-bottom: 10px;
+    padding: 15px 16px;
+    border-radius: 21px;
+    box-shadow: var(--shadow-sm);
+}
+
+#settingsPage .settings-theme-card {
+    min-height: 60px;
+    padding: 9px 14px !important;
+}
+
+#settingsPage .settings-theme-card .setting-item {
+    min-height: 42px;
+}
+
+#settingsPage .settings-theme-card .setting-item > label {
+    font-size: .92rem !important;
+    font-weight: 800 !important;
+}
+
+#settingsPage .theme-toggle-btn {
+    min-height: 38px;
+    padding: 7px 12px;
+    border-radius: 13px;
+    font-size: .82rem;
+}
+
+#settingsPage .settings-main-card {
+    min-height: 0;
+    padding: 14px 16px;
+}
+
+#settingsPage .setting-section h3 {
+    margin-bottom: 10px;
+    color: var(--text-color);
+    font-size: .94rem;
+    font-weight: 800;
+    letter-spacing: -.015em;
+}
+
+#settingsPage .settings-main-card .setting-item {
+    min-height: 44px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+#settingsPage .settings-main-card .setting-item > label {
+    color: var(--sub-text-color);
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+#settingsPage .settings-main-card .setting-item > div {
+    padding: 3px !important;
+    border-radius: 11px !important;
+    background: var(--input-bg) !important;
+}
+
+#settingsPage .settings-main-card .toggle-btn {
+    min-width: 60px !important;
+    min-height: 34px !important;
+    padding-inline: 12px !important;
+    border-radius: 8px !important;
+    font-size: .82rem !important;
+}
+
+#settingsPage .settings-detail-card,
+#settingsPage .settings-fixed-card {
+    padding: 12px 16px 14px;
+}
+
+#settingsPage .settings-detail-card > .setting-item:first-child,
+#settingsPage .settings-fixed-card > .setting-item:first-child {
+    min-height: 46px;
+    margin-bottom: 0;
+}
+
+#settingsPage .settings-detail-card > .setting-item:first-child > label:first-of-type,
+#settingsPage .settings-fixed-card > .setting-item:first-child > label:first-of-type {
+    color: var(--text-color);
+    font-size: .94rem;
+    font-weight: 800;
+}
+
+#settingsPage .tree-line-group {
+    position: relative;
+    margin: 8px 0 0;
+    padding: 2px 0 0 14px;
+    border-radius: 0;
+    border-left: 2px solid color-mix(in srgb, var(--primary-color) 52%, var(--border-color));
+    background: transparent;
+    box-shadow: none;
+}
+
+#settingsPage .tree-line-group::before,
+#settingsPage .tree-line-group .setting-item::before {
+    content: none;
+}
+
+#settingsPage .tree-line-group .setting-item {
+    min-height: 46px;
+    margin: 0;
+    padding: 4px 0;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+}
+
+#settingsPage .tree-line-group .setting-item:first-child {
+    border-top: 0;
+}
+
+#settingsPage .tree-line-group .setting-item > label:first-child {
+    color: var(--text-color);
+    font-size: .83rem;
+    font-weight: 700;
+}
+
+#settingsPage .switch {
+    width: 48px;
+    height: 28px;
+    flex: 0 0 48px;
+}
+
+#settingsPage .slider::before {
+    width: 22px;
+    height: 22px;
+    left: 3px;
+    bottom: 3px;
+}
+
+#settingsPage input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+#settingsPage input:checked + .slider::before {
+    transform: translateX(20px);
+}
+
+#settingsPage #fixedSubSettings .input-box,
+#settingsPage #palletSubSettings .input-box,
+#settingsPage .run-count-preset-setting .input-box {
+    width: 118px;
+    min-height: 42px;
+    margin: 0;
+    padding: 9px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--input-bg);
+    font-size: .84rem;
+    text-align: right;
+}
+
+#settingsPage .run-count-preset-setting .input-box {
+    width: 142px;
+    text-align: center;
+}
+
+#settingsPage #palletSubSettings {
+    min-height: 46px;
+    margin-left: 14px;
+    padding: 4px 0;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+}
+
+#settingsPage .settings-backup-card {
+    margin-top: 16px;
+    padding: 15px 16px;
+    border-style: solid;
+    background: color-mix(in srgb, var(--primary-color) 3%, var(--card-bg));
+}
+
+#settingsPage .settings-backup-card h3 {
+    margin-bottom: 5px;
+    font-size: .9rem;
+}
+
+#settingsPage .settings-backup-card p {
+    margin-bottom: 12px !important;
+    font-size: .76rem !important;
+    line-height: 1.4;
+}
+
+#settingsPage .backup-btn-group {
+    gap: 8px;
+}
+
+#settingsPage .backup-btn {
+    min-height: 42px;
+    padding: 8px 9px;
+    border-radius: 12px;
+    background: var(--input-bg);
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+[data-theme="dark"] #settingsPage .setting-section {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] #settingsPage .tree-line-group {
+    background: transparent;
+}
+
+[data-theme="dark"] #settingsPage .settings-backup-card {
+    background: color-mix(in srgb, var(--primary-color) 4%, var(--card-bg));
+}
+
+@media (max-width: 380px) {
+    #settingsPage .setting-section { padding-inline: 14px; }
+    #settingsPage .tree-line-group { padding-inline: 0; padding-left: 12px; }
+    #settingsPage .settings-main-card .toggle-btn { min-width: 58px !important; }
+    #settingsPage .run-count-preset-setting .input-box { width: 132px; }
+}
+
 #maintManagementPage .settings-header {
     min-height: 60px;
     margin-bottom: 12px;
@@ -3542,4 +3940,808 @@ body.pdf-export-mode .summary-row.total {
 
 [data-theme="dark"] #subCarSettingsPage .tree-line-group {
     background: #3a3a3a;
+}
+
+/* 메인 화면 기준 컨트롤 스케일 통일 */
+#settingsPage .settings-title {
+    font-size: 1.08rem;
+}
+
+#settingsPage .setting-section {
+    padding: 12px 14px;
+    border-radius: 18px;
+}
+
+#settingsPage .settings-theme-card {
+    min-height: 54px;
+    padding: 7px 12px !important;
+}
+
+#settingsPage .settings-theme-card .setting-item {
+    min-height: 38px;
+}
+
+#settingsPage .settings-theme-card .setting-item > label,
+#settingsPage .settings-detail-card > .setting-item:first-child > label:first-of-type,
+#settingsPage .settings-fixed-card > .setting-item:first-child > label:first-of-type,
+#settingsPage .setting-section h3 {
+    font-size: .875rem !important;
+}
+
+#settingsPage .theme-toggle-btn {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: .76rem;
+}
+
+#settingsPage .settings-main-card {
+    padding: 12px 14px;
+}
+
+#settingsPage .settings-main-card .setting-item {
+    min-height: 40px;
+    padding-top: 8px;
+}
+
+#settingsPage .settings-main-card .setting-item > label {
+    font-size: .74rem;
+}
+
+#settingsPage .settings-main-card .toggle-btn {
+    min-width: 52px !important;
+    min-height: 30px !important;
+    padding-inline: 10px !important;
+    font-size: .76rem !important;
+}
+
+#settingsPage .settings-detail-card,
+#settingsPage .settings-fixed-card {
+    padding: 10px 14px 12px;
+}
+
+#settingsPage .settings-detail-card > .setting-item:first-child,
+#settingsPage .settings-fixed-card > .setting-item:first-child {
+    min-height: 42px;
+}
+
+#settingsPage .tree-line-group .setting-item {
+    min-height: 42px;
+}
+
+#settingsPage .tree-line-group .setting-item > label:first-child {
+    font-size: .78rem;
+}
+
+#settingsPage .switch {
+    width: 44px;
+    height: 25px;
+    flex-basis: 44px;
+}
+
+#settingsPage .slider::before {
+    width: 19px;
+    height: 19px;
+}
+
+#settingsPage input:checked + .slider::before {
+    transform: translateX(19px);
+}
+
+#settingsPage #fixedSubSettings .input-box,
+#settingsPage #palletSubSettings .input-box,
+#settingsPage .run-count-preset-setting .input-box {
+    min-height: 38px;
+    padding: 7px 10px;
+    font-size: .78rem;
+}
+
+#settingsPage .settings-backup-card {
+    padding: 12px 14px;
+}
+
+#settingsPage .settings-backup-card h3 {
+    font-size: .84rem;
+}
+
+#settingsPage .settings-backup-card p {
+    font-size: .71rem !important;
+}
+
+#settingsPage .backup-btn {
+    min-height: 38px;
+    font-size: .72rem;
+}
+
+.bottom-nav-bar {
+    padding: 7px 0;
+    padding-bottom: calc(7px + env(safe-area-inset-bottom));
+}
+
+.nav-item {
+    min-height: 44px;
+    gap: 2px;
+}
+
+.nav-item svg {
+    width: 21px;
+    height: 21px;
+}
+
+.nav-item span {
+    font-size: .68rem;
+}
+
+/* 전체 업무 화면을 메인 달력 기준 스케일로 통일 */
+#carManagementPage,
+#clientManagementPage,
+#receivablesManagementPage,
+#maintManagementPage,
+#reportPage {
+    padding-bottom: 76px;
+}
+
+#carManagementPage .settings-header,
+#clientManagementPage .settings-header,
+#receivablesManagementPage .settings-header,
+#maintManagementPage .settings-header,
+#reportPage .settings-header {
+    min-height: 54px;
+    margin: 0 0 10px;
+}
+
+#carManagementPage .settings-title,
+#clientManagementPage .settings-title,
+#receivablesManagementPage .settings-title,
+#maintManagementPage .settings-title,
+#reportPage .settings-title {
+    font-size: 1.08rem;
+    letter-spacing: -.025em;
+}
+
+.management-list-card {
+    min-height: 76px;
+    margin-bottom: 9px;
+    padding: 12px 14px;
+    border-radius: 18px;
+}
+
+.management-list-card .car-info-text {
+    gap: 4px;
+    font-size: .86rem;
+}
+
+.management-list-card .car-sub-text {
+    font-size: .72rem;
+}
+
+.management-badge {
+    min-height: 19px;
+    padding: 2px 5px;
+    font-size: .64rem;
+}
+
+.management-list-card .action-icon-btn,
+.management-record-actions .action-icon-btn {
+    width: 34px;
+    height: 34px;
+}
+
+.management-list-card .action-icon-btn svg,
+.management-record-actions .action-icon-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.management-add-wrap {
+    right: max(14px, calc((100vw - 480px) / 2 + 14px));
+    bottom: 72px;
+}
+
+.management-add-fab {
+    min-height: 38px;
+    padding: 7px 13px;
+    font-size: .76rem;
+}
+
+#maintManagementPage .date-navigator {
+    width: min(260px, 74%);
+    min-height: 44px;
+    margin-bottom: 10px !important;
+    padding: 3px 7px;
+}
+
+#maintManagementPage .date-select {
+    font-size: .86rem;
+}
+
+.management-day-card {
+    margin-bottom: 9px;
+    padding: 12px 10px 10px;
+    border-radius: 18px;
+}
+
+.management-day-head {
+    padding: 0 3px 8px;
+}
+
+.management-day-head > strong {
+    font-size: .86rem;
+}
+
+.management-day-head > div {
+    gap: 6px;
+    font-size: .74rem;
+}
+
+.management-record-item {
+    margin-top: 7px;
+    padding: 9px 10px 8px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.management-record-title,
+.management-record-info > strong {
+    font-size: .82rem;
+}
+
+.management-record-title svg,
+.management-record-actions .action-icon-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.management-record-info > div span {
+    font-size: .69rem;
+}
+
+.maint-management-dock {
+    right: max(12px, calc((100vw - 480px) / 2 + 12px));
+    bottom: 64px;
+    left: max(12px, calc((100vw - 480px) / 2 + 12px));
+    padding: 9px;
+    border-radius: 17px;
+}
+
+.maint-month-summary {
+    padding-bottom: 7px;
+    font-size: .74rem;
+}
+
+.maint-month-summary button {
+    padding: 5px 9px;
+    font-size: .7rem;
+}
+
+.maint-management-tabs {
+    gap: 7px;
+}
+
+.maint-management-tabs .toggle-btn {
+    min-height: 38px;
+    border-radius: 12px;
+    font-size: .76rem;
+}
+
+.receivable-tabs {
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.receivable-tab {
+    min-height: 38px;
+    padding: 7px 6px;
+    border-radius: 10px;
+    font-size: .76rem;
+}
+
+.unpaid-summary-card {
+    margin: -4px auto 10px;
+    padding: 8px 12px;
+    font-size: .78rem;
+}
+
+.receivable-group-card,
+.receivable-item-card {
+    margin-bottom: 9px;
+    padding: 12px;
+    border-radius: 12px;
+}
+
+.receivable-group-title {
+    font-size: .86rem;
+}
+
+.receivable-group-summary,
+.receivable-item-amount {
+    font-size: .8rem;
+}
+
+.receivable-item-info,
+.receivable-dday {
+    font-size: .72rem;
+}
+
+.receivable-complete-btn {
+    min-height: 38px;
+    margin-top: 10px;
+    padding: 8px;
+    font-size: .76rem;
+}
+
+.report-page {
+    margin-top: 8px;
+    padding: 12px;
+    border-radius: 18px;
+}
+
+.report-title {
+    margin-bottom: 12px;
+    font-size: 1.05rem;
+}
+
+.info-table,
+.report-table {
+    font-size: .68rem;
+}
+
+.info-table th,
+.info-table td,
+.report-table th,
+.report-table td {
+    padding: 7px 5px;
+}
+
+.report-summary-box {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 15px;
+}
+
+.report-summary-box .summary-row {
+    font-size: .78rem;
+}
+
+/* 일일운행과 공통 입력 모달 */
+.modal-content {
+    width: 92%;
+    padding: 20px 16px;
+    border-radius: 20px;
+}
+
+.modal-title {
+    margin-bottom: 14px;
+    font-size: 1.05rem;
+}
+
+.modal-section {
+    margin-top: 10px;
+    padding: 13px 12px;
+    border-radius: 16px;
+}
+
+.modal-section-title {
+    margin-bottom: 10px;
+    font-size: .88rem;
+}
+
+.modal-section-title::before {
+    width: 4px;
+    height: 13px;
+}
+
+.modal-content .form-group {
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.modal-content .form-group > label {
+    font-size: .76rem;
+}
+
+.modal-content .input-box,
+.modal-content .date-input {
+    min-height: 40px;
+    padding: 8px 11px;
+    border-radius: 12px;
+    font-size: .82rem;
+}
+
+.modal-btns {
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.modal-btn {
+    min-height: 40px;
+    padding: 9px;
+    border-radius: 13px;
+    font-size: .8rem;
+}
+
+.modal-content .toggle-btn,
+.modal-content .pill-btn,
+.modal-content .dark-pill-btn,
+.modal-content .segment-btn {
+    min-height: 36px;
+    border-radius: 12px;
+    font-size: .76rem;
+}
+
+#workModal {
+    padding: 14px 16px 78px;
+}
+
+#workModal .settings-header {
+    min-height: 54px;
+    margin: 0 0 12px;
+}
+
+#workModal .settings-title {
+    font-size: 1.08rem;
+}
+
+#workModal #btnOffToggle {
+    min-height: 42px;
+    font-size: .86rem;
+}
+
+.fixed-route-section {
+    padding: 14px;
+    border-radius: 18px;
+}
+
+.fixed-route-section .modal-section-title {
+    margin-bottom: 11px;
+    font-size: .94rem;
+}
+
+.fixed-route-group > label {
+    font-size: .8rem;
+}
+
+.fixed-route-input-row .input-box {
+    min-height: 42px;
+    padding: 9px 14px;
+    font-size: .86rem;
+}
+
+.fixed-route-unit {
+    min-width: 46px;
+    font-size: .82rem;
+}
+
+.fixed-count-quick-buttons {
+    gap: 6px;
+}
+
+.fixed-count-quick-buttons button {
+    min-height: 36px;
+    font-size: .78rem;
+}
+
+.call-detail-modal-title {
+    margin-bottom: 9px;
+    padding-bottom: 9px;
+    font-size: 1rem;
+}
+
+.call-detail-panel {
+    padding: 10px;
+    border-radius: 16px;
+}
+
+.call-detail-panel > label,
+.call-detail-panel .form-group > label,
+.call-inline-field > label {
+    font-size: .76rem;
+}
+
+.call-detail-panel .input-box {
+    min-height: 40px;
+}
+
+.call-detail-form-actions .modal-btn {
+    min-height: 42px;
+    border-radius: 13px;
+}
+
+@media (max-width: 380px) {
+    .management-list-card { padding-inline: 12px; }
+    .report-page { padding-inline: 9px; }
+    .modal-content { padding-inline: 14px; }
+}
+
+/* 일일운행 상세 페이지 최종 UI 정리 */
+#workModal {
+    padding-top: 10px;
+}
+
+#workModal .settings-header {
+    min-height: 50px;
+    margin-bottom: 8px;
+}
+
+#workModal .settings-title {
+    color: var(--text-color);
+    font-size: 1.08rem;
+    font-weight: 850;
+    letter-spacing: -.025em;
+}
+
+#workModal #modalOffBtnGroup {
+    margin-bottom: 10px;
+}
+
+#workModal #btnOffToggle {
+    min-height: 40px;
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+}
+
+#workModal #modalWorkDetails > .modal-section,
+#workModal #modalMaintSection {
+    margin-top: 10px;
+    padding: 13px 14px 14px;
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm);
+}
+
+#workModal #modalWorkDetails > .modal-section > .modal-section-title,
+#workModal #modalMaintSection > .modal-section-title {
+    margin-bottom: 9px !important;
+    font-size: .9rem;
+    font-weight: 800;
+}
+
+#workModal #modalWorkDetails > .modal-section > .modal-section-title::before,
+#workModal #modalMaintSection > .modal-section-title::before {
+    width: 3px;
+    height: 13px;
+}
+
+#workModal .fixed-route-group {
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+#workModal .fixed-route-input-row {
+    gap: 8px;
+}
+
+#workModal .fixed-route-input-row .input-box {
+    min-height: 40px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+#workModal .fixed-count-quick-buttons {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 1px;
+}
+
+#workModal .fixed-count-quick-buttons button {
+    min-height: 38px;
+    padding: 7px 2px;
+    border-radius: 11px;
+    font-size: .76rem;
+}
+
+#workModal #callDetailSummaryContainer,
+#workModal #maintSummaryContainer,
+#workModal #fuelSummaryContainer {
+    margin-top: 0 !important;
+}
+
+#workModal #fuelSummaryContainer {
+    margin-top: 8px !important;
+}
+
+#workModal #callDetailSummaryList.maint-summary-card,
+#workModal #maintSummaryList.maint-summary-card,
+#workModal #fuelSummaryList.maint-summary-card {
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+#workModal .call-detail-card {
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+}
+
+#workModal .call-detail-card:last-of-type {
+    margin-bottom: 0;
+}
+
+#workModal .call-detail-card-head {
+    gap: 6px;
+    margin-bottom: 5px;
+}
+
+#workModal .call-detail-route {
+    gap: 5px;
+    font-size: .94rem;
+    font-weight: 800;
+}
+
+#workModal .call-detail-actions .action-icon-btn,
+#workModal .maint-fuel-actions .action-icon-btn {
+    width: 36px;
+    height: 36px;
+    padding: 8px;
+    color: var(--sub-text-color);
+}
+
+#workModal .call-detail-actions .action-icon-btn svg,
+#workModal .maint-fuel-actions .action-icon-btn svg {
+    width: 17px;
+    height: 17px;
+}
+
+#workModal .detail-meta-line {
+    margin-top: 3px;
+    font-size: .74rem;
+    line-height: 1.4;
+}
+
+#workModal .commission-rate,
+#workModal .detail-badge,
+#workModal .maint-payment-badge {
+    padding: 3px 7px;
+    font-size: .66rem;
+}
+
+#workModal .call-detail-money-grid {
+    gap: 8px;
+    margin-top: 6px;
+}
+
+#workModal .detail-fare {
+    font-size: .86rem;
+}
+
+#workModal .detail-calculation {
+    font-size: .72rem;
+}
+
+#workModal .detail-calculation .detail-total {
+    font-size: .92rem;
+    font-weight: 850;
+}
+
+#workModal .call-detail-card-foot {
+    margin-top: 8px;
+}
+
+#workModal .call-detail-card .payment-toggle-btn {
+    min-width: 54px;
+    min-height: 36px;
+    padding-inline: 10px;
+    border-radius: 12px;
+    font-size: .76rem;
+}
+
+#workModal .detail-call-phone {
+    width: 36px;
+    height: 36px;
+}
+
+#workModal .call-detail-daily-summary {
+    margin-top: 9px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary-color) 4%, var(--input-bg));
+    color: var(--sub-text-color);
+    font-size: .76rem;
+}
+
+#workModal .call-detail-daily-summary > div {
+    margin: 2px 0;
+}
+
+#workModal .call-detail-daily-summary .summary-grand-total,
+#workModal .call-detail-daily-summary .summary-grand-total strong {
+    padding-top: 4px;
+    color: var(--primary-color);
+    font-size: .9rem;
+    font-weight: 850;
+}
+
+#workModal .call-detail-add-row,
+#workModal .maint-fuel-add-row {
+    padding-top: 10px;
+}
+
+#workModal .call-detail-add-btn,
+#workModal .maint-fuel-add-btn {
+    min-height: 40px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    font-size: .76rem;
+}
+
+#workModal .maint-fuel-add-row {
+    gap: 7px;
+}
+
+#workModal .maint-fuel-item {
+    padding: 11px 10px 9px;
+    border-radius: 13px;
+    box-shadow: var(--shadow-sm);
+}
+
+#workModal .maint-fuel-title {
+    gap: 6px;
+    font-size: .84rem;
+}
+
+#workModal .maint-fuel-icon {
+    width: 16px;
+    height: 16px;
+}
+
+#workModal .maint-fuel-info {
+    margin-top: 5px;
+}
+
+#workModal .maint-fuel-info > strong {
+    font-size: .86rem;
+}
+
+#workModal .maint-fuel-note {
+    font-size: .72rem;
+}
+
+#workModal .maint-fuel-total {
+    margin-top: 7px;
+    padding-top: 8px;
+    font-size: .86rem;
+}
+
+/* 일일운행 안에서 펼쳐지는 세부 입력 폼만 정리 */
+#workModal .call-detail-inline-host .modal-content,
+#workModal .maint-fuel-inline-host .modal-content {
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: none;
+}
+
+#workModal .call-detail-panel {
+    margin-bottom: 7px;
+    padding: 9px;
+    border: 1px solid var(--border-color);
+    border-radius: 13px;
+    box-shadow: none;
+}
+
+#workModal .call-detail-modal-title {
+    font-size: .94rem;
+}
+
+#workModal .call-detail-panel .input-box {
+    min-height: 40px;
+    border-radius: 11px;
+}
+
+#workModal .location-chip button {
+    min-height: 30px;
+}
+
+#workModal .call-detail-form-actions {
+    margin-top: 9px;
+    padding-top: 8px;
+}
+
+@media (max-width: 380px) {
+    #workModal #modalWorkDetails > .modal-section,
+    #workModal #modalMaintSection { padding-inline: 12px; }
+    #workModal .call-detail-card { padding-inline: 10px; }
 }
