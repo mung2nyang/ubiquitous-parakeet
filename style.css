@@ -766,7 +766,8 @@ body {
 .app-temporal-columns {
     display: grid;
     gap: 5px;
-    height: min(250px, 38vh);
+    height: 100px;
+    max-height: 100px;
 }
 
 .app-temporal-columns.date-columns { grid-template-columns: 1.2fr .9fr .9fr; }
@@ -1768,13 +1769,14 @@ input:checked + .slider:before {
 #workModal {
     position: absolute;
     top: 0;
-    left: 50%;
+    right: 0;
+    left: 0;
     width: 100%;
     max-width: 480px;
     min-height: 100vh;
-    margin: 0;
+    margin: 0 auto;
     padding: 20px 16px 100px;
-    transform: translateX(-50%);
+    transform: none;
 }
 
 #workModal .settings-header {
@@ -1906,7 +1908,7 @@ input:checked + .slider:before {
 .call-detail-inline-host.is-open {
     margin-top: 12px;
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
 }
 #callDetailModal.inline-expanded {
     position: static;
@@ -1924,7 +1926,7 @@ input:checked + .slider:before {
 }
 #callDetailModal.inline-expanded.is-visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
 }
 #callDetailModal.inline-expanded .call-detail-modal-content {
     max-width: none;
@@ -5606,4 +5608,295 @@ body.pdf-export-mode .summary-row.total {
     #receivablesManagementPage .receivable-item-card {
         padding-inline: 12px;
     }
+}
+
+/* 일지 세부 입력 전용 선택형 UI와 360px 입력 폭 정리 */
+#callDetailModal :where(.call-detail-panel, .form-group, .call-inline-field, .input-with-suffix, .app-temporal),
+#workModal .call-detail-inline-host :where(.call-detail-panel, .form-group, .call-inline-field, .input-with-suffix, .app-temporal) {
+    min-width: 0;
+}
+
+#callDetailModal :where(.input-box, input, textarea),
+#workModal .call-detail-inline-host :where(.input-box, input, textarea) {
+    max-width: 100%;
+}
+
+#callDetailModal :where(.input-box):focus,
+#callDetailModal :where(.input-box):focus-visible,
+#workModal .call-detail-inline-host :where(.input-box):focus,
+#workModal .call-detail-inline-host :where(.input-box):focus-visible,
+#callDetailModal .app-temporal-trigger:focus-visible,
+#callDetailModal .app-temporal.open .app-temporal-trigger,
+#workModal .call-detail-inline-host .app-temporal-trigger:focus-visible,
+#workModal .call-detail-inline-host .app-temporal.open .app-temporal-trigger {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 16%, transparent);
+    outline: none;
+}
+
+#callDetailModal .app-temporal-trigger,
+#workModal .call-detail-inline-host .app-temporal-trigger {
+    gap: 8px;
+    overflow: hidden;
+}
+
+#callDetailModal .app-temporal-value,
+#workModal .call-detail-inline-host .app-temporal-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#callDetailModal .app-temporal-icon,
+#workModal .call-detail-inline-host .app-temporal-icon {
+    flex: 0 0 14px;
+    margin-left: 2px;
+    border-color: var(--sub-text-color);
+}
+
+#callDetailModal .app-temporal-menu,
+#workModal .call-detail-inline-host .app-temporal-menu,
+.app-autocomplete-menu {
+    max-width: calc(100vw - 16px);
+}
+
+#callDetailModal .app-temporal-option:focus-visible,
+#workModal .call-detail-inline-host .app-temporal-option:focus-visible,
+.app-autocomplete-option:focus-visible {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+    color: var(--primary-color);
+    outline: 1px solid var(--primary-color);
+    outline-offset: -1px;
+}
+
+#callDetailModal .app-temporal-option[aria-selected="true"],
+#workModal .call-detail-inline-host .app-temporal-option[aria-selected="true"],
+.app-autocomplete-option[aria-selected="true"] {
+    background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+    color: var(--primary-color);
+    font-weight: 750;
+}
+
+#callDetailModal .app-temporal-menu,
+#workModal .call-detail-inline-host .app-temporal-menu {
+    padding: 5px;
+    border-radius: 11px;
+}
+
+/* 일지 입력의 시간·입금예정일 선택창은 입력란과 같은 폭으로 바로 이어 붙인다. */
+#callDetailModal .app-temporal.open .app-temporal-trigger,
+#workModal .call-detail-inline-host .app-temporal.open .app-temporal-trigger {
+    border-radius: 8px 8px 0 0;
+}
+
+#callDetailModal .app-temporal .app-temporal-menu,
+#workModal .call-detail-inline-host .app-temporal .app-temporal-menu {
+    border-radius: 0 0 11px 11px;
+}
+
+#callDetailModal .app-temporal-columns,
+#workModal .call-detail-inline-host .app-temporal-columns {
+    height: 100%;
+    max-height: 100px;
+    gap: 4px;
+}
+
+#callDetailModal .app-temporal-column,
+#workModal .call-detail-inline-host .app-temporal-column {
+    scrollbar-width: thin;
+}
+
+#callDetailModal .app-temporal-option,
+#workModal .call-detail-inline-host .app-temporal-option {
+    min-height: 32px;
+    padding: 5px 4px;
+    font-size: .72rem;
+}
+
+#callDetailModal .dark-pill-btn.active,
+#workModal .call-detail-inline-host .dark-pill-btn.active {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 14%, var(--input-bg));
+    color: var(--primary-color);
+    box-shadow: none;
+}
+
+#callDetailModal .dark-pill-btn:focus-visible,
+#workModal .call-detail-inline-host .dark-pill-btn:focus-visible {
+    border-color: var(--primary-color);
+    outline: 2px solid color-mix(in srgb, var(--primary-color) 24%, transparent);
+    outline-offset: 1px;
+}
+
+#callDetailModal :where(.call-inline-field, .platform-main-row, .call-client-row) > *,
+#workModal .call-detail-inline-host :where(.call-inline-field, .platform-main-row, .call-client-row) > * {
+    min-width: 0;
+}
+
+#callDetailModal :where(.call-inline-field .input-box, .platform-main-row .input-box, .input-with-suffix, .input-with-suffix .input-box),
+#workModal .call-detail-inline-host :where(.call-inline-field .input-box, .platform-main-row .input-box, .input-with-suffix, .input-with-suffix .input-box) {
+    width: 100%;
+}
+
+#callDetailModal .input-with-suffix .input-box,
+#workModal .call-detail-inline-host .input-with-suffix .input-box {
+    padding-right: 34px;
+}
+
+#callDetailModal .input-with-suffix .suffix,
+#workModal .call-detail-inline-host .input-with-suffix .suffix {
+    right: 10px;
+    max-width: 26px;
+    overflow: hidden;
+    font-size: .74rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+    #callDetailModal .app-temporal-trigger,
+    #workModal .call-detail-inline-host .app-temporal-trigger {
+        padding-inline: 10px;
+    }
+
+    #callDetailModal .call-inline-field,
+    #workModal .call-detail-inline-host .call-inline-field {
+        grid-template-columns: minmax(62px, auto) minmax(0, 1fr) minmax(18px, auto);
+        gap: 6px;
+    }
+
+    #callDetailModal .platform-main-row,
+    #workModal .call-detail-inline-host .platform-main-row {
+        grid-template-columns: minmax(62px, auto) minmax(0, 1fr);
+    }
+}
+
+/* 일지 세부입력의 모든 입력 안내 문구를 동일한 타이포그래피로 표시한다. */
+#callDetailModal input::placeholder,
+#callDetailModal textarea::placeholder {
+    color: var(--sub-text-color);
+    font-size: .82rem;
+    font-weight: 500;
+    opacity: 1;
+}
+
+#callDetailModal .app-temporal-trigger .app-temporal-value,
+#callDetailModal .input-with-suffix .suffix {
+    color: var(--sub-text-color);
+    font-family: inherit;
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+/* 운송료와 시간·날짜 표시 문구를 입력칸 중앙에 정렬한다. */
+#callDetailModal .call-money-panel #callDetailFare,
+#workModal .call-detail-inline-host .call-money-panel #callDetailFare,
+#callDetailModal .call-money-panel #callDetailFare::placeholder,
+#workModal .call-detail-inline-host .call-money-panel #callDetailFare::placeholder {
+    text-align: center;
+}
+
+#callDetailModal .app-temporal-trigger {
+    position: relative;
+    justify-content: center;
+}
+
+#callDetailModal .app-temporal-trigger .app-temporal-value {
+    width: 100%;
+    padding: 0 22px;
+    text-align: center;
+}
+
+#callDetailModal .app-temporal-trigger .app-temporal-icon {
+    position: absolute;
+    right: 12px;
+    margin-left: 0;
+}
+
+/* 정비·주유 내역 입력 글자를 같은 기준으로 통일하고 중앙 정렬한다. */
+#maintRecordModal :where(.input-box, .date-input),
+#fuelDetailModal :where(.input-box, .date-input) {
+    color: var(--text-color) !important;
+    font-family: inherit;
+    font-size: .82rem;
+    font-weight: 500;
+    text-align: center !important;
+}
+
+#maintRecordModal :where(input, textarea)::placeholder,
+#fuelDetailModal :where(input, textarea)::placeholder {
+    color: var(--sub-text-color) !important;
+    font-family: inherit;
+    font-size: .82rem;
+    font-weight: 500;
+    opacity: 1;
+    text-align: center;
+}
+
+#maintRecordModal .app-temporal-trigger,
+#fuelDetailModal .app-temporal-trigger {
+    position: relative;
+    justify-content: center;
+}
+
+#maintRecordModal .app-temporal-value,
+#fuelDetailModal .app-temporal-value,
+#maintRecordModal .input-with-suffix .suffix,
+#fuelDetailModal .input-with-suffix .suffix {
+    color: var(--sub-text-color) !important;
+    font-family: inherit;
+    font-size: .82rem;
+    font-weight: 500;
+}
+
+#maintRecordModal .app-temporal-value,
+#fuelDetailModal .app-temporal-value {
+    width: 100%;
+    padding: 0 22px;
+    text-align: center;
+}
+
+#maintRecordModal .app-temporal-icon,
+#fuelDetailModal .app-temporal-icon {
+    position: absolute;
+    right: 12px;
+    margin-left: 0;
+}
+
+/* 정비·주유 선택 칩의 글자 규격을 동일하게 맞춘다. */
+#maintRecordModal :where(.pill-btn, .segment-btn),
+#fuelDetailModal :where(.pill-btn, .segment-btn) {
+    font-family: inherit;
+    font-size: .72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+}
+
+#maintRecordModal :where(.pill-btn, .segment-btn).active,
+#fuelDetailModal :where(.pill-btn, .segment-btn).active {
+    font-weight: 600;
+}
+
+/* 정비·주유 제목을 일지 세부입력 제목 크기에 맞춘다. */
+#maintRecordModal .modal-title,
+#fuelDetailModal .modal-title {
+    font-size: .9rem;
+    font-weight: 800;
+}
+
+/* 분류 칩의 기본 글자색은 플랫폼 칩과 같은 보조 글자색을 사용한다. */
+#maintRecordModal .pill-btn:not(.active),
+#fuelDetailModal .pill-btn:not(.active),
+#maintRecordModal .segment-btn:not(.active) {
+    color: var(--sub-text-color) !important;
+}
+
+#maintRecordModal #maintPaymentGroup .segment-btn {
+    font-size: .7rem;
+}
+
+#maintRecordModal .form-group:has(#maintPaymentGroup) > label {
+    font-size: .76rem !important;
 }

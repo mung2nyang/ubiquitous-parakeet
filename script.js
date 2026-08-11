@@ -867,17 +867,14 @@ function initAppDropdowns(root = document) {
             const rect = trigger.getBoundingClientRect();
             const gap = 6;
             const viewportGap = 8;
-            const below = window.innerHeight - rect.bottom - gap - viewportGap;
-            const above = rect.top - gap - viewportGap;
-            const openUp = below < 120 && above > below;
-            const available = Math.max(88, openUp ? above : below);
+            const openUp = false;
 
             wrapper.classList.toggle('open-up', openUp);
             menu.style.left = `${Math.max(viewportGap, Math.min(rect.left, window.innerWidth - rect.width - viewportGap))}px`;
             menu.style.width = `${Math.min(rect.width, window.innerWidth - viewportGap * 2)}px`;
-            menu.style.maxHeight = `${Math.min(224, available)}px`;
-            menu.style.top = openUp ? 'auto' : `${rect.bottom + gap}px`;
-            menu.style.bottom = openUp ? `${window.innerHeight - rect.top + gap}px` : 'auto';
+            menu.style.maxHeight = '124px';
+            menu.style.top = `${rect.bottom + gap}px`;
+            menu.style.bottom = 'auto';
         };
 
         const sync = () => {
@@ -964,6 +961,7 @@ function initAppTemporalInputs(root = document) {
     root.querySelectorAll('input[type="date"]:not([data-temporal-ready]), input[type="time"]:not([data-temporal-ready])').forEach(input => {
         input.dataset.temporalReady = 'true';
         const type = input.type;
+        const isCallDetailTemporal = ['callDepartureTime', 'callArrivalTime', 'callPaymentDueDate'].includes(input.id);
         const wrapper = document.createElement('span');
         wrapper.className = `app-temporal app-temporal-${type}`;
         input.parentNode.insertBefore(wrapper, input);
@@ -1003,16 +1001,17 @@ function initAppTemporalInputs(root = document) {
             const rect = trigger.getBoundingClientRect();
             const gap = 6;
             const edge = 8;
-            const below = window.innerHeight - rect.bottom - gap - edge;
-            const above = rect.top - gap - edge;
-            const openUp = below < 210 && above > below;
-            const available = Math.max(160, openUp ? above : below);
+            const openUp = false;
+            const preferredWidth = isCallDetailTemporal ? (type === 'date' ? 286 : 220) : 328;
+            const isConnectedCallDetailTemporal = isCallDetailTemporal;
+            const panelWidth = Math.min(isConnectedCallDetailTemporal ? rect.width : preferredWidth, window.innerWidth - edge * 2);
             wrapper.classList.toggle('open-up', openUp);
-            menu.style.left = `${Math.max(edge, Math.min(rect.left, window.innerWidth - Math.min(328, window.innerWidth - edge * 2) - edge))}px`;
-            menu.style.width = `${Math.min(328, window.innerWidth - edge * 2)}px`;
-            menu.style.maxHeight = `${Math.min(286, available)}px`;
-            menu.style.top = openUp ? 'auto' : `${rect.bottom + gap}px`;
-            menu.style.bottom = openUp ? `${window.innerHeight - rect.top + gap}px` : 'auto';
+            menu.style.left = `${Math.max(edge, Math.min(rect.left, window.innerWidth - panelWidth - edge))}px`;
+            menu.style.width = `${panelWidth}px`;
+            menu.style.height = '112px';
+            menu.style.maxHeight = '';
+            menu.style.top = `${rect.bottom + (isConnectedCallDetailTemporal ? -1 : gap)}px`;
+            menu.style.bottom = 'auto';
         };
         wrapper._temporalPosition = position;
         const selectedDateParts = () => {
@@ -1187,7 +1186,12 @@ function initAppAutocompletes(root = document) {
             const rect = input.getBoundingClientRect();
             const edge = 8;
             const gap = 5;
-            const below = window.innerHeight - rect.bottom - gap - edge;
+            const bottomNav = document.querySelector('.bottom-nav-bar');
+            const bottomNavRect = bottomNav?.getBoundingClientRect();
+            const viewportBottom = bottomNavRect && bottomNavRect.height > 0
+                ? Math.min(window.innerHeight, bottomNavRect.top)
+                : window.innerHeight;
+            const below = viewportBottom - rect.bottom - gap - edge;
             const above = rect.top - gap - edge;
             const openUp = below < 124 && above > below;
             menu.style.left = `${Math.max(edge, Math.min(rect.left, window.innerWidth - rect.width - edge))}px`;
