@@ -834,6 +834,33 @@ function saveClient() {
 }
 
 /* 단순 선택형 입력을 앱 내부 드롭다운으로 표시한다. 원본 select의 값과 이벤트는 유지한다. */
+const APP_OVERLAY_GAP = 7;
+const APP_OVERLAY_EDGE = 8;
+
+function positionAnchoredOverlay(anchor, overlay) {
+    if (!anchor || !overlay || overlay.hidden) return;
+
+    const rect = anchor.getBoundingClientRect();
+    const viewportWidth = window.visualViewport?.width || document.documentElement.clientWidth;
+    const availableRight = viewportWidth - APP_OVERLAY_EDGE;
+    const left = rect.right > availableRight
+        ? Math.max(APP_OVERLAY_EDGE, availableRight - rect.width)
+        : rect.left;
+
+    overlay.style.left = `${left}px`;
+    overlay.style.top = `${rect.bottom + APP_OVERLAY_GAP}px`;
+    overlay.style.bottom = 'auto';
+    overlay.style.width = `${rect.width}px`;
+}
+
+function refreshOpenAnchoredOverlays() {
+    document.querySelectorAll('.app-dropdown.open').forEach(wrapper => {
+        positionAnchoredOverlay(wrapper.querySelector('.app-dropdown-trigger'), wrapper._dropdownMenu);
+    });
+    document.querySelectorAll('.app-temporal.open').forEach(wrapper => wrapper._temporalPosition?.());
+    document.querySelectorAll('input[data-app-autocomplete][aria-expanded="true"]').forEach(input => input._autocompletePosition?.());
+}
+
 function initAppDropdowns(root = document) {
     root.querySelectorAll('select[data-app-dropdown]:not([data-dropdown-ready])').forEach(select => {
         select.dataset.dropdownReady = 'true';
@@ -855,7 +882,9 @@ function initAppDropdowns(root = document) {
         menu.className = 'app-dropdown-menu';
         menu.setAttribute('role', 'listbox');
         menu.hidden = true;
-        wrapper.append(trigger, menu);
+        wrapper.append(trigger);
+        document.body.appendChild(menu);
+        wrapper._dropdownMenu = menu;
 
         const close = () => {
             menu.hidden = true;
@@ -864,17 +893,9 @@ function initAppDropdowns(root = document) {
         };
 
         const positionMenu = () => {
-            const rect = trigger.getBoundingClientRect();
-            const gap = 6;
-            const viewportGap = 8;
-            const openUp = false;
-
-            wrapper.classList.toggle('open-up', openUp);
-            menu.style.left = `${Math.max(viewportGap, Math.min(rect.left, window.innerWidth - rect.width - viewportGap))}px`;
-            menu.style.width = `${Math.min(rect.width, window.innerWidth - viewportGap * 2)}px`;
+            wrapper.classList.remove('open-up');
+            positionAnchoredOverlay(trigger, menu);
             menu.style.maxHeight = '124px';
-            menu.style.top = `${rect.bottom + gap}px`;
-            menu.style.bottom = 'auto';
         };
 
         const sync = () => {
@@ -907,7 +928,7 @@ function initAppDropdowns(root = document) {
         trigger.addEventListener('click', () => {
             const willOpen = menu.hidden;
             document.querySelectorAll('.app-dropdown.open').forEach(openDropdown => {
-                if (openDropdown !== wrapper) openDropdown.querySelector('.app-dropdown-menu').hidden = true;
+                if (openDropdown !== wrapper) openDropdown._dropdownMenu.hidden = true;
                 openDropdown.classList.remove('open', 'open-up');
                 openDropdown.querySelector('.app-dropdown-trigger')?.setAttribute('aria-expanded', 'false');
             });
@@ -961,7 +982,6 @@ function initAppTemporalInputs(root = document) {
     root.querySelectorAll('input[type="date"]:not([data-temporal-ready]), input[type="time"]:not([data-temporal-ready])').forEach(input => {
         input.dataset.temporalReady = 'true';
         const type = input.type;
-        const isCallDetailTemporal = ['callDepartureTime', 'callArrivalTime', 'callPaymentDueDate'].includes(input.id);
         const wrapper = document.createElement('span');
         wrapper.className = `app-temporal app-temporal-${type}`;
         input.parentNode.insertBefore(wrapper, input);
@@ -977,7 +997,9 @@ function initAppTemporalInputs(root = document) {
         const menu = document.createElement('div');
         menu.className = 'app-temporal-menu';
         menu.hidden = true;
-        wrapper.append(trigger, menu);
+        wrapper.append(trigger);
+        document.body.appendChild(menu);
+        wrapper._temporalMenu = menu;
 
         const pad = value => String(value).padStart(2, '0');
         const valueText = () => {
@@ -998,20 +1020,10 @@ function initAppTemporalInputs(root = document) {
             trigger.setAttribute('aria-expanded', 'false');
         };
         const position = () => {
-            const rect = trigger.getBoundingClientRect();
-            const gap = 6;
-            const edge = 8;
-            const openUp = false;
-            const preferredWidth = isCallDetailTemporal ? (type === 'date' ? 286 : 220) : 328;
-            const isConnectedCallDetailTemporal = isCallDetailTemporal;
-            const panelWidth = Math.min(isConnectedCallDetailTemporal ? rect.width : preferredWidth, window.innerWidth - edge * 2);
-            wrapper.classList.toggle('open-up', openUp);
-            menu.style.left = `${Math.max(edge, Math.min(rect.left, window.innerWidth - panelWidth - edge))}px`;
-            menu.style.width = `${panelWidth}px`;
+            wrapper.classList.remove('open-up');
+            positionAnchoredOverlay(trigger, menu);
             menu.style.height = '112px';
             menu.style.maxHeight = '';
-            menu.style.top = `${rect.bottom + (isConnectedCallDetailTemporal ? -1 : gap)}px`;
-            menu.style.bottom = 'auto';
         };
         wrapper._temporalPosition = position;
         const selectedDateParts = () => {
@@ -1115,7 +1127,7 @@ function initAppTemporalInputs(root = document) {
         trigger.addEventListener('click', () => {
             const willOpen = menu.hidden;
             document.querySelectorAll('.app-temporal.open').forEach(openPicker => {
-                openPicker.querySelector('.app-temporal-menu').hidden = true;
+                openPicker._temporalMenu.hidden = true;
                 openPicker.classList.remove('open', 'open-up');
                 openPicker.querySelector('.app-temporal-trigger')?.setAttribute('aria-expanded', 'false');
             });
@@ -1244,15 +1256,15 @@ function initAppAutocompletes(root = document) {
 
 document.addEventListener('click', event => {
     document.querySelectorAll('.app-dropdown.open').forEach(wrapper => {
-        if (!wrapper.contains(event.target)) {
-            wrapper.querySelector('.app-dropdown-menu').hidden = true;
+        if (!wrapper.contains(event.target) && !wrapper._dropdownMenu?.contains(event.target)) {
+            wrapper._dropdownMenu.hidden = true;
             wrapper.classList.remove('open', 'open-up');
             wrapper.querySelector('.app-dropdown-trigger')?.setAttribute('aria-expanded', 'false');
         }
     });
     document.querySelectorAll('.app-temporal.open').forEach(wrapper => {
-        if (!wrapper.contains(event.target)) {
-            wrapper.querySelector('.app-temporal-menu').hidden = true;
+        if (!wrapper.contains(event.target) && !wrapper._temporalMenu?.contains(event.target)) {
+            wrapper._temporalMenu.hidden = true;
             wrapper.classList.remove('open', 'open-up');
             wrapper.querySelector('.app-temporal-trigger')?.setAttribute('aria-expanded', 'false');
         }
@@ -1262,13 +1274,13 @@ document.addEventListener('click', event => {
     });
 });
 
-window.addEventListener('resize', () => document.querySelectorAll('.app-dropdown.open .app-dropdown-trigger').forEach(button => button.click()));
+window.addEventListener('resize', refreshOpenAnchoredOverlays);
 window.addEventListener('scroll', event => {
     if (event.target instanceof Element && event.target.closest('.app-dropdown-menu, .app-temporal-menu')) return;
-    document.querySelectorAll('.app-dropdown.open .app-dropdown-trigger').forEach(button => button.click());
-    document.querySelectorAll('.app-temporal.open').forEach(wrapper => wrapper._temporalPosition?.());
-    document.querySelectorAll('input[data-app-autocomplete][aria-expanded="true"]').forEach(input => input._autocompletePosition?.());
+    refreshOpenAnchoredOverlays();
 }, true);
+window.visualViewport?.addEventListener('resize', refreshOpenAnchoredOverlays);
+window.visualViewport?.addEventListener('scroll', refreshOpenAnchoredOverlays);
 document.addEventListener('DOMContentLoaded', () => {
     initAppDropdowns();
     initAppTemporalInputs();
