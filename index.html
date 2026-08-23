@@ -675,7 +675,7 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6M16 11h6"></path></svg>
                     <span>기사연동관리</span>
                 </button>
-                <button type="button" class="mypage-notice-link" onclick="showBillingSettingsPage()">
+                <button id="myPageBillingSettingsLink" type="button" class="mypage-notice-link" onclick="showBillingSettingsPage()">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>
                     <span>정산·계산서 설정</span>
                 </button>
@@ -880,21 +880,6 @@
                         <strong id="employerLinkedName">연동된 운송사</strong>
                         <span id="employerLinkedMeta"></span>
 
-                        <!-- 기사 정산(총 운송료/수수료/보험/상세내역)과는 완전히 별개의 권한이다.
-                             이건 "거래처별 세금계산서 내역"만 사장님께 공유할지 기사 본인이 정하는
-                             스위치다. 기존 "기사 월매출 조회"(차주가 차량 설정에서 켜는 것)와 절대
-                             혼동하면 안 된다 — 이건 기사가 직접 켜고 끄는 별개 설정이다. -->
-                        <div class="setting-item" style="margin-top: 8px;">
-                            <div style="text-align: left;">
-                                <label for="shareClientTaxInvoicesToggle">거래처 세금계산서 공유</label>
-                                <p style="font-size: 0.75rem; color: var(--sub-text-color); margin-top: 4px;">내가 운송한 거래처별 세금계산서 내역을 연결된 사장님이 확인할 수 있도록 허용합니다.</p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="shareClientTaxInvoicesToggle" onchange="toggleShareClientTaxInvoicesWithOwner(this.checked)">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-
                         <button type="button" class="personal-role-change-btn" onclick="runSaveAction(this, 'resync-driver-workdata', resyncEmployedDriverWorkData)">과거 기록 다시 동기화</button>
                         <button type="button" class="personal-role-change-btn danger" onclick="disconnectEmployedDriver()">연동 해제</button>
                     </div>
@@ -974,15 +959,31 @@
         <div id="linkedDriverManagementPage" class="page hidden">
             <div class="settings-header">
                 <button class="icon-btn" onclick="returnToDriverConnectionManagement()" title="뒤로가기"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-                <div class="settings-title" id="linkedDriverManagementTitle">기사 기록 관리</div>
+                <div class="settings-title" id="linkedDriverManagementTitle">기사 관리</div>
                 <div style="width: 40px;"></div>
             </div>
             <section id="linkedDriverProfileCard" class="linked-driver-profile-card"></section>
-            <div class="linked-driver-readonly-notice"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg><span>기사님이 작성한 기록은 조회만 가능하며 수정·삭제할 수 없습니다.</span></div>
-            <div class="linked-driver-month-row"><label for="linkedDriverRecordMonth">조회 월</label><input type="month" id="linkedDriverRecordMonth" class="input-box" onchange="renderLinkedDriverRecords()"></div>
 
-            <!-- 기사 정산: 차주가 기사에게 지급할 금액 근거. 거래처 계산서 공유 권한과 무관하게
-                 항상 표시된다(§9, §13, §19) — 절대 이 영역을 공유 스위치로 가리면 안 된다. -->
+            <div class="linked-driver-chip-row">
+                <button type="button" class="linked-driver-chip" onclick="showLinkedDriverClientsPage()">거래처</button>
+                <button type="button" class="linked-driver-chip" onclick="showLinkedDriverBillingPage()">정산·계산서 설정</button>
+                <button type="button" class="linked-driver-chip" onclick="showLinkedDriverDetailSettingsSoon()">상세 설정</button>
+            </div>
+
+            <div class="date-navigator" style="margin: 14px 0;">
+                <button class="arrow-btn" onclick="changeLinkedDriverRecordMonth(-1)" title="이전 달">
+                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="date-select-group">
+                    <select id="linkedDriverRecordYearSelect" class="date-select" data-app-dropdown onchange="changeLinkedDriverRecordYearMonth()"></select>
+                    <select id="linkedDriverRecordMonthSelect" class="date-select" data-app-dropdown onchange="changeLinkedDriverRecordYearMonth()"></select>
+                </div>
+                <button class="arrow-btn" onclick="changeLinkedDriverRecordMonth(1)" title="다음 달">
+                    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            </div>
+
+            <!-- 기사 정산: 차주가 기사에게 지급할 금액 근거. 항상 표시된다(§9, §13, §19). -->
             <section class="tax-invoice-summary" id="linkedDriverSettlementSummary">
                 <div class="summary-title"><span>기사 정산</span><span id="linkedDriverRecordCount">0건</span></div>
                 <div class="summary-row"><span>총 운송료</span><span class="summary-value" id="linkedDriverRecordFare">0원</span></div>
@@ -990,14 +991,48 @@
                 <div class="summary-row"><span>산재보험</span><span class="summary-value" id="linkedDriverInsuranceAmount">-0원</span></div>
                 <div class="summary-row total"><span>최종 정산액</span><span class="summary-value" id="linkedDriverFinalAmount">0원</span></div>
             </section>
-            <button type="button" class="driver-invite-reset" id="linkedDriverTripDetailToggleBtn" style="margin: 8px 0;" onclick="toggleLinkedDriverTripDetail()">운송 상세내역 보기</button>
-            <div id="linkedDriverRecordList" class="linked-driver-record-list hidden"></div>
 
-            <!-- 거래처별 세금계산서: 기사 본인이 "거래처 세금계산서 공유"를 켠 경우에만 표시된다
-                 (§6~9, §21) — 기사 정산과는 완전히 별개 영역이다. -->
+            <!-- 거래처별 세금계산서: 항상 표시된다(예전엔 기사가 켜는 공유 스위치가 있어야만
+                 보였는데, 계산서 처리 방식별 조회/관리 권한 체계로 대체돼서 그 스위치 자체가
+                 없어졌다). -->
             <section class="driver-list-section" style="margin-top: 18px;">
                 <div class="driver-section-heading"><div><h3>거래처 세금계산서</h3><p>이 기사가 실제로 운송한 거래처별 매출입니다.</p></div></div>
                 <div id="linkedDriverClientInvoiceArea"></div>
+            </section>
+        </div>
+
+        <!-- [기사 관리 - 거래처] 계산서 처리 방식에 따라 차주가 직접 등록/수정하거나(직원기사·
+             회사 정산), 기사 본인 계정 거래처를 조회만 한다(기사 직접 정산). -->
+        <div id="linkedDriverClientsPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="returnToLinkedDriverManagement()" title="뒤로가기"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                <div class="settings-title" id="linkedDriverClientsPageTitle">거래처</div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div id="linkedDriverClientsListContainer"></div>
+            <div class="management-add-wrap" id="linkedDriverClientsAddWrap">
+                <button type="button" class="management-add-fab" onclick="addLinkedDriverClient()">+ 추가</button>
+            </div>
+        </div>
+
+        <!-- [기사 관리 - 정산·계산서 설정] 이 기사(차량) 전용 계산서 처리 방식. 마이페이지의
+             계정 전체 기본값(정산·계산서 설정)과는 별개다 — 여긴 이 차량 하나만 바꾼다. -->
+        <div id="linkedDriverBillingPage" class="page hidden">
+            <div class="settings-header">
+                <button class="icon-btn" onclick="returnToLinkedDriverManagement()" title="뒤로가기"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                <div class="settings-title">정산·계산서 설정</div>
+                <div style="width: 40px;"></div>
+            </div>
+            <section class="billing-settings-card">
+                <label for="linkedDriverBillingModeSelect">이 기사(차량)의 계산서 처리 방식</label>
+                <select id="linkedDriverBillingModeSelect" class="input-box" data-app-dropdown onchange="saveLinkedDriverBillingMode()">
+                    <option value="default">사용자 기본 설정 사용</option>
+                    <option value="company">회사 정산</option>
+                    <option value="driver_direct">기사 직접 정산</option>
+                    <option value="employee">직원 기사</option>
+                    <option value="none">계산서 미사용</option>
+                </select>
+                <div id="linkedDriverBillingModeGuide" class="billing-settings-guide"></div>
             </section>
         </div>
 

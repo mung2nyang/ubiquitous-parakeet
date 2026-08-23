@@ -2380,6 +2380,9 @@ body.account-flow-active #sideMenuOverlay {
 .linked-driver-profile-card em.active { background:color-mix(in srgb,#40a36f 14%,var(--card-bg)); color:#268a57; }
 .linked-driver-profile-card em.scheduled { color:var(--primary-color); }
 .linked-driver-avatar { display:grid; place-items:center; width:42px; height:42px; border-radius:13px; background:color-mix(in srgb,var(--primary-color) 13%,var(--input-bg)); color:var(--primary-color); font-size:var(--fs-3); font-weight:900; }
+.linked-driver-chip-row { display:flex; gap:8px; margin-top:12px; }
+.linked-driver-chip { flex:1; border:1px solid var(--border-color); background-color:var(--input-bg); color:var(--sub-text-color); border-radius:10px; padding:11px 8px; font-size:var(--fs-3); font-weight:700; cursor:pointer; }
+
 .linked-driver-readonly-notice { display:flex; align-items:flex-start; gap:8px; margin-top:9px; padding:10px 11px; border-radius:12px; background:var(--input-bg); color:var(--sub-text-color); font-size:var(--fs-floor); line-height:1.45; }
 .linked-driver-readonly-notice svg { flex:none; width:17px; height:17px; fill:none; stroke:var(--primary-color); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .linked-driver-month-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; padding:10px 12px; border:1px solid var(--border-color); border-radius:13px; background:var(--card-bg); }
@@ -2400,7 +2403,6 @@ body.account-flow-active #sideMenuOverlay {
 .linked-driver-client-trip-row { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--sub-text-color); font-size:var(--fs-floor); }
 .linked-driver-client-trip-row b { color:var(--text-color); flex:none; }
 .tax-invoice-card-actions.single-action { grid-template-columns:1fr; }
-.tax-invoice-card-actions.two-action { grid-template-columns:1fr 1fr; }
 .personal-intro {
     position: relative;
     overflow: hidden;
@@ -6803,7 +6805,6 @@ body.pdf-export-mode .summary-row.total {
 .tax-invoice-card-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
 .tax-invoice-card-actions button { min-height:36px; padding:5px; border:1px solid var(--border-color); border-radius:11px; background:transparent; color:var(--sub-text-color); font-size:var(--fs-floor); font-weight:800; }
 .tax-invoice-card-actions button.primary { border-color:var(--primary-color); background:var(--primary-color); color:#fff; }
-.tax-invoice-card-actions button.needs-attention { border-color:var(--sunday-color); color:var(--sunday-color); }
 .tax-invoice-empty { display:flex; flex-direction:column; align-items:center; gap:5px; padding:34px 14px; border:1px dashed var(--border-color); border-radius:20px; background:var(--card-bg); color:var(--sub-text-color); text-align:center; }
 .tax-invoice-empty-mark { display:grid; place-items:center; width:34px; height:34px; margin-bottom:3px; border-radius:50%; background:var(--input-bg); color:var(--primary-color); font-size:var(--fs-6); font-weight:800; }
 .tax-invoice-empty strong { color:var(--text-color); font-size:var(--fs-floor); line-height:1.45; }

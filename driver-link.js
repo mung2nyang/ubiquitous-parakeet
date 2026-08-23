@@ -632,6 +632,38 @@ function getLinkedDriverClientInvoiceGroups(trips, car, ownerSettings) {
     return { groups, unassignedCount };
 }
 
+// "기사 관리" 화면의 조회 월 상태. 화면에 들어갈 때마다 이번 달로 리셋한다(다른 기사로
+// 전환해도 지난달에 머물러 있지 않도록).
+let linkedDriverRecordViewDate = new Date();
+
+function initLinkedDriverRecordDateSelects() {
+    if (typeof populateYearMonthSelects === 'function') populateYearMonthSelects('linkedDriverRecordYearSelect', 'linkedDriverRecordMonthSelect');
+}
+
+function updateLinkedDriverRecordDateSelects() {
+    const yearSelect = document.getElementById('linkedDriverRecordYearSelect');
+    const monthSelect = document.getElementById('linkedDriverRecordMonthSelect');
+    if (!yearSelect || !monthSelect) return;
+    yearSelect.value = linkedDriverRecordViewDate.getFullYear();
+    monthSelect.value = linkedDriverRecordViewDate.getMonth();
+    yearSelect.parentElement?._dropdownSync?.();
+    monthSelect.parentElement?._dropdownSync?.();
+}
+
+function changeLinkedDriverRecordMonth(delta) {
+    linkedDriverRecordViewDate.setMonth(linkedDriverRecordViewDate.getMonth() + delta);
+    updateLinkedDriverRecordDateSelects();
+    renderLinkedDriverRecords();
+}
+
+function changeLinkedDriverRecordYearMonth() {
+    const y = parseInt(document.getElementById('linkedDriverRecordYearSelect').value, 10);
+    const m = parseInt(document.getElementById('linkedDriverRecordMonthSelect').value, 10);
+    linkedDriverRecordViewDate.setFullYear(y);
+    linkedDriverRecordViewDate.setMonth(m);
+    renderLinkedDriverRecords();
+}
+
 function showLinkedDriverManagement(id, encoded = false) {
     const linkId = encoded ? decodeURIComponent(id) : id;
     const link = getLinkedDriverById(linkId);
@@ -640,22 +672,20 @@ function showLinkedDriverManagement(id, encoded = false) {
         return;
     }
     activeLinkedDriverId = link.id;
-    linkedDriverTripDetailOpen = false;
     hideAllPages();
     document.getElementById('linkedDriverManagementPage').classList.remove('hidden');
-    document.getElementById('linkedDriverManagementTitle').textContent = `${getShortCarNum(link.vehicleNumber)} 관리`;
+    document.getElementById('linkedDriverManagementTitle').textContent = `${escapeDetailText(link.driverName || '기사')} 기사 관리`;
     const assignment = getAssignmentState(link);
     document.getElementById('linkedDriverProfileCard').innerHTML = `<div><span class="linked-driver-avatar">${escapeDetailText((link.driverName || '기').slice(0, 1))}</span><span><strong>${escapeDetailText(link.driverName || '기사')}</strong><small>${escapeDetailText(link.phone || '연락처 없음')}</small></span></div><div><span>${escapeDetailText(link.vehicleNumber || '차량 미지정')}</span><em class="${assignment.key}">${assignment.label}</em></div>`;
-    const monthInput = document.getElementById('linkedDriverRecordMonth');
-    if (monthInput && !monthInput.value) {
-        const now = new Date();
-        monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    }
+
+    if (!document.getElementById('linkedDriverRecordYearSelect')?.options.length) initLinkedDriverRecordDateSelects();
+    linkedDriverRecordViewDate = new Date();
+    updateLinkedDriverRecordDateSelects();
+
     renderLinkedDriverRecords();
     setActiveNav('main');
 
-    // 거래처 세금계산서 공유 권한은 기사가 언제든 켜고 끌 수 있으므로, 화면에 들어올 때마다
-    // 서버 기준으로 다시 확인한다(§21 — 다음 화면 진입/새로고침 시 즉시 반영).
+    // 연동 상태/거래처 데이터가 최신인지 화면에 들어갈 때마다 서버 기준으로 다시 확인한다.
     if (typeof syncDriverLinksFromSupabase === 'function') {
         syncDriverLinksFromSupabase().then(() => {
             if (activeLinkedDriverId === link.id && !document.getElementById('linkedDriverManagementPage')?.classList.contains('hidden')) {
@@ -665,14 +695,15 @@ function showLinkedDriverManagement(id, encoded = false) {
     }
 }
 
-// "운송 상세내역 보기" 펼침 상태(§2) — 기사 정산 총액의 근거 목록을 기본은 접어 두고,
-// 필요할 때만 펼쳐서 본다.
-let linkedDriverTripDetailOpen = false;
-function toggleLinkedDriverTripDetail() {
-    linkedDriverTripDetailOpen = !linkedDriverTripDetailOpen;
-    document.getElementById('linkedDriverRecordList')?.classList.toggle('hidden', !linkedDriverTripDetailOpen);
-    const btn = document.getElementById('linkedDriverTripDetailToggleBtn');
-    if (btn) btn.textContent = linkedDriverTripDetailOpen ? '운송 상세내역 접기' : '운송 상세내역 보기';
+function returnToLinkedDriverManagement() {
+    if (!activeLinkedDriverId) { showMain(); return; }
+    hideAllPages();
+    document.getElementById('linkedDriverManagementPage').classList.remove('hidden');
+    setActiveNav('main');
+}
+
+function showLinkedDriverDetailSettingsSoon() {
+    showToastMessage('상세설정은 구상중으로 빠르게 업데이트예정입니다.');
 }
 
 // 거래처 카드 펼침/접힘(§16) — 카드마다 독립적으로 상세 운송 건을 열어볼 수 있다.
@@ -720,10 +751,8 @@ async function fetchLinkedDriverRecordData(link) {
 
 async function renderLinkedDriverRecords() {
     const link = getLinkedDriverById(activeLinkedDriverId);
-    const list = document.getElementById('linkedDriverRecordList');
-    if (!link || !list) return;
-    list.innerHTML = '<div class="linked-driver-empty">불러오는 중...</div>';
-    const month = document.getElementById('linkedDriverRecordMonth')?.value || '';
+    if (!link) return;
+    const month = `${linkedDriverRecordViewDate.getFullYear()}-${String(linkedDriverRecordViewDate.getMonth() + 1).padStart(2, '0')}`;
     const data = await fetchLinkedDriverRecordData(link);
     // 조회하는 동안 화면을 벗어났거나 다른 기사로 바뀌었으면 반영하지 않는다.
     if (getLinkedDriverById(activeLinkedDriverId)?.id !== link.id || document.getElementById('linkedDriverManagementPage')?.classList.contains('hidden')) return;
@@ -739,137 +768,223 @@ async function renderLinkedDriverRecords() {
     document.getElementById('linkedDriverInsuranceAmount').textContent = `-${detail.insuranceAmount.toLocaleString()}원`;
     document.getElementById('linkedDriverFinalAmount').textContent = `${detail.finalAmount.toLocaleString()}원`;
 
-    if (!detail.trips.length) {
-        list.innerHTML = '<div class="linked-driver-empty">선택한 달에 작성된 운행 기록이 없습니다.</div>';
-    } else {
-        list.innerHTML = detail.trips.map(trip => {
-            const [, monthPart, dayPart] = trip.dateKey.split('-');
-            const dateLabel = `${parseInt(monthPart, 10)}월 ${parseInt(dayPart, 10)}일`;
-            if (trip.type === 'fixed') {
-                return `<article class="linked-driver-record-card"><div><strong>${dateLabel}</strong><span>고정노선 ${trip.fixedCount || ''}건</span></div><p>거래처/상하차지 구분 없는 고정노선 운행입니다.</p><b>${trip.fare.toLocaleString()}원</b></article>`;
-            }
-            const badges = [
-                trip.platform ? `플랫폼 ${trip.platform}` : '',
-                trip.distanceKm ? `${trip.distanceKm}km` : '',
-                trip.cargoTonnage ? `${trip.cargoTonnage}` : '',
-                trip.paymentDueDate ? `입금예정 ${trip.paymentDueDate}` : '',
-                trip.vatExempt ? '부가세 면세' : ''
-            ].filter(Boolean).join(' · ');
-            return `<article class="linked-driver-record-card"><div><strong>${dateLabel}</strong><span>${escapeDetailText(trip.client || '거래처 미지정')}</span></div><p>${escapeDetailText(trip.loadLoc || '상차지')} → ${escapeDetailText(trip.unloadLoc || '하차지')}${badges ? `<br><small>${escapeDetailText(badges)}</small>` : ''}${trip.remarks ? `<br><small>${escapeDetailText(trip.remarks)}</small>` : ''}</p><b>${trip.fare.toLocaleString()}원</b></article>`;
-        }).join('');
-    }
-
-    // ---------- 거래처별 세금계산서 (기사 공유 ON일 때만, §6~9/§21) ----------
-    // 원칙: "차주의 거래처는 차주 것, 기사의 거래처는 기사 것" — 절대 한쪽 목록에 다른
-    // 쪽 데이터를 섞어 넣지 않는다. 계산서 처리 방식에 따라 관리 권한이 정반대로 갈린다:
-    //  - 직원기사(employee): 차주가 전부 처리하는 방식이므로, 차주가 이 화면에서 직접
-    //    거래처 사업자정보를 등록/수정한다. 단 그 데이터는 차주의 일반 "거래처관리" 화면과
-    //    섞이지 않도록 이 차량 전용으로 태그해서 별도로만 보여준다(아래 renderEmployeeManagedClients).
-    //  - 기사 직접 정산(driver_direct): 기사 본인 계정이 실제 주인이라, 차주는 조회만
-    //    한다 — 기사의 clients 행을 그때그때 읽어오기만 하고 차주의 로컬에는 저장하지 않는다
-    //    (아래 renderDriverOwnedClientsReadOnly).
+    // ---------- 거래처별 세금계산서 (항상 표시) ----------
+    // 등록/수정은 이제 이 화면이 아니라 "거래처" 칩(showLinkedDriverClientsPage)에서만
+    // 한다 — 여기는 순수 조회용 요약 카드다. 예전엔 기사가 켜는 공유 스위치가 있어야만
+    // 보였는데, 계산서 처리 방식별 권한 체계로 대체돼서 그 스위치 자체가 없어졌다.
     const invoiceArea = document.getElementById('linkedDriverClientInvoiceArea');
     if (!invoiceArea) return;
-    if (!isSharingClientTaxInvoicesWithOwner(link)) {
-        invoiceArea.innerHTML = '<div class="linked-driver-empty">기사의 거래처 세금계산서 공유가 설정되어 있지 않습니다.</div>';
-        return;
-    }
     const { groups, unassignedCount } = getLinkedDriverClientInvoiceGroups(detail.trips, car, ownerSettings);
     if (!groups.length) {
         invoiceArea.innerHTML = `<div class="linked-driver-empty">선택한 달에 거래처가 연결된 운송 기록이 없습니다.${unassignedCount ? ` (거래처 미지정 운행 ${unassignedCount}건)` : ''}</div>`;
         return;
     }
     const noticeHtml = unassignedCount ? `<p class="linked-driver-readonly-notice" style="margin-bottom:8px;"><span>거래처 미지정 운행 ${unassignedCount}건은 계산서 대상에서 제외됐습니다.</span></p>` : '';
-
-    const settlementMode = typeof getEffectiveDriverSettlementMode === 'function' ? getEffectiveDriverSettlementMode(car, ownerSettings) : (car?.settlementMode || '');
-    if (settlementMode === 'driver_direct') {
-        await renderDriverOwnedClientsReadOnly(invoiceArea, noticeHtml, groups, link);
-    } else {
-        renderEmployeeManagedClients(invoiceArea, noticeHtml, groups, car, ownerSettings);
-    }
-}
-
-// "직원기사" 모드 전용 카드 목록. 이 차량(car.number)에 한해서만 등록/수정 가능하게 하려고,
-// 클라이언트 객체에 scopedToVehicleNumber 태그를 붙여 저장한다 — settings.clients에 같이
-// 들어가긴 하지만(차주 본인 계정 소유이므로 저장소를 따로 둘 필요는 없다), 이 태그가 있는
-// 항목은 renderClientList()(client-management.js, 차주의 일반 "거래처관리" 화면)에서 항상
-// 걸러내서 절대 섞여 보이지 않게 한다 — 그래야 "차주 거래처"와 "이 기사 전용 거래처"가
-// 화면상 완전히 분리된다.
-function renderEmployeeManagedClients(invoiceArea, noticeHtml, groups, car, ownerSettings) {
-    const ownerClients = Array.isArray(ownerSettings.clients) ? ownerSettings.clients : (ownerSettings.clients = []);
-    const scopeKey = car?.number || '';
-    let addedNewClient = false;
-    groups.forEach(g => {
-        if (!ownerClients.some(c => c.companyName === g.clientName && c.scopedToVehicleNumber === scopeKey)) {
-            ownerClients.push({ id: generateLocalId('client'), companyName: g.clientName, scopedToVehicleNumber: scopeKey });
-            addedNewClient = true;
-        }
-    });
-    if (addedNewClient) setUserSettings(ownerSettings);
-
     invoiceArea.innerHTML = noticeHtml + groups.map(g => {
         const key = encodeURIComponent(g.clientName);
+        // vehicleLabel에 이미 "사업자명 · 차량번호"가 포함돼 있으므로(별도 사업자 차량의
+        // 경우) 이름을 또 붙이면 중복 표시된다 — vehicleLabel 하나만 쓴다.
         const supplierLabel = g.vehicleLabel || g.supplierBiz?.name || '';
         const tripRows = g.trips.map(t => `<div class="linked-driver-client-trip-row"><span>${escapeDetailText(t.dateKey.slice(5).replace('-', '/'))} ${escapeDetailText(t.loadLoc || '상차지')} → ${escapeDetailText(t.unloadLoc || '하차지')}</span><b>${t.fare.toLocaleString()}원</b></div>`).join('');
-        const registeredClient = ownerClients.find(c => c.companyName === g.clientName && c.scopedToVehicleNumber === scopeKey);
-        const needsBizInfo = !registeredClient?.bizNumber;
-        const manageLabel = needsBizInfo ? '⚠ 사업자정보 등록' : '거래처 수정';
         return `<article class="tax-invoice-card">
             <div class="tax-invoice-card-head"><div><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건${supplierLabel ? ` · ${escapeDetailText(supplierLabel)}` : ''}</span></div></div>
             <div class="tax-invoice-card-money"><span>공급가액 <b>${g.supplyAmount.toLocaleString()}원</b></span><span>세액 <b>${g.taxAmount.toLocaleString()}원</b></span><strong><small>합계</small>${g.totalAmount.toLocaleString()}원</strong></div>
-            <div class="tax-invoice-card-actions two-action"><button type="button" class="${needsBizInfo ? 'needs-attention' : ''}" onclick="manageLinkedDriverClient('${key}', '${encodeURIComponent(scopeKey)}')">${manageLabel}</button><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
+            <div class="tax-invoice-card-actions single-action"><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
             <div id="linkedClientTrips_${key}" class="linked-driver-client-trip-list hidden">${tripRows}</div>
         </article>`;
     }).join('');
 }
 
-// "기사 직접 정산" 모드 전용 — 기사 본인 계정의 clients 행을 그때그때 읽어와 보여주기만 한다.
-// 여기서 읽어온 값은 화면 렌더링에만 쓰고 setUserSettings()로 차주 로컬에 저장하지 않는다 —
-// 저장하는 순간 "차주 거래처"와 섞이게 된다.
-async function renderDriverOwnedClientsReadOnly(invoiceArea, noticeHtml, groups, link) {
-    const driverClients = typeof fetchDriverOwnClientsFromSupabase === 'function' ? await fetchDriverOwnClientsFromSupabase(link.driverId) : [];
-    invoiceArea.innerHTML = `<p class="linked-driver-readonly-notice" style="margin-bottom:8px;"><span>기사 직접 정산 모드에서는 거래처를 기사 본인이 관리하며, 차주는 조회만 할 수 있습니다.</span></p>`
-        + noticeHtml
-        + groups.map(g => {
-            const key = encodeURIComponent(g.clientName);
-            const tripRows = g.trips.map(t => `<div class="linked-driver-client-trip-row"><span>${escapeDetailText(t.dateKey.slice(5).replace('-', '/'))} ${escapeDetailText(t.loadLoc || '상차지')} → ${escapeDetailText(t.unloadLoc || '하차지')}</span><b>${t.fare.toLocaleString()}원</b></div>`).join('');
-            const registered = driverClients.find(c => c.companyName === g.clientName);
-            const bizNumberLabel = registered?.bizNumber ? escapeDetailText(registered.bizNumber) : '기사 미등록';
-            return `<article class="tax-invoice-card">
-                <div class="tax-invoice-card-head"><div><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건 · 사업자번호 ${bizNumberLabel}</span></div></div>
-                <div class="tax-invoice-card-money"><span>공급가액 <b>${g.supplyAmount.toLocaleString()}원</b></span><span>세액 <b>${g.taxAmount.toLocaleString()}원</b></span><strong><small>합계</small>${g.totalAmount.toLocaleString()}원</strong></div>
-                <div class="tax-invoice-card-actions single-action"><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
-                <div id="linkedClientTrips_${key}" class="linked-driver-client-trip-list hidden">${tripRows}</div>
-            </article>`;
-        }).join('');
+// ============================================================================
+// "기사 관리" 화면의 "거래처" 칩 — 계산서 처리 방식별로 관리 권한이 정반대로 갈린다
+// (원칙: "차주의 거래처는 차주 것, 기사의 거래처는 기사 것", 절대 섞지 않는다):
+//  - 직원기사/회사 정산/기본값: 차주가 전부 처리하는 방식이므로, 이 화면에서 차주가 직접
+//    거래처를 등록/수정/삭제한다. 단 scopedToVehicleNumber 태그를 붙여서, 차주 본인 계정
+//    소유이면서도 일반 "거래처관리" 화면·자동완성·즐겨찾기 어디에도 섞여 보이지 않는다.
+//  - 기사 직접 정산: 기사 본인 계정이 실제 주인이므로, 차주는 조회만 한다 — 기사의
+//    clients 행을 그때그때 Supabase에서 읽어오기만 하고 차주 로컬에는 절대 저장하지 않는다.
+// ============================================================================
+
+function showLinkedDriverClientsPage() {
+    const link = getLinkedDriverById(activeLinkedDriverId);
+    if (!link) return;
+    hideAllPages();
+    document.getElementById('linkedDriverClientsPage').classList.remove('hidden');
+    document.getElementById('linkedDriverClientsPageTitle').textContent = `${escapeDetailText(link.driverName || '기사')} 거래처`;
+    renderLinkedDriverClientsPage();
 }
 
-// "직원기사" 카드의 "거래처 등록/수정" 버튼 — 그 거래처를 차주의 거래처관리 모달로 그대로
-// 연다(renderEmployeeManagedClients가 화면에 들어올 때마다 미리 빈 정보로 등록해 두므로
-// 인덱스가 항상 존재한다). client-management.js의 openClientModal/saveClient를 그대로
-// 재사용한다 — 모달은 페이지 이동 없이 지금 화면(기사 기록 관리) 위에 그냥 뜨고 닫히므로
-// 별도 처리가 필요 없다. 저장 후에는 이 화면을 다시 그려서 방금 채운 사업자정보를 카드에
-// 반영한다.
-function manageLinkedDriverClient(encodedName, encodedScopeKey) {
-    if (typeof openClientModal !== 'function') return;
-    const name = decodeURIComponent(encodedName);
-    const scopeKey = decodeURIComponent(encodedScopeKey || '');
-    const settings = getUserSettings();
-    const index = (settings.clients || []).findIndex(c => c.companyName === name && c.scopedToVehicleNumber === scopeKey);
-    if (index < 0) { showToastMessage('거래처를 찾을 수 없습니다.'); return; }
-    openClientModal(index);
+async function renderLinkedDriverClientsPage() {
+    const link = getLinkedDriverById(activeLinkedDriverId);
+    const container = document.getElementById('linkedDriverClientsListContainer');
+    const addWrap = document.getElementById('linkedDriverClientsAddWrap');
+    if (!link || !container) return;
+    const ownerSettings = getUserSettings();
+    const car = (ownerSettings.cars || []).find(c => c.number === link.vehicleNumber) || null;
+    const mode = typeof getEffectiveDriverSettlementMode === 'function' ? getEffectiveDriverSettlementMode(car, ownerSettings) : (car?.settlementMode || '');
 
-    // saveClient()는 clientModalOpenedFromCallDetail일 때만 호출부에 알려주는 후처리를 하므로,
-    // 여기서는 모달이 닫힐 때(저장 또는 취소 모두) 이 화면을 다시 그려서 최신 상태를 반영한다.
+    if (mode === 'driver_direct') {
+        addWrap?.classList.add('hidden');
+        container.innerHTML = '<div class="empty-state">불러오는 중...</div>';
+        const driverClients = typeof fetchDriverOwnClientsFromSupabase === 'function' ? await fetchDriverOwnClientsFromSupabase(link.driverId) : [];
+        if (getLinkedDriverById(activeLinkedDriverId)?.id !== link.id || document.getElementById('linkedDriverClientsPage')?.classList.contains('hidden')) return;
+        if (!driverClients.length) {
+            container.innerHTML = '<div class="empty-state">기사가 등록한 거래처가 없습니다.</div>';
+            return;
+        }
+        container.innerHTML = `<p class="linked-driver-readonly-notice" style="margin-bottom:10px;"><span>기사 직접 정산 모드에서는 거래처를 기사 본인이 관리하며, 차주는 조회만 할 수 있습니다.</span></p>`
+            + driverClients.map(c => `
+                <div class="car-card management-list-card client-list-card client-readonly-card">
+                    <div class="management-card-inner">
+                        <div class="client-card-copy">
+                            <div class="client-card-title"><strong>${escapeDetailText(c.companyName)}</strong>${c.managerName ? `<span>${escapeDetailText(c.managerName)} 담당</span>` : ''}</div>
+                            <div class="car-sub-text"><span>사업자 ${escapeDetailText(c.bizNumber || '-')}</span></div>
+                        </div>
+                    </div>
+                </div>`).join('');
+        return;
+    }
+
+    // 직원기사/회사 정산/기본값: 차주가 직접 관리. 이 차량(car.number) 전용으로 태그된
+    // 것만 이 화면에 보인다.
+    addWrap?.classList.remove('hidden');
+    const scopeKey = car?.number || '';
+
+    // 기사가 운행기록에 입력한 거래처명 중 아직 등록 안 된 게 있으면 빈 정보로 미리
+    // 만들어 둔다 — 안 그러면 기사가 이름을 써도 이 화면에 아예 안 뜨고, saveClient()가
+    // 참조할 인덱스도 없어서 "+ 추가"로 매번 새로 입력해야 한다. 지금 조회 중인 달 기준으로
+    // 확인한다(이 화면엔 별도 월 선택이 없다 — "기사 관리" 화면과 같은 달을 공유한다).
+    const month = `${linkedDriverRecordViewDate.getFullYear()}-${String(linkedDriverRecordViewDate.getMonth() + 1).padStart(2, '0')}`;
+    const tripData = await fetchLinkedDriverRecordData(link);
+    if (getLinkedDriverById(activeLinkedDriverId)?.id !== link.id || document.getElementById('linkedDriverClientsPage')?.classList.contains('hidden')) return;
+    const trips = flattenLinkedDriverTrips(tripData, month, link);
+    const clientNames = [...new Set(trips.filter(t => t.type === 'call' && t.client).map(t => t.client))];
+    if (!Array.isArray(ownerSettings.clients)) ownerSettings.clients = [];
+    let addedNewClient = false;
+    clientNames.forEach(name => {
+        if (!ownerSettings.clients.some(c => c.companyName === name && c.scopedToVehicleNumber === scopeKey)) {
+            ownerSettings.clients.push({ id: generateLocalId('client'), companyName: name, scopedToVehicleNumber: scopeKey });
+            addedNewClient = true;
+        }
+    });
+    if (addedNewClient) setUserSettings(ownerSettings);
+
+    const scopedClients = (ownerSettings.clients || []).filter(c => c.scopedToVehicleNumber === scopeKey);
+    if (!scopedClients.length) {
+        container.innerHTML = '<div class="empty-state">등록된 거래처가 없습니다.</div>';
+        return;
+    }
+    container.innerHTML = scopedClients.map(c => {
+        const idx = ownerSettings.clients.indexOf(c);
+        return `<div class="car-card management-list-card client-list-card">
+            <div class="management-card-inner">
+                <div class="client-card-copy">
+                    <div class="client-card-title"><strong>${escapeDetailText(c.companyName)}</strong>${c.managerName ? `<span>${escapeDetailText(c.managerName)} 담당</span>` : ''}</div>
+                    <div class="car-sub-text"><span>사업자 ${escapeDetailText(c.bizNumber || '-')}</span><span>연락처 ${escapeDetailText(c.phone || '-')}</span></div>
+                </div>
+                <div class="car-action-btns">
+                    <button type="button" class="action-icon-btn" onclick="openLinkedDriverClientEditor(${idx})" title="수정">${typeof editDetailSvg === 'function' ? editDetailSvg() : '수정'}</button>
+                    <button type="button" class="action-icon-btn del" onclick="deleteLinkedDriverClient(${idx})" title="삭제">${typeof deleteDetailSvg === 'function' ? deleteDetailSvg() : '삭제'}</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// "+ 추가" 버튼 — 이 차량 전용 태그가 붙은 빈 거래처를 하나 만들고 바로 등록 모달을 연다.
+function addLinkedDriverClient() {
+    const link = getLinkedDriverById(activeLinkedDriverId);
+    if (!link) return;
+    const ownerSettings = getUserSettings();
+    const car = (ownerSettings.cars || []).find(c => c.number === link.vehicleNumber) || null;
+    if (!Array.isArray(ownerSettings.clients)) ownerSettings.clients = [];
+    ownerSettings.clients.push({ id: generateLocalId('client'), companyName: '', scopedToVehicleNumber: car?.number || '' });
+    setUserSettings(ownerSettings);
+    openLinkedDriverClientEditor(ownerSettings.clients.length - 1);
+}
+
+// client-management.js의 openClientModal/saveClient를 그대로 재사용한다 — 모달은 페이지
+// 이동 없이 지금 화면 위에 그냥 뜨고 닫히므로 별도 처리가 필요 없다. 닫힐 때(저장/취소
+// 모두) 이 화면을 다시 그려서 최신 상태를 반영한다.
+function openLinkedDriverClientEditor(index) {
+    if (typeof openClientModal !== 'function') return;
+    openClientModal(index);
     const modal = document.getElementById('clientModal');
     if (!modal) return;
     const observer = new MutationObserver(() => {
         if (modal.classList.contains('hidden')) {
             observer.disconnect();
-            renderLinkedDriverRecords();
+            renderLinkedDriverClientsPage();
         }
     });
     observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+}
+
+// client-management.js의 deleteClient()를 그대로 쓰지 않는 이유: 그 함수는 삭제 후 일반
+// "거래처관리" 화면(renderClientList)을 다시 그리는데, 여기서는 이 화면(거래처 칩)을
+// 다시 그려야 한다 — 삭제는 확인 모달의 콜백 안에서(사용자가 실제로 확인을 눌러야) 일어나는
+// 비동기 흐름이라 단순 setTimeout으로 순서를 맞출 수 없어 별도로 작성했다.
+function deleteLinkedDriverClient(index) {
+    showConfirmModal('해당 거래처를 삭제하시겠습니까?', () => {
+        const settings = getUserSettings();
+        if (!settings.clients || !settings.clients[index]) return;
+        const deletedSupabaseId = settings.clients[index].supabaseId;
+        settings.clients.splice(index, 1);
+        setUserSettings(settings);
+        showToastMessage('삭제되었습니다.');
+        renderLinkedDriverClientsPage();
+        if (deletedSupabaseId && typeof deleteClientFromSupabase === 'function') {
+            deleteClientFromSupabase(deletedSupabaseId).catch(error => {
+                console.error('서버 거래처 삭제 실패(로컬 삭제는 반영됨, 다음 동기화 때 재확인 필요):', error);
+            });
+        }
+    });
+}
+
+// ============================================================================
+// "기사 관리" 화면의 "정산·계산서 설정" 칩 — 이 차량 하나만의 계산서 처리 방식.
+// 마이페이지의 계정 전체 기본값(defaultDriverSettlementMode)과는 별개다.
+// ============================================================================
+function showLinkedDriverBillingPage() {
+    const link = getLinkedDriverById(activeLinkedDriverId);
+    if (!link) return;
+    hideAllPages();
+    document.getElementById('linkedDriverBillingPage').classList.remove('hidden');
+    const ownerSettings = getUserSettings();
+    const car = (ownerSettings.cars || []).find(c => c.number === link.vehicleNumber) || null;
+    const select = document.getElementById('linkedDriverBillingModeSelect');
+    if (select) {
+        select.value = car?.settlementMode || 'default';
+        select.parentElement?._dropdownSync?.();
+    }
+    updateLinkedDriverBillingModeGuide();
+}
+
+function updateLinkedDriverBillingModeGuide() {
+    const guide = document.getElementById('linkedDriverBillingModeGuide');
+    const select = document.getElementById('linkedDriverBillingModeSelect');
+    if (!guide || !select) return;
+    if (select.value === 'default') {
+        const settings = getUserSettings();
+        const fallback = typeof getDriverSettlementModeMeta === 'function' ? getDriverSettlementModeMeta(settings.defaultDriverSettlementMode || 'company') : null;
+        guide.textContent = fallback ? `현재 계정 기본값(${fallback.label})을 따릅니다. ${fallback.description}` : '계정 기본값을 따릅니다.';
+    } else {
+        const meta = typeof getDriverSettlementModeMeta === 'function' ? getDriverSettlementModeMeta(select.value) : null;
+        guide.textContent = meta?.description || '';
+    }
+}
+
+function saveLinkedDriverBillingMode() {
+    const link = getLinkedDriverById(activeLinkedDriverId);
+    if (!link) return;
+    const select = document.getElementById('linkedDriverBillingModeSelect');
+    const settings = getUserSettings();
+    const car = (settings.cars || []).find(c => c.number === link.vehicleNumber);
+    if (!car) { showToastMessage('차량 정보를 찾을 수 없습니다.'); return; }
+    car.settlementMode = select.value;
+    setUserSettings(settings);
+    updateLinkedDriverBillingModeGuide();
+    showToastMessage('저장되었습니다.');
 }
 
 function renderEmployedDriverLinkState() {
@@ -880,27 +995,6 @@ function renderEmployedDriverLinkState() {
     if (!linked) return;
     document.getElementById('employerLinkedName').textContent = settings.employerLink.ownerName || '연동된 운송사';
     document.getElementById('employerLinkedMeta').textContent = [settings.employerLink.ownerPhone, settings.employerLink.inviteCode ? `초대 코드 ${settings.employerLink.inviteCode}` : ''].filter(Boolean).join(' · ');
-    const shareToggle = document.getElementById('shareClientTaxInvoicesToggle');
-    if (shareToggle) shareToggle.checked = isSharingClientTaxInvoicesWithOwner(settings);
-}
-
-// 기사 → 차주 "거래처별 세금계산서 공유" 권한. 차주가 차량 설정에서 켜는 "기사 월매출 조회"
-// (shareRevenueWithOwner, 기본 ON)와는 완전히 다른 별개의 값이다 — 이건 기사 본인이 켜고 끄는
-// 권한이고, 기본값은 개인정보 보호 원칙상 OFF다(값이 아예 없는 기존 기사 계정도 OFF로 취급).
-function isSharingClientTaxInvoicesWithOwner(settingsOrLink) {
-    return settingsOrLink?.shareClientTaxInvoicesWithOwner === true;
-}
-
-// profiles.settings(jsonb)에 실려서 기존 동기화 경로(setUserSettings → scheduleSupabaseSettingsSync
-// → syncSettingsToSupabase → buildSettingsJsonbPayload)로 그대로 서버에 저장된다 — 이 값만을
-// 위한 새 컬럼이나 새 동기화 로직을 따로 만들지 않는다. 차주 쪽은 이 값을 로컬(다른 사람의
-// localStorage)이 아니라 서버(연동된 기사의 profiles.settings)에서 읽어 판단한다
-// (syncDriverLinksFromSupabase 참고).
-function toggleShareClientTaxInvoicesWithOwner(checked) {
-    const settings = getUserSettings();
-    settings.shareClientTaxInvoicesWithOwner = !!checked;
-    setUserSettings(settings);
-    showToastMessage(checked ? '거래처 세금계산서 공유를 켰습니다.' : '거래처 세금계산서 공유를 껐습니다.');
 }
 
 // 실제 연결은 서버(redeem_driver_invite_code RPC)에서만 일어난다 — 전화번호만으로는

@@ -15,7 +15,11 @@
 // 거래처명만 보이면 돼" — 실제로 요청받은 동작). "기사 직접 정산" 모드는 반대로 기사 본인이
 // 실제 주인이라 평소처럼 전체 관리 권한을 그대로 준다.
 function isEmployeeModeReadOnlyClientView(settings) {
-    return settings.accountType === 'employed_driver' && settings.employerLink?.settlementMode === 'employee';
+    // "회사 정산"도 직원기사와 동일하게 취급한다 — 둘 다 차주가 전부 처리하는 방식이라
+    // 기사에게 등록/수정 권한을 줄 필요가 없고, 회사 정산은 거래처별 계약 조건을 기사에게
+    // 알리지 않아도 되는 경우가 많다는 요구사항까지 감안했다.
+    return settings.accountType === 'employed_driver'
+        && (settings.employerLink?.settlementMode === 'employee' || settings.employerLink?.settlementMode === 'company');
 }
 
 function showClientManagement(returnPage = 'main') {
