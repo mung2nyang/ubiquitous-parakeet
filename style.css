@@ -2382,10 +2382,15 @@ body.account-flow-active #sideMenuOverlay {
 .linked-driver-avatar { display:grid; place-items:center; width:42px; height:42px; border-radius:13px; background:color-mix(in srgb,var(--primary-color) 13%,var(--input-bg)); color:var(--primary-color); font-size:var(--fs-3); font-weight:900; }
 .linked-driver-chip-row { display:flex; gap:8px; margin:12px 0 18px; }
 .linked-driver-chip { flex:1; border:1px solid var(--border-color); background-color:var(--input-bg); color:var(--sub-text-color); border-radius:10px; padding:11px 8px; font-size:var(--fs-3); font-weight:700; cursor:pointer; }
-/* 월 네비게이터를 카드 상단에 바짝 붙인다(카드 자체 padding이 위에 이미 있어서, 그
-   위에 또 여백이 쌓이지 않도록 살짝 끌어올린다) — 칩 줄과 카드 사이 간격은 위 margin으로,
-   카드 안에서 네비게이터와 카드 상단 사이 간격은 이걸로 각각 따로 조정한다. */
-#linkedDriverSettlementSummary .date-navigator { margin-top:-6px; }
+/* 월 네비게이터가 카드 안에서 왼쪽에 붙어 있던 진짜 원인: .date-navigator 기본 규칙
+   안에 display:flex 선언 바로 다음에 display:inline-flex가 또 있어서(원본 CSS 자체의
+   중복 선언 — 나중 선언이 이김) 실제 렌더링은 항상 inline-flex였다. inline-flex는
+   내용물 크기만큼만 차지하는 인라인 박스라, 안쪽 justify-content:center는 "그 박스
+   내부" 정렬만 할 뿐 박스 자체는 부모 안에서 왼쪽에 그대로 남는다 — 그래서 아무리
+   justify-content를 만져도 왼쪽에 붙어 보였던 것. #maintManagementPage .date-navigator가
+   이미 쓰고 있는 것과 동일한 해법(너비를 명시하고 margin:auto로 그 박스 자체를 가운데로
+   보낸다)을 그대로 적용한다. */
+#linkedDriverSettlementSummary .date-navigator { display:flex; width:min(280px, 90%); margin:-6px auto 12px; }
 
 .linked-driver-readonly-notice { display:flex; align-items:flex-start; gap:8px; margin-top:9px; padding:10px 11px; border-radius:12px; background:var(--input-bg); color:var(--sub-text-color); font-size:var(--fs-floor); line-height:1.45; }
 .linked-driver-readonly-notice svg { flex:none; width:17px; height:17px; fill:none; stroke:var(--primary-color); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }

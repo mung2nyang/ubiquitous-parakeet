@@ -9,12 +9,16 @@
 // 무관하다.
 // ============================================================================
 
-// 소속기사는 계산서 처리 방식과 무관하게 거래처를 스스로 "등록"하지 않는다 — 정식 거래처
-// 등록/사업자정보 관리는 전부 차주가 "기사 관리" 화면의 거래처 칩에서 처리한다. 기사 본인
-// 계정에서는 지금까지 운행기록에 입력해 온 거래처명만 참고로 보이고, 유일하게 할 수 있는
-// 조작은 그 거래처를 본인의 "고정노선과 연동"에 쓸지 토글하는 것뿐이다(요청받은 동작).
-function isEmployedDriverAccount(settings) {
-    return settings.accountType === 'employed_driver';
+// 계산서 처리 방식별로 소속기사의 거래처 권한이 정반대로 갈린다:
+//  - 직원기사/회사 정산: 차주가 전부 처리하는 방식이라, 정식 거래처 등록/사업자정보 관리는
+//    차주가 "기사 관리" 화면의 거래처 칩에서 전담한다. 기사 본인 계정에서는 지금까지
+//    운행기록에 입력해 온 거래처명만 참고로 보이고, 유일하게 할 수 있는 조작은 그 거래처를
+//    본인의 "고정노선과 연동"에 쓸지 토글하는 것뿐이다.
+//  - 기사 직접 정산: 기사 본인이 실제 주인이므로, 평소(차주 계정)와 동일하게 거래처를
+//    직접 추가/수정/삭제할 수 있다 — 이 함수는 false를 반환해 아래 제한을 전부 건너뛴다.
+function isDriverManagedByOwnerForClients(settings) {
+    return settings.accountType === 'employed_driver'
+        && (settings.employerLink?.settlementMode === 'employee' || settings.employerLink?.settlementMode === 'company');
 }
 
 function showClientManagement(returnPage = 'main') {
@@ -22,7 +26,7 @@ function showClientManagement(returnPage = 'main') {
     hideAllPages();
     document.getElementById('clientManagementPage').classList.remove('hidden');
     const settings = getUserSettings();
-    document.querySelector('#clientManagementPage .management-add-wrap')?.classList.toggle('hidden', isEmployedDriverAccount(settings));
+    document.querySelector('#clientManagementPage .management-add-wrap')?.classList.toggle('hidden', isDriverManagedByOwnerForClients(settings));
     renderClientList();
 }
 
@@ -197,11 +201,13 @@ function renderClientList() {
     const container = document.getElementById('clientListContainer');
     container.innerHTML = '';
 
-    // 소속기사는 거래처를 새로 등록하거나 사업자정보를 수정할 권한이 없다 — 지금까지
-    // 운행기록에 쓴 거래처명만 보여주고, "수정" 버튼은 고정노선 연동 여부만 바꾸는 작은
-    // 모달을 연다(openDriverClientFixedRouteModal). 정렬/드래그도 안 하고 저장소도 그대로
-    // 둔다 — 훑어보기 + 고정노선 토글 전용 화면이다.
-    if (isEmployedDriverAccount(settings)) {
+    // 직원기사/회사 정산 모드의 소속기사는 거래처를 새로 등록하거나 사업자정보를 수정할
+    // 권한이 없다 — 지금까지 운행기록에 쓴 거래처명만 보여주고, "수정" 버튼은 고정노선
+    // 연동 여부만 바꾸는 작은 모달을 연다(openDriverClientFixedRouteModal). 정렬/드래그도
+    // 안 하고 저장소도 그대로 둔다 — 훑어보기 + 고정노선 토글 전용 화면이다. 기사 직접
+    // 정산 모드는 isDriverManagedByOwnerForClients가 false를 반환해 이 분기를 건너뛰고
+    // 아래 일반(차주와 동일한 전체 관리) 렌더링으로 그대로 이어진다.
+    if (isDriverManagedByOwnerForClients(settings)) {
         if (!clients.length) {
             container.innerHTML = '<div class="empty-state">등록된 거래처가 없습니다.</div>';
             return;
@@ -488,7 +494,7 @@ function openClientModalFromCallDetail() {
     // 콜상세 모달의 거래처 입력란 옆 "+ 추가" 버튼도 결국 이 함수를 거쳐 거래처 등록
     // 모달을 연다 — 거래처관리 화면의 "+ 추가"만 숨기고 이 경로를 막지 않으면, 소속기사가
     // 이 버튼으로 여전히 정식 거래처를 등록/수정할 수 있어 제한이 무의미해진다.
-    if (isEmployedDriverAccount(getUserSettings())) {
+    if (isDriverManagedByOwnerForClients(getUserSettings())) {
         showToastMessage('거래처 등록은 사장님 계정에서 관리합니다. 거래처명만 입력해 주세요.');
         return;
     }
