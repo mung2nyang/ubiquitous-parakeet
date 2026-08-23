@@ -296,9 +296,31 @@ async function syncSettingsToSupabase(settings) {
                 const { error } = await client.from('vehicles').update(row).eq('id', car.supabaseId);
                 if (error) throw error;
             } else {
-                const { data, error } = await client.from('vehicles').insert(row).select('id').single();
-                if (error) throw error;
-                car.supabaseId = data.id;
+                // 계정 전환 경합 등 어떤 경로로든 supabaseId를 잃어버린 채 여기 도달하면,
+                // 무작정 insert할 경우 서버에 같은 번호의 차량 행이 또 하나 생긴다 — 실제로
+                // 이 경로로 같은 차량 번호의 vehicles 행이 계속 쌓이는 사고가 반복 재현됐다
+                // (하루 새 같은 번호로 19건까지 쌓인 사례 확인). insert 전에 반드시 "이
+                // 계정에 같은 번호+같은 구분(main/sub)의 차량이 이미 있는지" 서버에서 한 번
+                // 더 확인해서, 있으면 그 행을 갱신해 흡수하고(중복 생성 방지), 정말 처음
+                // 만드는 차량일 때만 새로 insert한다.
+                const { data: existingRows, error: lookupError } = await client.from('vehicles')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('number', row.number)
+                    .eq('type', row.type)
+                    .order('id', { ascending: true })
+                    .limit(1);
+                if (lookupError) throw lookupError;
+                const existingId = existingRows && existingRows[0]?.id;
+                if (existingId) {
+                    const { error } = await client.from('vehicles').update(row).eq('id', existingId);
+                    if (error) throw error;
+                    car.supabaseId = existingId;
+                } else {
+                    const { data, error } = await client.from('vehicles').insert(row).select('id').single();
+                    if (error) throw error;
+                    car.supabaseId = data.id;
+                }
             }
         } catch (error) {
             console.error('vehicles 동기화 실패:', logId, error);
@@ -396,6 +418,23 @@ async function ensureVehicleSyncedToSupabase(car, index) {
         const { error } = await client.from('vehicles').update(row).eq('id', car.supabaseId);
         if (error) throw error;
         return car.supabaseId;
+    }
+    // syncSettingsToSupabase()와 같은 이유로, insert 전에 이미 같은 번호+구분의 차량이
+    // 서버에 있는지 한 번 더 확인해서 중복 생성을 막는다.
+    const { data: existingRows, error: lookupError } = await client.from('vehicles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('number', row.number)
+        .eq('type', row.type)
+        .order('id', { ascending: true })
+        .limit(1);
+    if (lookupError) throw lookupError;
+    const existingId = existingRows && existingRows[0]?.id;
+    if (existingId) {
+        const { error } = await client.from('vehicles').update(row).eq('id', existingId);
+        if (error) throw error;
+        car.supabaseId = existingId;
+        return existingId;
     }
     const { data, error } = await client.from('vehicles').insert(row).select('id').single();
     if (error) throw error;
@@ -1089,9 +1128,26 @@ async function migrateLocalDataToSupabase(userId) {
                 if (error) throw error;
                 vehicleId = car.supabaseId;
             } else {
-                const { data, error } = await client.from('vehicles').insert(row).select('id').single();
-                if (error) throw error;
-                vehicleId = data.id;
+                // syncSettingsToSupabase()와 같은 이유로, insert 전에 이미 같은 번호+구분의
+                // 차량이 서버에 있는지 한 번 더 확인해서 중복 생성을 막는다.
+                const { data: existingRows, error: lookupError } = await client.from('vehicles')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('number', row.number)
+                    .eq('type', row.type)
+                    .order('id', { ascending: true })
+                    .limit(1);
+                if (lookupError) throw lookupError;
+                const existingId = existingRows && existingRows[0]?.id;
+                if (existingId) {
+                    const { error } = await client.from('vehicles').update(row).eq('id', existingId);
+                    if (error) throw error;
+                    vehicleId = existingId;
+                } else {
+                    const { data, error } = await client.from('vehicles').insert(row).select('id').single();
+                    if (error) throw error;
+                    vehicleId = data.id;
+                }
                 car.supabaseId = vehicleId;
             }
             vehicleIdByLogId.set(logId, vehicleId);
