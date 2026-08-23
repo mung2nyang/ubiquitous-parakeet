@@ -725,7 +725,7 @@ async function syncWorkDataToSupabase(logId, data) {
 
 // ---------- taxInvoiceRecords(세금계산서 작성/발급 상태) <-> tax_invoices ----------
 // 세금계산서 Supabase 동기화 함수(resolveTaxInvoiceVehicleId, scheduleSupabaseTaxInvoiceSync,
-// syncTaxInvoiceToSupabase, initTaxInvoicesFromSupabase)는 tax-invoice-sync.js로 옮겼다
+// syncTaxInvoiceToSupabase, initTaxInvoicesFromSupabase)는 finance-sync.js로 옮겼다
 // (§코드 쪼개기 1차 — 테스트 저장소 한정). hydrateFromSupabaseAndMigrate()의
 // initTaxInvoicesFromSupabase() 호출부는 typeof 가드가 있어 로드 순서와 무관하게 안전하다.
 

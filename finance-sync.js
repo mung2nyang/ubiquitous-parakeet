@@ -1,10 +1,10 @@
 // ============================================================================
 // 세금계산서 Supabase 동기화 (supabase-sync.js에서 분리 — §코드 쪼개기 1차, 테스트 저장소 한정)
 // ============================================================================
-// tax-invoice.js(getTaxInvoiceRecords 등)와 supabase-sync.js(getSupabaseUser,
+// finance.js(getTaxInvoiceRecords 등)와 supabase-sync.js(getSupabaseUser,
 // getSupabaseClient, queueBackgroundSave, getUserSettings, parseEntityNumber)에
-// 의존한다. 전부 전역 함수이므로 로드 순서(script.js → tax-invoice.js →
-// supabase-sync.js → tax-invoice-sync.js, index.html 참고)만 지키면 문제없다.
+// 의존한다. 전부 전역 함수이므로 로드 순서(finance.js → finance-sync.js →
+// supabase-sync.js → script.js, index.html 참고)만 지키면 문제없다.
 //
 // 전수 점검 중 발견: 세금계산서는 작성(persistTaxInvoice)/발급완료 처리(changeTaxInvoiceStatus)
 // 모두 localStorage(taxInvoiceRecords)에만 저장되고 있었다 — Supabase로는 계정 최초 생성 시

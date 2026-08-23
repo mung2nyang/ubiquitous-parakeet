@@ -2364,14 +2364,15 @@
         });
         window.dispatchEvent(new Event('supabase-ready'));
     </script>
-    <!-- §코드 쪼개기 1차(테스트 저장소 한정): 세금계산서 관련 코드를 별도 파일로 분리했다.
-         tax-invoice.js는 반드시 script.js보다 먼저 로드해야 한다 — script.js가 부팅 시점에
-         (정규화 데이터 초기화 과정에서) getTaxInvoiceRecords()를 곧바로 호출하기 때문에,
-         뒤에 로드하면 "getTaxInvoiceRecords is not defined"로 그 초기화가 깨진다(실제로
-         재현해서 확인). tax-invoice-sync.js는 함수 선언만 있고 최상위에서 즉시 실행되는
-         코드가 없어 위치가 크게 중요하진 않지만, 같은 그룹으로 여기 둔다. -->
-    <script src="tax-invoice.js?v=20260823-split-1"></script>
-    <script src="tax-invoice-sync.js?v=20260823-split-1"></script>
+    <!-- §코드 쪼개기 1·2차(테스트 저장소 한정): 매출/미수금/세금계산서/기사 정산 등
+         "돈 관련" 코드를 finance.js/finance-sync.js로 분리했다. finance.js는 반드시
+         script.js보다 먼저 로드해야 한다 — script.js가 부팅 시점에 (정규화 데이터 초기화
+         과정에서 getTaxInvoiceRecords(), 화면 초기화 과정에서 initRevenueDateSelects()를)
+         곧바로 호출하기 때문에, 뒤에 로드하면 "OOO is not defined"로 그 초기화가 깨진다
+         (실제로 재현해서 확인). finance-sync.js는 함수 선언만 있고 최상위에서 즉시
+         실행되는 코드가 없어 위치가 크게 중요하진 않지만, 같은 그룹으로 여기 둔다. -->
+    <script src="finance.js?v=20260823-split-2"></script>
+    <script src="finance-sync.js?v=20260823-split-2"></script>
     <script src="supabase-sync.js?v=20260819-supabase-sync"></script>
     <script src="script.js?v=20260819-supabase-sync"></script>
 </body>
