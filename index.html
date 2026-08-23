@@ -2399,7 +2399,11 @@
     <!-- §코드 쪼개기 8차: 거래처관리(목록/드래그 재정렬/등록모달/즐겨찾기/수수료/결제주기)를
          client-management.js로 분리했다. script.js 안 4곳에 흩어져 있던 걸 모았다. -->
     <script src="client-management.js?v=20260823-split-8"></script>
+    <!-- §코드 쪼개기 9차: 차량관리(목록/등록모달/수수료/사업자정보/기사연동 초대 진입점)를
+         car-management.js로 분리했다. dedupeEntityList/dedupeCars/dedupeClients는 차량+
+         거래처 양쪽에서 쓰고 supabase-sync.js도 직접 참조해서 script.js에 남겼다. -->
+    <script src="car-management.js?v=20260823-split-9"></script>
     <script src="supabase-sync.js?v=20260819-supabase-sync"></script>
-    <script src="script.js?v=20260823-split-8"></script>
+    <script src="script.js?v=20260823-split-9"></script>
 </body>
 </html>
