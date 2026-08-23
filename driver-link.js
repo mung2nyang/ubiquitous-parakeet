@@ -771,6 +771,24 @@ async function renderLinkedDriverRecords() {
         invoiceArea.innerHTML = `<div class="linked-driver-empty">선택한 달에 거래처가 연결된 운송 기록이 없습니다.${unassignedCount ? ` (거래처 미지정 운행 ${unassignedCount}건)` : ''}</div>`;
         return;
     }
+
+    // 기사가 입력한 거래처는 기사 본인 계정에만 있고 차주의 거래처 목록(settings.clients)에는
+    // 없다 — 세금계산서 발행(getTaxInvoicePartyInfo)이 사업자번호/대표자/주소 등을 이 목록에서
+    // 이름으로 찾아서 채우는데, 여기 없으면 조용히 빈 값으로 나온다(실제로 보고됨: "거래처명
+    // 외엔 안 보여"). 여기서 이 화면을 열 때마다(=차주가 실제로 그 기사의 실적을 확인하는
+    // 시점) 아직 없는 거래처명을 빈 정보로라도 자동 등록해 둬서, 최소한 "이름은 있는데
+    // 조회 자체가 실패"하는 상태는 피하고, 아래 "거래처 등록/수정" 버튼으로 차주가 직접
+    // 사업자정보를 채워 넣을 수 있게 한다.
+    const ownerClients = Array.isArray(ownerSettings.clients) ? ownerSettings.clients : (ownerSettings.clients = []);
+    let addedNewClient = false;
+    groups.forEach(g => {
+        if (!ownerClients.some(c => c.companyName === g.clientName)) {
+            ownerClients.push({ id: generateLocalId('client'), companyName: g.clientName });
+            addedNewClient = true;
+        }
+    });
+    if (addedNewClient) setUserSettings(ownerSettings);
+
     invoiceArea.innerHTML = (unassignedCount ? `<p class="linked-driver-readonly-notice" style="margin-bottom:8px;"><span>거래처 미지정 운행 ${unassignedCount}건은 계산서 대상에서 제외됐습니다.</span></p>` : '')
         + groups.map(g => {
             const key = encodeURIComponent(g.clientName);
@@ -778,13 +796,42 @@ async function renderLinkedDriverRecords() {
             // 경우) 이름을 또 붙이면 중복 표시된다 — vehicleLabel 하나만 쓴다.
             const supplierLabel = g.vehicleLabel || g.supplierBiz?.name || '';
             const tripRows = g.trips.map(t => `<div class="linked-driver-client-trip-row"><span>${escapeDetailText(t.dateKey.slice(5).replace('-', '/'))} ${escapeDetailText(t.loadLoc || '상차지')} → ${escapeDetailText(t.unloadLoc || '하차지')}</span><b>${t.fare.toLocaleString()}원</b></div>`).join('');
+            const registeredClient = ownerClients.find(c => c.companyName === g.clientName);
+            const needsBizInfo = !registeredClient?.bizNumber;
+            const manageLabel = needsBizInfo ? '⚠ 사업자정보 등록' : '거래처 수정';
             return `<article class="tax-invoice-card">
                 <div class="tax-invoice-card-head"><div><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건${supplierLabel ? ` · ${escapeDetailText(supplierLabel)}` : ''}</span></div></div>
                 <div class="tax-invoice-card-money"><span>공급가액 <b>${g.supplyAmount.toLocaleString()}원</b></span><span>세액 <b>${g.taxAmount.toLocaleString()}원</b></span><strong><small>합계</small>${g.totalAmount.toLocaleString()}원</strong></div>
-                <div class="tax-invoice-card-actions single-action"><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
+                <div class="tax-invoice-card-actions two-action"><button type="button" class="${needsBizInfo ? 'needs-attention' : ''}" onclick="manageLinkedDriverClient('${key}')">${manageLabel}</button><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
                 <div id="linkedClientTrips_${key}" class="linked-driver-client-trip-list hidden">${tripRows}</div>
             </article>`;
         }).join('');
+}
+
+// 위 카드의 "거래처 등록/수정" 버튼 — 이 기사가 쓴 거래처명을 차주의 거래처관리 모달로 그대로
+// 연다(renderLinkedDriverRecords가 화면에 들어올 때마다 미리 빈 정보로 등록해 두므로 인덱스가
+// 항상 존재한다). client-management.js의 openClientModal/saveClient를 그대로 재사용한다 —
+// 모달은 페이지 이동 없이 지금 화면(기사 기록 관리) 위에 그냥 뜨고 닫히므로 별도 처리가
+// 필요 없다. 저장 후에는 이 화면을 다시 그려서 방금 채운 사업자정보를 카드에 반영한다.
+function manageLinkedDriverClient(encodedName) {
+    if (typeof openClientModal !== 'function') return;
+    const name = decodeURIComponent(encodedName);
+    const settings = getUserSettings();
+    const index = (settings.clients || []).findIndex(c => c.companyName === name);
+    if (index < 0) { showToastMessage('거래처를 찾을 수 없습니다.'); return; }
+    openClientModal(index);
+
+    // saveClient()는 clientModalOpenedFromCallDetail일 때만 호출부에 알려주는 후처리를 하므로,
+    // 여기서는 모달이 닫힐 때(저장 또는 취소 모두) 이 화면을 다시 그려서 최신 상태를 반영한다.
+    const modal = document.getElementById('clientModal');
+    if (!modal) return;
+    const observer = new MutationObserver(() => {
+        if (modal.classList.contains('hidden')) {
+            observer.disconnect();
+            renderLinkedDriverRecords();
+        }
+    });
+    observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
 }
 
 function renderEmployedDriverLinkState() {
