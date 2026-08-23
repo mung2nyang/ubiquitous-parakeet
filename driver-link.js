@@ -918,16 +918,27 @@ function addLinkedDriverClient() {
     const ownerSettings = getUserSettings();
     const car = (ownerSettings.cars || []).find(c => c.number === link.vehicleNumber) || null;
     if (!Array.isArray(ownerSettings.clients)) ownerSettings.clients = [];
-    ownerSettings.clients.push({ id: generateLocalId('client'), companyName: '', scopedToVehicleNumber: car?.number || '' });
+    const newClient = { id: generateLocalId('client'), companyName: '', scopedToVehicleNumber: car?.number || '' };
+    ownerSettings.clients.push(newClient);
     setUserSettings(ownerSettings);
-    openLinkedDriverClientEditor(ownerSettings.clients.length - 1);
+    // 아래 openLinkedDriverClientEditor에 이 항목의 id를 넘겨서, 이름도 안 채우고 그냥
+    // 취소/닫기만 하면 방금 만든 빈 자리를 자동으로 정리하게 한다(바로 아래 함수 설명 참고).
+    openLinkedDriverClientEditor(ownerSettings.clients.length - 1, newClient.id);
 }
 
 // client-management.js의 openClientModal/saveClient를 그대로 재사용한다 — 모달은 페이지
 // 이동 없이 지금 화면 위에 그냥 뜨고 닫히므로 별도 처리가 필요 없다. 닫힐 때(저장/취소
 // 모두) 이 화면을 다시 그려서 최신 상태를 반영한다. 고정노선과 연동은 차주 본인 계정의
 // 일일운행 전용 기능이라 이 기사 전용 거래처 편집에는 필요 없어서 숨긴다.
-function openLinkedDriverClientEditor(index) {
+//
+// cleanupIfEmptyId: addLinkedDriverClient()가 "+ 추가"로 방금 만든 빈 거래처의 id를 넘겨줄
+// 때만 채워진다. 등록 모달은 열자마자 이미 거래처 하나를 저장소에 만들어 두고 여는
+// 구조라(saveClient가 참조할 인덱스가 있어야 하므로), 사용자가 이름도 안 채우고 취소를
+// 눌러도 그 빈 항목은 그대로 남아있는 문제가 있었다(실제로 보고됨 — 추가 후 취소해도
+// 목록에 빈 거래처가 남아 수동으로 지워야 했음). 모달이 닫힌 시점에 이 항목이 여전히
+// 이름 없이 비어 있으면(=저장하지 않고 취소한 것) 방금 만든 자리를 자동으로 걷어낸다.
+// 기존 항목을 "수정"할 때는 이 인자를 넘기지 않으므로 이 정리 로직을 타지 않는다.
+function openLinkedDriverClientEditor(index, cleanupIfEmptyId = null) {
     if (typeof openClientModal !== 'function') return;
     openClientModal(index);
     document.getElementById('clientFixedRouteBlock')?.classList.add('hidden');
@@ -936,6 +947,14 @@ function openLinkedDriverClientEditor(index) {
     const observer = new MutationObserver(() => {
         if (modal.classList.contains('hidden')) {
             observer.disconnect();
+            if (cleanupIfEmptyId) {
+                const settings = getUserSettings();
+                const idx = (settings.clients || []).findIndex(c => c.id === cleanupIfEmptyId);
+                if (idx > -1 && !(settings.clients[idx].companyName || '').trim()) {
+                    settings.clients.splice(idx, 1);
+                    setUserSettings(settings);
+                }
+            }
             renderLinkedDriverClientsPage();
         }
     });
