@@ -723,6 +723,40 @@ async function syncWorkDataToSupabase(logId, data) {
     const user = await getSupabaseUser();
     if (!user) return;
 
+    // 실패한 날짜는 스냅샷에 "동기화 완료"로 표시하지 않는다 — 그래야 오프라인 등으로 이번
+    // 저장이 실패해도, 다음 번 저장(다른 날짜를 고치는 저장이라도) 때 diff 비교에서 다시
+    // 걸려서 재시도된다. 성공한 것만 스냅샷에 반영한다.
+    // vehicleId 확인보다 changedDates 계산을 먼저 한다 — 실제로 서버에 보낼 게 없는
+    // 호출(예: normalizeLegacyData()가 내용 변화 없이 재저장을 트리거하는 경우)까지
+    // 아래 차량 등록 재시도 대기(최대 2.5초)를 태울 이유가 없다(실제로 낭비되는 걸
+    // 확인해서 순서를 바꿈).
+    const prevSnapshot = __supabaseWorkDataSyncedSnapshot[logId] || {};
+    const nextSnapshot = { ...prevSnapshot };
+    const changedDates = [];
+    Object.keys(data).forEach(date => {
+        const json = JSON.stringify(data[date]);
+        if (prevSnapshot[date] !== json) changedDates.push(date);
+    });
+    Object.keys(prevSnapshot).forEach(date => {
+        if (!(date in data)) changedDates.push(date);
+    });
+    if (!changedDates.length) return;
+
+    // 연동 안 된(=employerLink.status가 'linked'가 아닌) 소속기사의 'main' 로그는
+    // resolveVehicleIdForLogId가 "영구적으로" null을 반환하도록 설계돼 있다 — 연동되기
+    // 전까지는 애초에 서버에 쓸 곳이 없는 게 정상이고, 잘못된 차량에 조용히 쓰는 것보다
+    // 이 상태에서 건너뛰는 게 안전하기 때문이다(§employed-driver-vehicle-resolution-bug).
+    // 이건 "차량이 아직 안 만들어짐"과 달리 몇 초 기다린다고 해결되는 일시적 상태가
+    // 아니므로, 아래 재시도+실패 처리 없이 조용히 건너뛴다. 예전엔 아래 재시도+throw
+    // 로직이 이 영구적인 null까지 "일시적"으로 오인해서, 연동 안 된 기사가 운행기록을
+    // 저장할 때마다 아무 문제 없는데도 매번 "저장실패" 토스트가 뜨는 회귀가 있었다
+    // (실제로 재현해서 확인).
+    const settingsForVehicleCheck = getUserSettings();
+    const isUnlinkedEmployedDriver = logId === 'main'
+        && settingsForVehicleCheck.accountType === 'employed_driver'
+        && settingsForVehicleCheck.employerLink?.status !== 'linked';
+    if (isUnlinkedEmployedDriver) return;
+
     // 차량이 아직 Supabase에 안 만들어졌으면(막 추가한 차량이라 그 차량 자체의 배경 저장
     // 디바운스가 아직 안 끝난 경우 등) 최대 2.5초 정도 짧게 몇 번 다시 확인한다. 예전엔
     // 여기서 곧바로 조용히 return하고 "다음 저장 때 다시 시도된다"고 주석에 적어뒀는데,
@@ -742,22 +776,12 @@ async function syncWorkDataToSupabase(logId, data) {
         throw new Error('차량 정보가 아직 서버에 등록되지 않았습니다. 잠시 후 다시 시도해 주세요.');
     }
 
-    // 실패한 날짜는 스냅샷에 "동기화 완료"로 표시하지 않는다 — 그래야 오프라인 등으로 이번
-    // 저장이 실패해도, 다음 번 저장(다른 날짜를 고치는 저장이라도) 때 diff 비교에서 다시
-    // 걸려서 재시도된다. 성공한 것만 스냅샷에 반영한다.
-    const prevSnapshot = __supabaseWorkDataSyncedSnapshot[logId] || {};
-    const nextSnapshot = { ...prevSnapshot };
-    const changedDates = [];
-    Object.keys(data).forEach(date => {
-        const json = JSON.stringify(data[date]);
-        if (prevSnapshot[date] !== json) changedDates.push(date);
-    });
-    Object.keys(prevSnapshot).forEach(date => {
-        if (!(date in data)) changedDates.push(date);
-    });
-    if (!changedDates.length) return;
-
     const client = await getSupabaseClient();
+    // 개별 날짜의 실패를 console.error로만 삼키고 넘어가면(예전 상태), 이 함수 자체는
+    // 예외 없이 정상 종료해서 queueBackgroundSave가 "성공"으로 간주해 실패 토스트/재시도를
+    // 전혀 안 건다 — syncSettingsToSupabase에서 이미 고친 것과 완전히 같은 패턴이다.
+    // 실패한 날짜를 모아뒀다가 마지막에 던져서, 부분 실패도 눈에 보이는 실패로 만든다.
+    const failedDates = [];
     for (const date of changedDates) {
         try {
             if (!(date in data)) {
@@ -769,9 +793,14 @@ async function syncWorkDataToSupabase(logId, data) {
             }
         } catch (error) {
             console.error('운행기록 Supabase 저장 실패:', logId, date, error);
+            failedDates.push(date);
         }
     }
     __supabaseWorkDataSyncedSnapshot[logId] = nextSnapshot;
+
+    if (failedDates.length) {
+        throw new Error(`일부 날짜(${failedDates.join(', ')})의 운행기록이 서버에 저장되지 못했습니다.`);
+    }
 }
 
 // ---------- taxInvoiceRecords(세금계산서 작성/발급 상태) <-> tax_invoices ----------
@@ -1132,9 +1161,15 @@ async function hydrateFromSupabaseAndMigrate({ allowLocalMigration = false } = {
     // employerLink를 한 번 갱신해 둔다 — 이 시점엔 아직 initSettingsFromSupabase가 실행되기
     // 전이라 settings.cars가 없어도 되는(오직 driver_links 조회만 하는) 가벼운 갱신이다.
     const preMigrationSettings = getUserSettings();
+    // 아래 본문(로그인/새 기기 진입 시)에도 동일한 계정 유형이면 employerLink를 다시 갱신하는
+    // 블록이 있다 — 이 블록이 이미 갱신을 끝냈으면 그 블록에서 또 서버를 왕복하지 않도록
+    // employerLinkRefreshedEarly로 표시해 둔다(가입/백업복원마다 driver_links+profiles 조회를
+    // 불필요하게 두 번 하던 것을 한 번으로 줄임 — 실제로 중복 호출되는 걸 확인해서 고침).
+    let employerLinkRefreshedEarly = false;
     if (allowLocalMigration && preMigrationSettings.accountType === 'employed_driver' && typeof syncEmployerLinkFromSupabase === 'function') {
         try {
             await syncEmployerLinkFromSupabase();
+            employerLinkRefreshedEarly = true;
         } catch (error) {
             console.error('[Supabase] 마이그레이션 전 기사 연동 상태 갱신 실패(기존 캐시로 계속 진행):', error);
         }
@@ -1192,7 +1227,8 @@ async function hydrateFromSupabaseAndMigrate({ allowLocalMigration = false } = {
             // "기존 연결이 있으면 초대코드 없이 그대로 복원되고, 연결이 없으면 로그인은 성공하되
             // 미연결 상태로 진입한다"는 요구사항의 핵심 지점.
             try {
-                await syncEmployerLinkFromSupabase();
+                // 위 마이그레이션 전 갱신에서 이미 최신 상태를 받아왔으면 또 왕복하지 않는다.
+                if (!employerLinkRefreshedEarly) await syncEmployerLinkFromSupabase();
                 // 로그인/새로고침 시점에도 연결된 차량의 최신 사업자정보(+ 차량번호/톤수)를 함께
                 // 반영한다. 이걸 개인정보 화면 진입 시에만 하면, 로그인 직후 메인 화면 등 다른
                 // 곳에 머무는 동안은 여전히 예전 사업자정보가 남아있게 된다.

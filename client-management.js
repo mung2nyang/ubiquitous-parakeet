@@ -296,9 +296,7 @@ function setClientCommType(type) {
         btnPercent.classList.add('active-work');
         btnDirect.classList.remove('active-work');
         commInput.placeholder = '비율(%) 입력';
-        let val = commInput.value.replace(/[^0-9.]/g, '');
-        if (parseFloat(val) > 100) val = '100';
-        commInput.value = val;
+        formatCommValue(commInput);
     } else {
         btnDirect.classList.add('active-work');
         btnPercent.classList.remove('active-work');
@@ -311,9 +309,7 @@ function formatClientCommValue(input) {
     const typeEl = document.getElementById('clientCommType');
     const type = typeEl ? typeEl.value : 'percent';
     if (type === 'percent') {
-        let val = input.value.replace(/[^0-9.]/g, '');
-        if (parseFloat(val) > 100) val = '100';
-        input.value = val;
+        formatCommValue(input);
     } else {
         formatCurrencyInput(input);
     }

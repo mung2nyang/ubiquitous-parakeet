@@ -47,11 +47,26 @@ async function syncTaxInvoiceToSupabase(localId) {
     const item = records.find(record => record.id === localId);
     if (!item) return;
 
+    // 차량을 막 추가하자마자 그 차량 몫 계산서를 작성하면, 그 차량의 vehicles 행이 아직
+    // Supabase에 안 만들어져 resolveTaxInvoiceVehicleId가 null을 반환할 수 있다. null은
+    // 에러가 아니라서 그대로 두면 vehicle_id: null인 채로 조용히 저장되고, queueBackgroundSave는
+    // 이걸 "성공"으로 간주해 재시도도 안 건다 — 운행기록 저장에서 이미 고친 것과 같은
+    // 패턴이다(실제로 재현해서 확인). 최대 2.5초 재시도 후에도 안 되면 예외를 던져서
+    // 실패 토스트/재시도 경로를 타게 한다.
+    let vehicleId = resolveTaxInvoiceVehicleId(item, getUserSettings());
+    for (let attempt = 0; !vehicleId && attempt < 5; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        vehicleId = resolveTaxInvoiceVehicleId(item, getUserSettings());
+    }
+    if (!vehicleId) {
+        throw new Error('차량 정보가 아직 서버에 등록되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+    }
+
     const settings = getUserSettings();
     const matchedClient = (settings.clients || []).find(c => c.companyName === item.clientName);
     const row = {
         user_id: user.id,
-        vehicle_id: resolveTaxInvoiceVehicleId(item, settings),
+        vehicle_id: vehicleId,
         client_id: matchedClient?.supabaseId || null,
         flow: item.flow || null,
         month_key: item.monthKey || null,

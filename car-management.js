@@ -154,9 +154,10 @@ function setCarCommType(type) {
         input.placeholder = '0';
         input.inputMode = 'decimal';
         unit.textContent = '%';
-        let val = input.value.replace(/[^0-9.]/g, '');
-        if (parseFloat(val) > 100) val = '100';
-        input.value = val;
+        // formatCommValue는 client-management.js에 정의돼 있다(index.html이 이 파일보다
+        // 먼저 client-management.js를 로드하므로 안전하다) — 거래처/차량 양쪽의 수수료율
+        // 자릿수 제한(0~100%) 로직을 여기서 또 인라인으로 베끼지 않고 한 곳만 고치면 되게 한다.
+        formatCommValue(input);
     } else {
         btnDirect.classList.add('active');
         btnPercent.classList.remove('active');
