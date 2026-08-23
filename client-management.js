@@ -21,10 +21,25 @@ function isDriverManagedByOwnerForClients(settings) {
         && (settings.employerLink?.settlementMode === 'employee' || settings.employerLink?.settlementMode === 'company');
 }
 
-function showClientManagement(returnPage = 'main') {
+async function showClientManagement(returnPage = 'main') {
     setUtilityReturnPage(returnPage);
     hideAllPages();
     document.getElementById('clientManagementPage').classList.remove('hidden');
+
+    // settings.employerLink.settlementMode(이 화면의 권한을 가르는 값)는 로그인/하이드레이션
+    // 시점에만 서버에서 갱신되는 캐시값이다 — 그래서 차주가 로그인 중인 기사의 계산서 처리
+    // 방식을 방금 바꿔도, 그 기사가 다시 로그인하기 전까지는 이 화면이 예전 방식 기준
+    // 권한(예: 이미 "직원 기사"로 바뀌었는데도 여전히 "+추가"가 보임)을 그대로 보여주는
+    // 문제가 있었다(실제로 재현·보고됨). 차주 쪽 "기사 관리 → 거래처" 화면은 열 때마다
+    // 서버에서 다시 읽어오는데 이 화면만 그렇지 않았던 것 — 소속 기사 계정에 한해 이 화면을
+    // 열 때마다 서버 기준으로 한 번 더 갱신해서 맞춘다.
+    const settingsBeforeRefresh = getUserSettings();
+    if (settingsBeforeRefresh.accountType === 'employed_driver' && typeof syncEmployerLinkFromSupabase === 'function') {
+        try { await syncEmployerLinkFromSupabase(); } catch (error) { console.error('거래처 화면 진입 시 연동 상태 갱신 실패(기존 캐시로 계속 진행):', error); }
+        // 갱신되는 동안 사용자가 이미 다른 화면으로 이동했다면 여기서 그린 내용은 무의미하다.
+        if (document.getElementById('clientManagementPage')?.classList.contains('hidden')) return;
+    }
+
     const settings = getUserSettings();
     document.querySelector('#clientManagementPage .management-add-wrap')?.classList.toggle('hidden', isDriverManagedByOwnerForClients(settings));
     renderClientList();
