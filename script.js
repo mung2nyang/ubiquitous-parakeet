@@ -6893,10 +6893,15 @@ window.addEventListener('load', () => {
                     // 비회원 사용자에게만 안내하도록, 로그인 화면으로 보낼 때는 이 안내를
                     // 건너뛴다.
                     showLocalLoginPage();
-                } else if (settings.guestMode) {
-                    showMain(true);
-                    updateOverdueNotification(true);
                 } else {
+                    // guestMode든 실제 로그인 계정이든 여기선 똑같이 메인 화면으로 보낸다.
+                    // 예전엔 guestMode만 showMain(true)을 호출하고 로그인 계정 분기는
+                    // updateOverdueNotification(true)만 불러서, 알림벨(#notificationBtn)이
+                    // index.html에 style="display: none;"으로 시작하는데 showMain()이 그걸
+                    // 'flex'로 되돌려주는 유일한 경로라 — 로그인 상태로 새로고침할 때마다
+                    // 알림벨이 계속 숨어있다가 다른 화면을 한 번 갔다 와야만(그때 다른 경로로
+                    // showMain이 불려서) 나타나는 버그가 있었다(실제로 재현해서 확인).
+                    showMain(true);
                     updateOverdueNotification(true);
                 }
             }, fadeMs);
