@@ -943,52 +943,6 @@ function deleteLinkedDriverClient(index) {
     });
 }
 
-// ============================================================================
-// "기사 관리" 화면의 "정산·계산서 설정" 칩 — 이 차량 하나만의 계산서 처리 방식.
-// 마이페이지의 계정 전체 기본값(defaultDriverSettlementMode)과는 별개다.
-// ============================================================================
-function showLinkedDriverBillingPage() {
-    const link = getLinkedDriverById(activeLinkedDriverId);
-    if (!link) return;
-    hideAllPages();
-    document.getElementById('linkedDriverBillingPage').classList.remove('hidden');
-    const ownerSettings = getUserSettings();
-    const car = (ownerSettings.cars || []).find(c => c.number === link.vehicleNumber) || null;
-    const select = document.getElementById('linkedDriverBillingModeSelect');
-    if (select) {
-        select.value = car?.settlementMode || 'default';
-        select.parentElement?._dropdownSync?.();
-    }
-    updateLinkedDriverBillingModeGuide();
-}
-
-function updateLinkedDriverBillingModeGuide() {
-    const guide = document.getElementById('linkedDriverBillingModeGuide');
-    const select = document.getElementById('linkedDriverBillingModeSelect');
-    if (!guide || !select) return;
-    if (select.value === 'default') {
-        const settings = getUserSettings();
-        const fallback = typeof getDriverSettlementModeMeta === 'function' ? getDriverSettlementModeMeta(settings.defaultDriverSettlementMode || 'company') : null;
-        guide.textContent = fallback ? `현재 계정 기본값(${fallback.label})을 따릅니다. ${fallback.description}` : '계정 기본값을 따릅니다.';
-    } else {
-        const meta = typeof getDriverSettlementModeMeta === 'function' ? getDriverSettlementModeMeta(select.value) : null;
-        guide.textContent = meta?.description || '';
-    }
-}
-
-function saveLinkedDriverBillingMode() {
-    const link = getLinkedDriverById(activeLinkedDriverId);
-    if (!link) return;
-    const select = document.getElementById('linkedDriverBillingModeSelect');
-    const settings = getUserSettings();
-    const car = (settings.cars || []).find(c => c.number === link.vehicleNumber);
-    if (!car) { showToastMessage('차량 정보를 찾을 수 없습니다.'); return; }
-    car.settlementMode = select.value;
-    setUserSettings(settings);
-    updateLinkedDriverBillingModeGuide();
-    showToastMessage('저장되었습니다.');
-}
-
 function renderEmployedDriverLinkState() {
     const settings = getUserSettings();
     const linked = settings.employerLink?.status === 'linked';

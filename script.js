@@ -1178,10 +1178,6 @@ function updateAccountRoleUI() {
         const label = driverConnectionLink.querySelector('span');
         if (label) label.textContent = ownerRole ? '기사연동관리' : '소속 연결 관리';
     }
-    // "정산·계산서 설정"(계정 전체 기본 계산서 처리 방식)은 차주 전용이다 — 소속기사는 이
-    // 값을 몰라도 되고, 정작 본인이 배정된 차량의 처리 방식은 차주가 "기사 관리" 화면의
-    // 정산·계산서 설정 칩에서 따로 정하므로 여기 볼 필요가 없다.
-    document.getElementById('myPageBillingSettingsLink')?.classList.toggle('hidden', !ownerRole);
     // 소속 연결 카드가 사업자정보 카드 자리를 대신 채우면서(아래 applyPersonalInfoRoleUI)
     // 두 계정 종류 모두 카드 4개(정보1/정보2/연결또는사업자/계정)로 맞춰져 계정 카드 번호는
     // 이제 역할과 무관하게 항상 '04'다.

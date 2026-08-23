@@ -675,10 +675,6 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v6M16 11h6"></path></svg>
                     <span>기사연동관리</span>
                 </button>
-                <button id="myPageBillingSettingsLink" type="button" class="mypage-notice-link" onclick="showBillingSettingsPage()">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg>
-                    <span>정산·계산서 설정</span>
-                </button>
                 <button type="button" class="mypage-notice-link mypage-message-settings-link" onclick="showMessageSettingsPage()">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path><path d="M8 9h8M8 13h5"></path></svg>
                     <span>문자 문구 설정</span>
@@ -693,7 +689,7 @@
         <!-- [정산·계산서 기본 설정 페이지] -->
         <div id="billingSettingsPage" class="page hidden">
             <div class="settings-header">
-                <button class="icon-btn" onclick="showMyPage()" title="뒤로가기"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                <button class="icon-btn" onclick="returnToLinkedDriverManagement()" title="뒤로가기"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
                 <div class="settings-title">정산·계산서 설정</div>
                 <span class="mypage-header-spacer" aria-hidden="true"></span>
             </div>
@@ -966,7 +962,7 @@
 
             <div class="linked-driver-chip-row">
                 <button type="button" class="linked-driver-chip" onclick="showLinkedDriverClientsPage()">거래처</button>
-                <button type="button" class="linked-driver-chip" onclick="showLinkedDriverBillingPage()">정산·계산서 설정</button>
+                <button type="button" class="linked-driver-chip" onclick="showBillingSettingsPage()">정산·계산서 설정</button>
                 <button type="button" class="linked-driver-chip" onclick="showLinkedDriverDetailSettingsSoon()">상세 설정</button>
             </div>
 
@@ -1014,27 +1010,6 @@
             <div class="management-add-wrap" id="linkedDriverClientsAddWrap">
                 <button type="button" class="management-add-fab" onclick="addLinkedDriverClient()">+ 추가</button>
             </div>
-        </div>
-
-        <!-- [기사 관리 - 정산·계산서 설정] 이 기사(차량) 전용 계산서 처리 방식. 마이페이지의
-             계정 전체 기본값(정산·계산서 설정)과는 별개다 — 여긴 이 차량 하나만 바꾼다. -->
-        <div id="linkedDriverBillingPage" class="page hidden">
-            <div class="settings-header">
-                <button class="icon-btn" onclick="returnToLinkedDriverManagement()" title="뒤로가기"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-                <div class="settings-title">정산·계산서 설정</div>
-                <div style="width: 40px;"></div>
-            </div>
-            <section class="billing-settings-card">
-                <label for="linkedDriverBillingModeSelect">이 기사(차량)의 계산서 처리 방식</label>
-                <select id="linkedDriverBillingModeSelect" class="input-box" data-app-dropdown onchange="saveLinkedDriverBillingMode()">
-                    <option value="default">사용자 기본 설정 사용</option>
-                    <option value="company">회사 정산</option>
-                    <option value="driver_direct">기사 직접 정산</option>
-                    <option value="employee">직원 기사</option>
-                    <option value="none">계산서 미사용</option>
-                </select>
-                <div id="linkedDriverBillingModeGuide" class="billing-settings-guide"></div>
-            </section>
         </div>
 
         <!-- [거래처 관리 페이지] -->
