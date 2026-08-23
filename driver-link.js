@@ -858,16 +858,36 @@ async function renderLinkedDriverClientsPage() {
     const tripData = await fetchLinkedDriverRecordData(link);
     if (getLinkedDriverById(activeLinkedDriverId)?.id !== link.id || document.getElementById('linkedDriverClientsPage')?.classList.contains('hidden')) return;
     const trips = flattenLinkedDriverTrips(tripData, month, link);
-    const clientNames = [...new Set(trips.filter(t => t.type === 'call' && t.client).map(t => t.client))];
     if (!Array.isArray(ownerSettings.clients)) ownerSettings.clients = [];
+
+    // 이 화면은 열 때마다 Supabase에서 그 달 운행기록을 새로 받아와 거래처를 자동등록하는
+    // 구조라, 여러 화면을 오가며 겹쳐 읽고 쓰는 경합이나 거래처명 앞뒤 공백 차이 등으로
+    // 같은 거래처가 여러 건 중복 생성되는 문제가 실제로 보고됐다(같은 이름이 3~4건씩
+    // 쌓임). 원인이 무엇이든 이 화면을 열 때마다 자동으로 정리해서, 사용자가 수동으로
+    // 하나씩 지울 필요가 없게 한다 — 같은 이름(앞뒤 공백 제거 기준)이 여러 개면 가장
+    // 먼저 만들어진 것만 남긴다.
+    const seenScopedNames = new Set();
+    const clientsCountBeforeDedup = ownerSettings.clients.length;
+    ownerSettings.clients = ownerSettings.clients.filter(c => {
+        if (c.scopedToVehicleNumber !== scopeKey) return true;
+        const key = (c.companyName || '').trim();
+        if (seenScopedNames.has(key)) return false;
+        seenScopedNames.add(key);
+        return true;
+    });
+    const dedupedAny = ownerSettings.clients.length !== clientsCountBeforeDedup;
+
+    // 이름 비교도 앞뒤 공백을 무시하도록 통일한다 — 위 중복 정리와 같은 기준이어야
+    // "제일특수"와 "제일특수 "(끝에 공백)를 서로 다른 거래처로 계속 새로 만드는 걸 막는다.
+    const clientNames = [...new Set(trips.filter(t => t.type === 'call' && t.client).map(t => (t.client || '').trim()).filter(Boolean))];
     let addedNewClient = false;
     clientNames.forEach(name => {
-        if (!ownerSettings.clients.some(c => c.companyName === name && c.scopedToVehicleNumber === scopeKey)) {
+        if (!ownerSettings.clients.some(c => (c.companyName || '').trim() === name && c.scopedToVehicleNumber === scopeKey)) {
             ownerSettings.clients.push({ id: generateLocalId('client'), companyName: name, scopedToVehicleNumber: scopeKey });
             addedNewClient = true;
         }
     });
-    if (addedNewClient) setUserSettings(ownerSettings);
+    if (addedNewClient || dedupedAny) setUserSettings(ownerSettings);
 
     const scopedClients = (ownerSettings.clients || []).filter(c => c.scopedToVehicleNumber === scopeKey);
     if (!scopedClients.length) {
