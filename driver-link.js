@@ -951,9 +951,15 @@ async function applyEmployerAutoFilledInfo(ownerId, vehicleId) {
         const changedBizFields = {};
 
         if (biz) {
+            // biz.representative(대표자명)는 resolveVehicleBusinessInfoFromSupabase가 이미
+            // 계산해서 넘겨주는데(차주의 bizRepresentative, 없으면 차주 개인 성명으로 폴백),
+            // 이 매핑에 빠져 있어서 조용히 버려지고 있었다 — 그 결과 차주가 대표자명을
+            // 입력해도 연동된 기사 계정에는 나머지 사업자정보(상호/사업자번호/주소 등)만
+            // 자동입력되고 대표자명만 계속 비어있는 버그였다(실제로 재현해서 확인).
             const bizFieldMap = {
                 bizName: biz.name,
                 bizNumber: biz.bizNumber,
+                bizRepresentative: biz.representative,
                 bizAddress: biz.address,
                 bizType: biz.bizType,
                 bizItem: biz.bizItem,
