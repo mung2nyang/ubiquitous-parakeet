@@ -688,8 +688,25 @@ function scheduleSupabaseWorkDataSync(logId) {
 async function syncWorkDataToSupabase(logId, data) {
     const user = await getSupabaseUser();
     if (!user) return;
-    const vehicleId = resolveVehicleIdForLogId(logId);
-    if (!vehicleId) return; // 이 차량이 아직 Supabase에 만들어지지 않음 — 다음 저장 때 다시 시도된다.
+
+    // 차량이 아직 Supabase에 안 만들어졌으면(막 추가한 차량이라 그 차량 자체의 배경 저장
+    // 디바운스가 아직 안 끝난 경우 등) 최대 2.5초 정도 짧게 몇 번 다시 확인한다. 예전엔
+    // 여기서 곧바로 조용히 return하고 "다음 저장 때 다시 시도된다"고 주석에 적어뒀는데,
+    // 실제로는 그렇지 않다 — queueBackgroundSave는 이 함수가 예외 없이 정상 종료하면
+    // "성공"으로 간주해 스냅샷/재시도 로직을 전혀 안 건드리므로, 같은 날짜를 다시 편집하지
+    // 않는 한 그 날짜의 운행기록은 서버에 영영 한 번도 안 올라간 채로 조용히 사라진다 —
+    // 화면엔 저장 성공한 것처럼 스피너만 사라지고 "저장실패" 표시도 안 뜬다(실제로 재현해서
+    // 확인: 새 계정에서 차량 추가 직후 곧바로 그날 운행기록을 입력하면, 다른 기기에서
+    // 재로그인해도 차량/거래처는 보이는데 그 운행기록만 영영 안 보임). 짧게 기다려도 안
+    // 되면 그때는 예외를 던져서 queueBackgroundSave의 실패 토스트/재시도 경로를 타게 한다.
+    let vehicleId = resolveVehicleIdForLogId(logId);
+    for (let attempt = 0; !vehicleId && attempt < 5; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        vehicleId = resolveVehicleIdForLogId(logId);
+    }
+    if (!vehicleId) {
+        throw new Error('차량 정보가 아직 서버에 등록되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+    }
 
     // 실패한 날짜는 스냅샷에 "동기화 완료"로 표시하지 않는다 — 그래야 오프라인 등으로 이번
     // 저장이 실패해도, 다음 번 저장(다른 날짜를 고치는 저장이라도) 때 diff 비교에서 다시
