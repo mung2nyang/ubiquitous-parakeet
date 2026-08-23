@@ -341,6 +341,13 @@ async function syncSettingsToSupabase(settings) {
     for (let index = 0; index < clients.length; index++) {
         const c = clients[index];
         if (!c?.companyName) continue;
+        // isLocalOnly: 직원기사/회사 정산 모드에서 "고정노선과 연동" 토글을 로컬에 보관하려고
+        // client-management.js renderClientList()가 이름만으로 만들어 둔 표시용 그림자
+        // 항목이다. 실제 거래처가 아니므로(차주가 관리하는 진짜 데이터는 차주 계정 쪽에
+        // 따로 있음) 이 계정의 clients 테이블에는 절대 올리지 않는다 — 안 그러면 차주가
+        // 이미 지운 거래처명이 기사 본인 계정에 진짜 거래처로 유령처럼 남는 사고로
+        // 이어진다(실제로 재현됨).
+        if (c.isLocalOnly) continue;
         const row = buildClientRow(user.id, c, index);
         try {
             if (c.supabaseId) {
@@ -1132,6 +1139,8 @@ async function migrateLocalDataToSupabase(userId) {
     for (let index = 0; index < clients.length; index++) {
         const c = clients[index];
         if (!c?.companyName) continue;
+        // syncSettingsToSupabase()와 같은 이유로 표시용 그림자 항목은 서버에 올리지 않는다.
+        if (c.isLocalOnly) continue;
         try {
             const row = buildClientRow(userId, c, index);
             if (c.supabaseId) {

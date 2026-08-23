@@ -240,13 +240,17 @@ async function renderClientList() {
         // "고정노선과 연동" 토글은 기사 본인 화면에만 있는 로컬 설정이라(차주 쪽 거래처
         // 자체를 건드리지 않음), 이름별로 보관할 곳이 필요하다 — 이미 같은 이름의(스코프
         // 안 된) 로컬 거래처가 있으면 그걸 그대로 쓰고, 없으면 이름만 가진 빈 항목을
-        // 하나 만들어 둔다.
+        // 하나 만들어 둔다. isLocalOnly로 표시해서 syncSettingsToSupabase()가 이 항목을
+        // "내 진짜 거래처"로 착각해 서버에 그대로 올리지 않게 한다 — 안 그러면 차주 쪽
+        // 화면에서 이미 지운 이름이 기사 계정의 진짜 거래처 목록(clients 테이블)에
+        // 유령으로 남는 사고로 이어진다(실제로 재현됨: 차주가 삭제한 항목이 기사 본인
+        // 계정에 실제 거래처로 남아있었음).
         const latestSettings = getUserSettings();
         if (!Array.isArray(latestSettings.clients)) latestSettings.clients = [];
         let addedShadowEntry = false;
         ownerClientNames.forEach(name => {
             if (!latestSettings.clients.some(c => !c.scopedToVehicleNumber && (c.companyName || '').trim() === name)) {
-                latestSettings.clients.push({ id: generateLocalId('client'), companyName: name });
+                latestSettings.clients.push({ id: generateLocalId('client'), companyName: name, isLocalOnly: true });
                 addedShadowEntry = true;
             }
         });
