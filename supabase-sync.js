@@ -1038,17 +1038,33 @@ async function migrateLocalDataToSupabase(userId) {
 // 1) (기존 로컬 데이터가 있고 아직 마이그레이션 전이면) 로컬 → Supabase 1회 업로드
 // 2) Supabase → 로컬(localStorage) 최신화
 // 3) 화면 다시 그리기
-async function hydrateFromSupabaseAndMigrate() {
+// allowLocalMigration: 이 기기의 로컬 전용 데이터(supabaseId 없는 차량/거래처 등)를
+// 지금 로그인하는 계정으로 밀어 올려도 되는 "의도된" 상황인지를 나타낸다.
+// - true: 회원가입 직후(executeSignupAction), 또는 "백업 불러오기"로 명시적으로 이 기기의
+//   데이터를 되살릴 때(syncImportedBackupToSupabase) — 둘 다 "이 로컬 데이터는 지금
+//   로그인하는 계정 본인 것"이라는 게 분명한 경우다.
+// - false(기본값): 일반 로그인, 앱 재시작 시의 세션 복원. 로그인은 "이미 계정이 있는 기존
+//   유저의 재접속"이라 로컬에 남아있는 값으로 서버 데이터를 덮어써서는 안 된다(§executeLoginAction
+//   주석 참고). 예전엔 이 구분이 아예 없어서, 로그인 전 비회원(게스트) 상태로 이 기기에
+//   입력해 둔 데이터가 있으면 로그인하는 순간 그 데이터가 "마이그레이션 대상 로컬 데이터"로
+//   오인되어 실제 계정에 그대로 덧씌워지는 심각한 사고가 있었다(실제로 재현해서 확인: 기기
+//   C에서 비회원으로 정보 입력 → 백업 저장 → B계정으로 로그인 → B계정의 거래처/차량에 C의
+//   정보가 섞여 들어가고 앱 설정이 C의 것으로 덮어써짐).
+async function hydrateFromSupabaseAndMigrate({ allowLocalMigration = false } = {}) {
     const user = await getSupabaseUser();
     if (!user) { supabaseHydrationCompleted = true; return; }
 
     // 이 기기에서 마지막으로 하이드레이션한 계정과 지금 로그인한 계정이 다르면(=같은 기기에서
-    // 로그아웃 후 다른 계정으로 로그인), 이전 계정의 로컬 캐시(운행일지/차량/거래처 등)를 먼저
-    // 지운다 — 안 지우면 아래 initSettingsFromSupabase/initWorkDataFromSupabase의 "서버에 없는
-    // 항목은 로컬을 보존" 병합 로직 때문에 이전 계정 데이터가 지금 계정 데이터에 섞여 들어간다
-    // (실제로 보고됨: "1번 계정 정보가 로그아웃 후 2번 계정으로 로그인하니 그대로 덧씌워짐").
+    // 로그아웃 후 다른 계정으로 로그인, 또는 비회원/게스트 상태로 쓰던 기기에 처음 로그인),
+    // 이전 계정(또는 게스트)의 로컬 캐시(운행일지/차량/거래처 등)를 먼저 지운다 — 안 지우면
+    // 아래 initSettingsFromSupabase/initWorkDataFromSupabase의 "서버에 없는 항목은 로컬을
+    // 보존" 병합 로직 때문에 이전 데이터가 지금 계정 데이터에 섞여 들어간다(실제로 보고됨:
+    // "1번 계정 정보가 로그아웃 후 2번 계정으로 로그인하니 그대로 덧씌워짐", 그리고 게스트
+    // 데이터가 로그인 계정에 덧씌워지는 변형도 실제로 재현됨). allowLocalMigration이 true인
+    // 회원가입/백업복원 상황에서만 이 정리를 건너뛰어, 의도적으로 남겨둔 로컬 데이터가
+    // 마이그레이션 대상으로 살아남게 한다.
     if (typeof clearAccountScopedLocalCacheIfAccountChanged === 'function') {
-        clearAccountScopedLocalCacheIfAccountChanged(user.id);
+        clearAccountScopedLocalCacheIfAccountChanged(user.id, allowLocalMigration);
     }
 
     // 아래 본문 전체를 try/finally로 감싸서, 중간에 어디서 예외가 나든(개별 단계는 대부분
@@ -1058,7 +1074,7 @@ async function hydrateFromSupabaseAndMigrate() {
     // 상태인데도 scheduleSupabaseSettingsSync()가 영원히 아무것도 큐잉하지 않아 그 세션 동안의
     // 모든 설정 변경이 서버에 조용히 반영되지 않는 더 나쁜 문제가 생긴다.
     try {
-        if (checkHasLocalLegacyData() && !localStorage.getItem('supabaseMigrationDone')) {
+        if (allowLocalMigration && checkHasLocalLegacyData() && !localStorage.getItem('supabaseMigrationDone')) {
             try {
                 const { hadFailures } = await migrateLocalDataToSupabase(user.id);
                 if (hadFailures) {
@@ -1189,7 +1205,11 @@ async function syncImportedBackupToSupabase() {
     localStorage.setItem('userSettings', JSON.stringify(settings));
     localStorage.removeItem('supabaseMigrationDone');
 
-    await hydrateFromSupabaseAndMigrate();
+    // allowLocalMigration: true — 사용자가 방금 명시적으로 "백업 불러오기"를 눌러서 이
+    // 기기의 로컬 데이터를 되살린 것이므로, 이건 의심스러운 게스트 잔여 데이터가 아니라
+    // 확실히 지금 로그인한 계정 본인의 데이터다. 기본값(false)대로 두면 방금 위에서 되살린
+    // 데이터가 로그인 취급 경로에서 그대로 지워져 버린다.
+    await hydrateFromSupabaseAndMigrate({ allowLocalMigration: true });
 }
 
 // ============================================================================
