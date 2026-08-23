@@ -529,6 +529,33 @@ async function fetchDriverOwnClientsFromSupabase(driverId) {
     }
 }
 
+// 직원기사/회사 정산 모드의 소속 기사가 본인 "거래처" 화면에서 볼 목록. 이 모드는
+// 거래처를 차주가 직접 관리한다(renderLinkedDriverClientsPage, scopedToVehicleNumber로
+// 이 차량 전용 태그를 붙여 차주 본인 clients 테이블에 저장) — 즉 소속 기사 계정에는
+// 이 데이터가 아예 없다. 예전엔 이 화면이 실수로 기사 본인의(용도가 다른) 로컬
+// clients를 보여주고 있어서, 차주가 관리하는 목록과 완전히 딴 내용이 뜨는 문제가
+// 있었다(실제로 재현·보고됨: 차주 쪽엔 있는 거래처가 기사 쪽엔 안 보이고 그 반대도 있음).
+// 이 함수가 차주 계정의 clients 테이블을 대신 조회해서 "업체명"만 뽑아 돌려준다 —
+// 소속 기사는 조회만 할 수 있어야 하므로 사업자정보 등 나머지 필드는 넘기지 않는다.
+async function fetchOwnerScopedClientsForDriver(employerLink) {
+    if (!employerLink?.ownerId || !employerLink?.vehicleId) return [];
+    try {
+        const client = await getSupabaseClient();
+        const { data: vehicleRow, error: vehicleError } = await client.from('vehicles').select('number').eq('id', employerLink.vehicleId).maybeSingle();
+        if (vehicleError) throw vehicleError;
+        const vehicleNumber = vehicleRow?.number || '';
+        if (!vehicleNumber) return [];
+        const { data, error } = await client.from('clients').select('company_name, raw').eq('user_id', employerLink.ownerId);
+        if (error) throw error;
+        return (data || [])
+            .filter(row => (row.raw && typeof row.raw === 'object' ? row.raw.scopedToVehicleNumber : '') === vehicleNumber)
+            .map(row => ({ companyName: row.company_name }));
+    } catch (error) {
+        console.error('차주가 이 차량 전용으로 관리하는 거래처 조회 실패:', error);
+        return [];
+    }
+}
+
 // Supabase(profiles+vehicles+clients)에서 읽어와 기존 getUserSettings()가 반환하던 것과
 // 동일한 모양으로 조립한 뒤 localStorage(userSettings)에 그대로 반영한다.
 async function initSettingsFromSupabase(userId) {

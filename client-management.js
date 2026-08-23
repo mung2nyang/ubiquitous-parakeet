@@ -42,7 +42,7 @@ async function showClientManagement(returnPage = 'main') {
 
     const settings = getUserSettings();
     document.querySelector('#clientManagementPage .management-add-wrap')?.classList.toggle('hidden', isDriverManagedByOwnerForClients(settings));
-    renderClientList();
+    await renderClientList();
 }
 
 let editingClientIndex = -1;
@@ -203,7 +203,7 @@ function bindClientDragEvents(card, clientIndex) {
     });
 }
 
-function renderClientList() {
+async function renderClientList() {
     const settings = getUserSettings();
     // scopedToVehicleNumber가 붙은 거래처는 차주가 "기사 기록 관리" 화면에서 특정
     // 직원기사 전용으로 관리하는 거래처다 — 저장은 이 계정(차주) 소유로 같이 되지만,
@@ -217,21 +217,47 @@ function renderClientList() {
     container.innerHTML = '';
 
     // 직원기사/회사 정산 모드의 소속기사는 거래처를 새로 등록하거나 사업자정보를 수정할
-    // 권한이 없다 — 지금까지 운행기록에 쓴 거래처명만 보여주고, "수정" 버튼은 고정노선
-    // 연동 여부만 바꾸는 작은 모달을 연다(openDriverClientFixedRouteModal). 정렬/드래그도
-    // 안 하고 저장소도 그대로 둔다 — 훑어보기 + 고정노선 토글 전용 화면이다. 기사 직접
-    // 정산 모드는 isDriverManagedByOwnerForClients가 false를 반환해 이 분기를 건너뛰고
-    // 아래 일반(차주와 동일한 전체 관리) 렌더링으로 그대로 이어진다.
+    // 권한이 없다 — "이 화면"이 아니라 "차주가 기사 관리 화면에서 이 차량 전용으로
+    // 관리하는 목록"(driver-link.js renderLinkedDriverClientsPage, scopedToVehicleNumber로
+    // 차주 본인 clients 테이블에 저장됨)을 그대로 조회만 시켜줘야 한다 — 소속 기사
+    // 계정에는 그 데이터가 아예 없다. 예전엔 여기서 실수로 기사 본인의(용도가 다른)
+    // 로컬 clients를 대신 보여주고 있어서, 차주 화면과 완전히 다른 목록이 뜨는 문제가
+    // 있었다(실제로 재현·보고됨: 차주 쪽엔 있는 거래처가 기사 화면엔 안 보이고 반대도
+    // 있었음). 기사 직접 정산 모드는 isDriverManagedByOwnerForClients가 false를 반환해
+    // 이 분기를 건너뛰고 아래 일반(차주와 동일한 전체 관리) 렌더링으로 그대로 이어진다.
     if (isDriverManagedByOwnerForClients(settings)) {
-        if (!clients.length) {
+        container.innerHTML = '<div class="empty-state">불러오는 중...</div>';
+        const ownerClients = typeof fetchOwnerScopedClientsForDriver === 'function'
+            ? await fetchOwnerScopedClientsForDriver(settings.employerLink)
+            : [];
+        // 조회하는 동안 사용자가 이미 다른 화면으로 이동했다면 이 결과는 버린다.
+        if (document.getElementById('clientManagementPage')?.classList.contains('hidden')) return;
+        const ownerClientNames = [...new Set(ownerClients.map(c => (c.companyName || '').trim()).filter(Boolean))];
+        if (!ownerClientNames.length) {
             container.innerHTML = '<div class="empty-state">등록된 거래처가 없습니다.</div>';
             return;
         }
-        container.innerHTML = clients.map(c => {
-            const idx = settings.clients.indexOf(c);
+        // "고정노선과 연동" 토글은 기사 본인 화면에만 있는 로컬 설정이라(차주 쪽 거래처
+        // 자체를 건드리지 않음), 이름별로 보관할 곳이 필요하다 — 이미 같은 이름의(스코프
+        // 안 된) 로컬 거래처가 있으면 그걸 그대로 쓰고, 없으면 이름만 가진 빈 항목을
+        // 하나 만들어 둔다.
+        const latestSettings = getUserSettings();
+        if (!Array.isArray(latestSettings.clients)) latestSettings.clients = [];
+        let addedShadowEntry = false;
+        ownerClientNames.forEach(name => {
+            if (!latestSettings.clients.some(c => !c.scopedToVehicleNumber && (c.companyName || '').trim() === name)) {
+                latestSettings.clients.push({ id: generateLocalId('client'), companyName: name });
+                addedShadowEntry = true;
+            }
+        });
+        if (addedShadowEntry) setUserSettings(latestSettings);
+        const finalSettings = getUserSettings();
+        container.innerHTML = ownerClientNames.map(name => {
+            const idx = finalSettings.clients.findIndex(c => !c.scopedToVehicleNumber && (c.companyName || '').trim() === name);
+            const c = finalSettings.clients[idx];
             return `<div class="car-card management-list-card client-list-card client-readonly-card">
                 <div class="management-card-inner">
-                    <div class="client-card-title"><strong>${escapeDetailText(c.companyName)}</strong>${c.fixedRouteLinked ? '<span class="management-badge tax-invoice">고정노선 연동</span>' : ''}</div>
+                    <div class="client-card-title"><strong>${escapeDetailText(name)}</strong>${c?.fixedRouteLinked ? '<span class="management-badge tax-invoice">고정노선 연동</span>' : ''}</div>
                     <div class="car-action-btns">
                         <button type="button" class="action-icon-btn" onclick="openDriverClientFixedRouteModal(${idx})" title="수정">${editDetailSvg()}</button>
                     </div>
