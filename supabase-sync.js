@@ -1067,6 +1067,28 @@ async function hydrateFromSupabaseAndMigrate({ allowLocalMigration = false } = {
         clearAccountScopedLocalCacheIfAccountChanged(user.id, allowLocalMigration);
     }
 
+    // 마이그레이션(아래)이 연동된 소속기사의 'main' 로그 운행기록을 어느 vehicle_id로 올릴지
+    // 정할 때 로컬 employerLink.vehicleId를 참조한다(resolveVehicleIdForLogId). 그런데
+    // 이 값이 지금 이 계정·이 Supabase 프로젝트 기준으로 최신이라는 보장이 없다 — 예를 들어
+    // 다른 프로젝트/다른 시점에 만든 백업 파일을 불러온 경우, employerLink.vehicleId는 그
+    // 백업을 만들 때의(전혀 다른 프로젝트의) vehicle uuid를 그대로 담고 있다. 이 값을 그대로
+    // 믿고 마이그레이션하면 존재하지 않는 차량을 가리키게 되어 업로드가 조용히 실패하거나
+    // (외래키 제약), 최악의 경우 아무 데도 안 쌓인 채로 넘어간다 — 그 결과 새 기기에서
+    // 아무리 다시 로그인해도(순서와 무관하게) 운행일지만 텅 비어 보이는 문제가 있었다
+    // (실제로 재현해서 확인: 다른 프로젝트의 백업 파일을 불러온 소속기사 계정에서, A/B/C
+    // 어느 기기로 로그인해도 항상 같은 결과가 나옴 — 기기 간 경합이 아니라 서버에 애초에
+    // 올바른 위치로 데이터가 없었던 것). 그래서 마이그레이션보다 먼저 서버 기준으로
+    // employerLink를 한 번 갱신해 둔다 — 이 시점엔 아직 initSettingsFromSupabase가 실행되기
+    // 전이라 settings.cars가 없어도 되는(오직 driver_links 조회만 하는) 가벼운 갱신이다.
+    const preMigrationSettings = getUserSettings();
+    if (allowLocalMigration && preMigrationSettings.accountType === 'employed_driver' && typeof syncEmployerLinkFromSupabase === 'function') {
+        try {
+            await syncEmployerLinkFromSupabase();
+        } catch (error) {
+            console.error('[Supabase] 마이그레이션 전 기사 연동 상태 갱신 실패(기존 캐시로 계속 진행):', error);
+        }
+    }
+
     // 아래 본문 전체를 try/finally로 감싸서, 중간에 어디서 예외가 나든(개별 단계는 대부분
     // 이미 자체 try/catch로 보호되지만, initSettingsFromSupabase/initWorkDataFromSupabase
     // 자체가 던지는 경우까지 포함) supabaseHydrationCompleted는 반드시 true가 되도록 한다.
