@@ -1083,13 +1083,23 @@ async function migrateLocalDataToSupabase(userId) {
             continue;
         }
 
+        // 연동된(linked) 소속기사의 'main' 로그는 방금 위에서 만들거나 갱신한 본인 소유의
+        // (별도) vehicles 행이 아니라, 차주가 실제로 소유한 vehicle_id에 운행기록이 저장돼야
+        // 한다 — 평소 저장 경로(resolveVehicleIdForLogId)와 하이드레이션 조회 경로가 이미
+        // 그 규칙을 따르고 있는데, 이 마이그레이션 루프만 그걸 몰라서 본인 명의의(사실상 안 쓰이는)
+        // 차량 행에 운행기록을 올려버렸다. 그 결과 백업 파일을 "불러오기"한 그 세션에는 로컬
+        // 캐시 덕에 정상으로 보이지만, 다음 로그인/새 기기에서 initWorkDataFromSupabase가
+        // (정상적으로) 차주 차량 기준으로 조회하면서 방금 올라간 기록을 못 찾아 운행기록이
+        // 통째로 사라진 것처럼 보이는 문제가 있었다(실제로 재현해서 확인).
+        const workDataVehicleId = (typeof resolveVehicleIdForLogId === 'function' ? resolveVehicleIdForLogId(logId) : null) || vehicleId;
+
         const sourceData = readWorkDataStorage(storageKey);
         for (const workDate of Object.keys(sourceData)) {
             try {
                 // clientIdByName을 명시적으로 넘긴다 — 이 시점엔 방금 만든 거래처의 supabaseId가
                 // 아직 localStorage에 반영되기 전이라, 안 넘기면 콜상세의 client_id가 전부 null로
                 // 빠지는 문제가 있었다(실제로 재현해서 확인).
-                await upsertDailyLogRecordToSupabase(client, userId, vehicleId, workDate, sourceData[workDate], clientIdByName);
+                await upsertDailyLogRecordToSupabase(client, userId, workDataVehicleId, workDate, sourceData[workDate], clientIdByName);
             } catch (error) {
                 console.error('[마이그레이션] 운행기록 업로드 실패:', logId, workDate, error);
                 hadFailures = true;
