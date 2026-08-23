@@ -2383,7 +2383,13 @@
          무관), finance.js/finance-sync.js/supabase-sync.js는 이 파일의 어떤 함수도
          호출하지 않는다(전수 grep 확인) — 그래도 관례상 script.js보다 먼저 로드한다. -->
     <script src="maint-fuel-misc.js?v=20260823-split-4"></script>
+    <!-- §코드 쪼개기 5차: 기사연동(driver_links) 차주/기사 양쪽 화면을 driver-link.js로
+         분리했다. isDateWithinAssignment/generateLocalId는 이 도메인처럼 보이지만
+         테스트 대상(전자)이거나 범용 유틸(후자)이라 script.js에 그대로 남겼다.
+         supabase-sync.js가 이 파일의 assignmentRangesOverlap/applyEmployerAutoFilledInfo를
+         부르는 반대 방향 참조는 이미 typeof 가드가 돼 있다. -->
+    <script src="driver-link.js?v=20260823-split-5"></script>
     <script src="supabase-sync.js?v=20260819-supabase-sync"></script>
-    <script src="script.js?v=20260823-split-4"></script>
+    <script src="script.js?v=20260823-split-5"></script>
 </body>
 </html>
