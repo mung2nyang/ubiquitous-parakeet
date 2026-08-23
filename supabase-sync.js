@@ -525,6 +525,19 @@ async function initSettingsFromSupabase(userId) {
     };
 
     localStorage.setItem('userSettings', JSON.stringify(assembled));
+
+    // 다크/라이트 모드는 원래 userSettings와 별개로 localStorage('theme')에만 저장되고
+    // Supabase에는 전혀 올라가지 않았다 — toggleTheme()이 이 함수와 별개로 로컬 키만 썼기
+    // 때문이다. 그래서 새 기기로 로그인하면 항상 기본 라이트 모드로 보이고, 원래 기기는
+    // 그 기기의 로컬 캐시 덕에 계속 정상으로 보이는(다른 항목들과 완전히 같은 패턴의) 문제가
+    // 있었다. toggleTheme()이 이제 theme도 userSettings에 함께 저장해 profiles.settings(jsonb)로
+    // 동기화되므로(buildSettingsJsonbPayload가 이름 붙은 필드 외 나머지를 통째로 담아간다),
+    // 여기서 서버에서 막 읽어온 값을 loadSettings()가 참조하는 로컬 'theme' 키에도 반영해
+    // 화면에 실제로 적용되게 한다.
+    if (assembled.theme === 'dark' || assembled.theme === 'light') {
+        localStorage.setItem('theme', assembled.theme);
+    }
+
     return assembled;
 }
 
