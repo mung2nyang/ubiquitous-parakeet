@@ -224,6 +224,19 @@ async function syncSettingsToSupabase(settings) {
     const user = await getSupabaseUser();
     if (!user) return; // 로그인 전이면 동기화하지 않는다.
 
+    // 아래 profiles/vehicles/clients 각 항목은 여전히 개별 try/catch로 서로를 막지 않는다(차량
+    // 하나가 실패해도 나머지 차량/거래처/프로필은 계속 시도돼야 한다). 문제는 그 개별 catch가
+    // console.error만 찍고 다시 던지지 않으면, 이 함수 자체는 예외 없이 끝나서
+    // queueBackgroundSave가 "성공"으로 간주해 실패 토스트도 안 띄우고 재시도도 안 건다는 점이다
+    // — 운행기록에서 실제로 재현되어 고쳐진 것과 완전히 같은 패턴이다(ee65b7e 참고: "차량이 아직
+    // Supabase에 등록되기 전에 저장된 운행기록이 영영 사라지는 버그"). 실제로 이 버그 때문에
+    // 차량/거래처/앱설정 중 일부가 서버에 한 번도 안 올라간 채 조용히 "성공"으로 남고, 그
+    // 항목은 이 기기(자신의 로컬 캐시로 항상 보임)에서는 멀쩡해 보이지만 새 기기로
+    // 로그인하면 서버에 실제로 없어서 통째로 비어 보이는 문제가 있었다. 그래서 실패한 항목을
+    // failures에 모아뒀다가 마지막에 한 번에 던져, 이 저장 자체가 "실패"로 집계되고
+    // 재시도되게 한다.
+    const failures = [];
+
     try {
         const profilePayload = {
             id: user.id,
@@ -247,9 +260,11 @@ async function syncSettingsToSupabase(settings) {
         // 덮이면 다음 로그인부터 계속 빈 값을 읽어와 다시 null로 저장하는 자기강화형 버그였다.
         if (settings.accountType) profilePayload.account_type = settings.accountType;
 
-        await (await getSupabaseClient()).from('profiles').upsert(profilePayload);
+        const { error } = await (await getSupabaseClient()).from('profiles').upsert(profilePayload);
+        if (error) throw error;
     } catch (error) {
-        console.error('profiles 동기화 실패(settings jsonb 컬럼이 아직 없을 수 있음):', error);
+        console.error('profiles 동기화 실패:', error);
+        failures.push(`profile: ${error?.message || error}`);
     }
 
     const client = await getSupabaseClient();
@@ -269,6 +284,7 @@ async function syncSettingsToSupabase(settings) {
             }
         } catch (error) {
             console.error('vehicles 동기화 실패:', logId, error);
+            failures.push(`vehicle(${logId}): ${error?.message || error}`);
         }
     }
 
@@ -288,10 +304,15 @@ async function syncSettingsToSupabase(settings) {
             }
         } catch (error) {
             console.error('clients 동기화 실패:', c.companyName, error);
+            failures.push(`client(${c.companyName}): ${error?.message || error}`);
         }
     }
 
     patchSupabaseIdsIntoLocalSettings(cars, clients);
+
+    if (failures.length) {
+        throw new Error(`일부 설정이 서버에 저장되지 못했습니다: ${failures.join('; ')}`);
+    }
 }
 
 // 특정 차량의 "실제 사용해야 할" 사업자정보를 서버 기준으로 판단한다. 차주의 개인정보
