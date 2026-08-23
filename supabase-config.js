@@ -5,5 +5,5 @@
 // - service_role(비밀) 키는 절대 이 파일이나 다른 클라이언트 코드에 넣지 않는다.
 // - 이 파일은 index.html에서 script.js보다 먼저 로드된다.
 // ============================================================================
-window.SUPABASE_URL = 'https://zigppphsjlinasnxjcvf.supabase.co';
-window.SUPABASE_ANON_KEY = 'sb_publishable_dCn-x97Ojyle4D_liXoq1A_iSUh7Cxl';
+window.SUPABASE_URL = 'https://wphlnkfymvpnklgbuxrk.supabase.co';
+window.SUPABASE_ANON_KEY = 'sb_publishable_JJZxpsvje-LUGmphA70z9Q_Y7WfrM0G';
