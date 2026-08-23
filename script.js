@@ -5425,7 +5425,15 @@ function handleLogin() {
 }
 
 function handleLogout() {
-    showConfirmModal('로그아웃하시겠습니까? 기기에 저장된 기록은 유지됩니다.', () => {
+    showConfirmModal('로그아웃하시겠습니까? 기기에 저장된 기록은 유지됩니다.', async () => {
+        // 방금 바꾼 설정(예: 차량 정산방식)이 debounce 대기 중일 때 곧바로 로그아웃하면,
+        // 아직 서버로 안 올라간 그 변경이 그대로 유실된다 — 다음 로그인 때
+        // initSettingsFromSupabase()가 예전 서버 값으로 덮어써서 "방금 바꾼 게 되돌아가
+        // 있다"는 현상으로 나타난다(실제로 재현 보고됨). exportData()와 동일하게, 로그아웃
+        // 처리 전에 대기 중인 백그라운드 저장을 먼저 끝까지 흘려보낸다.
+        if (typeof flushAllBackgroundSaves === 'function') {
+            try { await flushAllBackgroundSaves(); } catch (error) { console.error('로그아웃 전 저장 동기화 실패:', error); }
+        }
         const settings = getUserSettings();
         settings.isLoggedIn = false;
         setUserSettings(settings);
