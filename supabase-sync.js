@@ -224,6 +224,24 @@ async function syncSettingsToSupabase(settings) {
     const user = await getSupabaseUser();
     if (!user) return; // 로그인 전이면 동기화하지 않는다.
 
+    // 이 함수는 debounce/재시도 구조상 큐에 등록된 시점보다 한참 뒤에(getSupabaseUser()의
+    // 네트워크 왕복 시간만큼) 실제로 실행될 수 있다. 그 사이에 사용자가 로그아웃 후 다른
+    // 계정으로 재로그인해 버리면, 지금 막 resolve된 user는 "새로 로그인한 계정"인데 인자로
+    // 받은 settings는 여전히 "이전 계정의 로컬 캐시 스냅샷"인 상태로 이 함수가 실행될 수
+    // 있다 — 그 결과 이전 계정의 accountType(예: 차주)이 새 계정의 profiles 행에 그대로
+    // upsert되어, 로그아웃→로그인만 했을 뿐인데 소속 기사 계정이 차주로 뒤바뀌는 사고가
+    // 실제로 재현됐다(handleLogout에 flushAllBackgroundSaves를 추가해 이 경합의 주된 경로는
+    // 막았지만, 혹시 모를 다른 경로에 대비해 여기서도 마지막 확인을 한 번 더 한다).
+    // clearAccountScopedLocalCacheIfAccountChanged()가 하이드레이션 시작 시점에 동기적으로
+    // lastHydratedSupabaseUserId를 지금 로그인한 계정으로 갱신해 두므로, 이 값이 지금 resolve된
+    // user.id와 다르면 settings가 다른 계정 것일 가능성이 있다는 뜻이라 이번 저장은 건너뛴다
+    // (다음 저장 사이클에서 그 시점의 최신 settings로 다시 시도되므로 데이터 유실은 아니다).
+    const lastHydratedUserId = localStorage.getItem('lastHydratedSupabaseUserId');
+    if (lastHydratedUserId && lastHydratedUserId !== user.id) {
+        console.warn('[Supabase] 계정 전환 경합 감지 — 이전 계정 설정 저장을 건너뜁니다.');
+        return;
+    }
+
     // 아래 profiles/vehicles/clients 각 항목은 여전히 개별 try/catch로 서로를 막지 않는다(차량
     // 하나가 실패해도 나머지 차량/거래처/프로필은 계속 시도돼야 한다). 문제는 그 개별 catch가
     // console.error만 찍고 다시 던지지 않으면, 이 함수 자체는 예외 없이 끝나서
