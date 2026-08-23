@@ -286,7 +286,16 @@ async function syncSettingsToSupabase(settings) {
     }
 
     const client = await getSupabaseClient();
-    const cars = Array.isArray(settings.cars) ? settings.cars : [];
+    // 소속 기사(employed_driver) 계정의 settings.cars는 실제 소유 차량이 아니라,
+    // applyEmployerAutoFilledInfo()가 차주가 연동해 준 차량 정보를 이 기사 본인 화면에
+    // 보여주기만 하려고 만든 "표시용 로컬 사본"이다(supabaseId가 원래부터 없다). 이 계정
+    // 전용 동기화 로직인 줄 모르고 여기서 그대로 서버에 올리면, 위쪽에서 supabaseId를
+    // 어떻게 다루든 상관없이 "차주 차량과 번호는 같은데 소유자(user_id)는 기사 본인인"
+    // 가짜 vehicles 행이 매번 새로 생긴다 — 실제로 이인기 계정이 로그인만 해도 조영재의
+    // 부산92아5365와 같은 번호의 유령 차량이 이인기 명의로 계속 생기는 사고로 재현됐다.
+    // 소속 기사는 애초에 자기 소유 차량 개념이 없으므로(차량은 항상 차주 소유, 기사는
+    // driver_links로만 연결됨) 이 계정 유형은 통째로 건너뛴다.
+    const cars = (settings.accountType === 'employed_driver') ? [] : (Array.isArray(settings.cars) ? settings.cars : []);
     for (let index = 0; index < cars.length; index++) {
         const car = cars[index];
         const logId = car.type === 'sub' ? (car.number || `sub_${index}`) : 'main';
@@ -1115,7 +1124,9 @@ async function migrateLocalDataToSupabase(userId) {
     }
 
     // 차량 + 그 차량의 운행 기록 전체 — 거래처와 동일하게 supabaseId 유무에 따라 update/insert.
-    const vehicleSources = getNormalizedVehicleSources(settings); // 로컬 저장소 열거 로직 자체는 기존 헬퍼를 그대로 재사용(구조 변형이 아니라 순수 열거라 안전)
+    // 소속 기사 계정은 syncSettingsToSupabase()와 같은 이유로 건너뛴다 — settings.cars는
+    // applyEmployerAutoFilledInfo()가 만든 표시용 로컬 사본일 뿐 실제 소유 차량이 아니다.
+    const vehicleSources = (settings.accountType === 'employed_driver') ? [] : getNormalizedVehicleSources(settings); // 로컬 저장소 열거 로직 자체는 기존 헬퍼를 그대로 재사용(구조 변형이 아니라 순수 열거라 안전)
     const vehicleIdByLogId = new Map();
     const vehicleIdByNumber = new Map();
     for (let index = 0; index < vehicleSources.length; index++) {
