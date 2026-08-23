@@ -760,6 +760,14 @@ async function renderLinkedDriverRecords() {
     }
 
     // ---------- 거래처별 세금계산서 (기사 공유 ON일 때만, §6~9/§21) ----------
+    // 원칙: "차주의 거래처는 차주 것, 기사의 거래처는 기사 것" — 절대 한쪽 목록에 다른
+    // 쪽 데이터를 섞어 넣지 않는다. 계산서 처리 방식에 따라 관리 권한이 정반대로 갈린다:
+    //  - 직원기사(employee): 차주가 전부 처리하는 방식이므로, 차주가 이 화면에서 직접
+    //    거래처 사업자정보를 등록/수정한다. 단 그 데이터는 차주의 일반 "거래처관리" 화면과
+    //    섞이지 않도록 이 차량 전용으로 태그해서 별도로만 보여준다(아래 renderEmployeeManagedClients).
+    //  - 기사 직접 정산(driver_direct): 기사 본인 계정이 실제 주인이라, 차주는 조회만
+    //    한다 — 기사의 clients 행을 그때그때 읽어오기만 하고 차주의 로컬에는 저장하지 않는다
+    //    (아래 renderDriverOwnedClientsReadOnly).
     const invoiceArea = document.getElementById('linkedDriverClientInvoiceArea');
     if (!invoiceArea) return;
     if (!isSharingClientTaxInvoicesWithOwner(link)) {
@@ -771,53 +779,83 @@ async function renderLinkedDriverRecords() {
         invoiceArea.innerHTML = `<div class="linked-driver-empty">선택한 달에 거래처가 연결된 운송 기록이 없습니다.${unassignedCount ? ` (거래처 미지정 운행 ${unassignedCount}건)` : ''}</div>`;
         return;
     }
+    const noticeHtml = unassignedCount ? `<p class="linked-driver-readonly-notice" style="margin-bottom:8px;"><span>거래처 미지정 운행 ${unassignedCount}건은 계산서 대상에서 제외됐습니다.</span></p>` : '';
 
-    // 기사가 입력한 거래처는 기사 본인 계정에만 있고 차주의 거래처 목록(settings.clients)에는
-    // 없다 — 세금계산서 발행(getTaxInvoicePartyInfo)이 사업자번호/대표자/주소 등을 이 목록에서
-    // 이름으로 찾아서 채우는데, 여기 없으면 조용히 빈 값으로 나온다(실제로 보고됨: "거래처명
-    // 외엔 안 보여"). 여기서 이 화면을 열 때마다(=차주가 실제로 그 기사의 실적을 확인하는
-    // 시점) 아직 없는 거래처명을 빈 정보로라도 자동 등록해 둬서, 최소한 "이름은 있는데
-    // 조회 자체가 실패"하는 상태는 피하고, 아래 "거래처 등록/수정" 버튼으로 차주가 직접
-    // 사업자정보를 채워 넣을 수 있게 한다.
+    const settlementMode = typeof getEffectiveDriverSettlementMode === 'function' ? getEffectiveDriverSettlementMode(car, ownerSettings) : (car?.settlementMode || '');
+    if (settlementMode === 'driver_direct') {
+        await renderDriverOwnedClientsReadOnly(invoiceArea, noticeHtml, groups, link);
+    } else {
+        renderEmployeeManagedClients(invoiceArea, noticeHtml, groups, car, ownerSettings);
+    }
+}
+
+// "직원기사" 모드 전용 카드 목록. 이 차량(car.number)에 한해서만 등록/수정 가능하게 하려고,
+// 클라이언트 객체에 scopedToVehicleNumber 태그를 붙여 저장한다 — settings.clients에 같이
+// 들어가긴 하지만(차주 본인 계정 소유이므로 저장소를 따로 둘 필요는 없다), 이 태그가 있는
+// 항목은 renderClientList()(client-management.js, 차주의 일반 "거래처관리" 화면)에서 항상
+// 걸러내서 절대 섞여 보이지 않게 한다 — 그래야 "차주 거래처"와 "이 기사 전용 거래처"가
+// 화면상 완전히 분리된다.
+function renderEmployeeManagedClients(invoiceArea, noticeHtml, groups, car, ownerSettings) {
     const ownerClients = Array.isArray(ownerSettings.clients) ? ownerSettings.clients : (ownerSettings.clients = []);
+    const scopeKey = car?.number || '';
     let addedNewClient = false;
     groups.forEach(g => {
-        if (!ownerClients.some(c => c.companyName === g.clientName)) {
-            ownerClients.push({ id: generateLocalId('client'), companyName: g.clientName });
+        if (!ownerClients.some(c => c.companyName === g.clientName && c.scopedToVehicleNumber === scopeKey)) {
+            ownerClients.push({ id: generateLocalId('client'), companyName: g.clientName, scopedToVehicleNumber: scopeKey });
             addedNewClient = true;
         }
     });
     if (addedNewClient) setUserSettings(ownerSettings);
 
-    invoiceArea.innerHTML = (unassignedCount ? `<p class="linked-driver-readonly-notice" style="margin-bottom:8px;"><span>거래처 미지정 운행 ${unassignedCount}건은 계산서 대상에서 제외됐습니다.</span></p>` : '')
+    invoiceArea.innerHTML = noticeHtml + groups.map(g => {
+        const key = encodeURIComponent(g.clientName);
+        const supplierLabel = g.vehicleLabel || g.supplierBiz?.name || '';
+        const tripRows = g.trips.map(t => `<div class="linked-driver-client-trip-row"><span>${escapeDetailText(t.dateKey.slice(5).replace('-', '/'))} ${escapeDetailText(t.loadLoc || '상차지')} → ${escapeDetailText(t.unloadLoc || '하차지')}</span><b>${t.fare.toLocaleString()}원</b></div>`).join('');
+        const registeredClient = ownerClients.find(c => c.companyName === g.clientName && c.scopedToVehicleNumber === scopeKey);
+        const needsBizInfo = !registeredClient?.bizNumber;
+        const manageLabel = needsBizInfo ? '⚠ 사업자정보 등록' : '거래처 수정';
+        return `<article class="tax-invoice-card">
+            <div class="tax-invoice-card-head"><div><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건${supplierLabel ? ` · ${escapeDetailText(supplierLabel)}` : ''}</span></div></div>
+            <div class="tax-invoice-card-money"><span>공급가액 <b>${g.supplyAmount.toLocaleString()}원</b></span><span>세액 <b>${g.taxAmount.toLocaleString()}원</b></span><strong><small>합계</small>${g.totalAmount.toLocaleString()}원</strong></div>
+            <div class="tax-invoice-card-actions two-action"><button type="button" class="${needsBizInfo ? 'needs-attention' : ''}" onclick="manageLinkedDriverClient('${key}', '${encodeURIComponent(scopeKey)}')">${manageLabel}</button><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
+            <div id="linkedClientTrips_${key}" class="linked-driver-client-trip-list hidden">${tripRows}</div>
+        </article>`;
+    }).join('');
+}
+
+// "기사 직접 정산" 모드 전용 — 기사 본인 계정의 clients 행을 그때그때 읽어와 보여주기만 한다.
+// 여기서 읽어온 값은 화면 렌더링에만 쓰고 setUserSettings()로 차주 로컬에 저장하지 않는다 —
+// 저장하는 순간 "차주 거래처"와 섞이게 된다.
+async function renderDriverOwnedClientsReadOnly(invoiceArea, noticeHtml, groups, link) {
+    const driverClients = typeof fetchDriverOwnClientsFromSupabase === 'function' ? await fetchDriverOwnClientsFromSupabase(link.driverId) : [];
+    invoiceArea.innerHTML = `<p class="linked-driver-readonly-notice" style="margin-bottom:8px;"><span>기사 직접 정산 모드에서는 거래처를 기사 본인이 관리하며, 차주는 조회만 할 수 있습니다.</span></p>`
+        + noticeHtml
         + groups.map(g => {
             const key = encodeURIComponent(g.clientName);
-            // vehicleLabel에 이미 "사업자명 · 차량번호"가 포함돼 있으므로(별도 사업자 차량의
-            // 경우) 이름을 또 붙이면 중복 표시된다 — vehicleLabel 하나만 쓴다.
-            const supplierLabel = g.vehicleLabel || g.supplierBiz?.name || '';
             const tripRows = g.trips.map(t => `<div class="linked-driver-client-trip-row"><span>${escapeDetailText(t.dateKey.slice(5).replace('-', '/'))} ${escapeDetailText(t.loadLoc || '상차지')} → ${escapeDetailText(t.unloadLoc || '하차지')}</span><b>${t.fare.toLocaleString()}원</b></div>`).join('');
-            const registeredClient = ownerClients.find(c => c.companyName === g.clientName);
-            const needsBizInfo = !registeredClient?.bizNumber;
-            const manageLabel = needsBizInfo ? '⚠ 사업자정보 등록' : '거래처 수정';
+            const registered = driverClients.find(c => c.companyName === g.clientName);
+            const bizNumberLabel = registered?.bizNumber ? escapeDetailText(registered.bizNumber) : '기사 미등록';
             return `<article class="tax-invoice-card">
-                <div class="tax-invoice-card-head"><div><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건${supplierLabel ? ` · ${escapeDetailText(supplierLabel)}` : ''}</span></div></div>
+                <div class="tax-invoice-card-head"><div><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건 · 사업자번호 ${bizNumberLabel}</span></div></div>
                 <div class="tax-invoice-card-money"><span>공급가액 <b>${g.supplyAmount.toLocaleString()}원</b></span><span>세액 <b>${g.taxAmount.toLocaleString()}원</b></span><strong><small>합계</small>${g.totalAmount.toLocaleString()}원</strong></div>
-                <div class="tax-invoice-card-actions two-action"><button type="button" class="${needsBizInfo ? 'needs-attention' : ''}" onclick="manageLinkedDriverClient('${key}')">${manageLabel}</button><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
+                <div class="tax-invoice-card-actions single-action"><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
                 <div id="linkedClientTrips_${key}" class="linked-driver-client-trip-list hidden">${tripRows}</div>
             </article>`;
         }).join('');
 }
 
-// 위 카드의 "거래처 등록/수정" 버튼 — 이 기사가 쓴 거래처명을 차주의 거래처관리 모달로 그대로
-// 연다(renderLinkedDriverRecords가 화면에 들어올 때마다 미리 빈 정보로 등록해 두므로 인덱스가
-// 항상 존재한다). client-management.js의 openClientModal/saveClient를 그대로 재사용한다 —
-// 모달은 페이지 이동 없이 지금 화면(기사 기록 관리) 위에 그냥 뜨고 닫히므로 별도 처리가
-// 필요 없다. 저장 후에는 이 화면을 다시 그려서 방금 채운 사업자정보를 카드에 반영한다.
-function manageLinkedDriverClient(encodedName) {
+// "직원기사" 카드의 "거래처 등록/수정" 버튼 — 그 거래처를 차주의 거래처관리 모달로 그대로
+// 연다(renderEmployeeManagedClients가 화면에 들어올 때마다 미리 빈 정보로 등록해 두므로
+// 인덱스가 항상 존재한다). client-management.js의 openClientModal/saveClient를 그대로
+// 재사용한다 — 모달은 페이지 이동 없이 지금 화면(기사 기록 관리) 위에 그냥 뜨고 닫히므로
+// 별도 처리가 필요 없다. 저장 후에는 이 화면을 다시 그려서 방금 채운 사업자정보를 카드에
+// 반영한다.
+function manageLinkedDriverClient(encodedName, encodedScopeKey) {
     if (typeof openClientModal !== 'function') return;
     const name = decodeURIComponent(encodedName);
+    const scopeKey = decodeURIComponent(encodedScopeKey || '');
     const settings = getUserSettings();
-    const index = (settings.clients || []).findIndex(c => c.companyName === name);
+    const index = (settings.clients || []).findIndex(c => c.companyName === name && c.scopedToVehicleNumber === scopeKey);
     if (index < 0) { showToastMessage('거래처를 찾을 수 없습니다.'); return; }
     openClientModal(index);
 

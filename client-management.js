@@ -9,11 +9,23 @@
 // 무관하다.
 // ============================================================================
 
+// "직원기사" 모드(계산서 처리 방식이 employee)인 소속기사는 거래처를 스스로 관리하지 않는다
+// — 차주가 "기사 기록 관리" 화면에서 전부 처리하는 방식이라, 기사 본인 계정에서는 지금까지
+// 운행기록에 입력해 온 거래처명만 참고로 보이면 되고 추가/수정 권한은 없다("기사는 기사계정에서
+// 거래처명만 보이면 돼" — 실제로 요청받은 동작). "기사 직접 정산" 모드는 반대로 기사 본인이
+// 실제 주인이라 평소처럼 전체 관리 권한을 그대로 준다.
+function isEmployeeModeReadOnlyClientView(settings) {
+    return settings.accountType === 'employed_driver' && settings.employerLink?.settlementMode === 'employee';
+}
+
 function showClientManagement(returnPage = 'main') {
     setUtilityReturnPage(returnPage);
     hideAllPages();
     document.getElementById('clientManagementPage').classList.remove('hidden');
-    renderClientList(); 
+    const settings = getUserSettings();
+    const readOnly = isEmployeeModeReadOnlyClientView(settings);
+    document.querySelector('#clientManagementPage .management-add-wrap')?.classList.toggle('hidden', readOnly);
+    renderClientList();
 }
 
 let editingClientIndex = -1;
@@ -100,8 +112,16 @@ function finishClientDrag() {
     const orderedIndexes = [...document.querySelectorAll('#clientListContainer .client-list-card')]
         .map(item => Number(item.dataset.clientIndex));
 
-    if (orderedIndexes.length === originalClients.length) {
-        settings.clients = orderedIndexes.map(index => originalClients[index]);
+    // 이 목록엔 scopedToVehicleNumber가 붙은 "기사 전용 거래처"는 애초에 안 보이므로
+    // (renderClientList가 걸러냄), 드래그로 재배열되는 것도 그 나머지("차주 자신의 거래처")
+    // 뿐이다. 그래서 전체 개수가 아니라 "보이는(=차주 자신의) 거래처" 개수와 비교해야
+    // 한다 — 기사 전용 거래처가 하나라도 있으면 예전 비교식(전체 개수 기준)은 항상
+    // 어긋나서 드래그 재정렬 자체가 조용히 먹통이 됐다.
+    const visibleClients = originalClients.filter(c => !c.scopedToVehicleNumber);
+    if (orderedIndexes.length === visibleClients.length) {
+        const reordered = orderedIndexes.map(index => originalClients[index]);
+        const scopedClients = originalClients.filter(c => c.scopedToVehicleNumber);
+        settings.clients = [...reordered, ...scopedClients];
         setUserSettings(settings);
     }
 
@@ -168,9 +188,28 @@ function bindClientDragEvents(card, clientIndex) {
 
 function renderClientList() {
     const settings = getUserSettings();
-    let clients = settings.clients || [];
+    // scopedToVehicleNumber가 붙은 거래처는 차주가 "기사 기록 관리" 화면에서 특정
+    // 직원기사 전용으로 관리하는 거래처다 — 저장은 이 계정(차주) 소유로 같이 되지만,
+    // 차주 본인의 일반 거래처 목록에는 절대 섞여 보이면 안 된다("차주 거래처는 차주 것,
+    // 기사 거래처는 기사 것" 원칙). 그래서 여기서는 항상 걸러내고, 아래에서 저장할 때도
+    // 이 항목들은 그대로 보존해서 사라지지 않게 한다.
+    const allClients = settings.clients || [];
+    let clients = allClients.filter(c => !c.scopedToVehicleNumber);
+    const scopedClients = allClients.filter(c => c.scopedToVehicleNumber);
     const container = document.getElementById('clientListContainer');
     container.innerHTML = '';
+
+    // "직원기사" 모드 소속기사는 거래처를 추가/수정/정렬할 권한이 없다 — 지금까지 운행기록에
+    // 쓴 거래처명만 참고로 보여주고 끝낸다(수정/삭제 버튼, 드래그, 뱃지 전부 없음). 정렬도
+    // 안 하고 저장소도 건드리지 않는다 — 그냥 훑어보기용 읽기 전용 화면이다.
+    if (isEmployeeModeReadOnlyClientView(settings)) {
+        if (!clients.length) {
+            container.innerHTML = '<div class="empty-state">등록된 거래처가 없습니다.</div>';
+            return;
+        }
+        container.innerHTML = clients.map(c => `<div class="car-card management-list-card client-list-card client-readonly-card"><div class="management-card-inner"><div class="client-card-title"><strong>${escapeDetailText(c.companyName)}</strong></div></div></div>`).join('');
+        return;
+    }
 
     // 항상 '고정 거래처'가 최상단으로 오도록 정렬 (단, 동일 그룹 내의 순서는 유지)
     clients.sort((a, b) => {
@@ -178,8 +217,10 @@ function renderClientList() {
         if (!a.isPinned && b.isPinned) return 1;
         return 0;
     });
-    // 정렬된 상태를 저장소에 갱신하여 렌더링 순서와 실제 데이터 인덱스를 동기화
-    settings.clients = clients; 
+    // 정렬된 상태를 저장소에 갱신하여 렌더링 순서와 실제 데이터 인덱스를 동기화한다.
+    // scopedClients를 뒤에 그대로 이어붙여야 위에서 걸러낸 기사 전용 거래처가 저장소에서
+    // 사라지지 않는다.
+    settings.clients = [...clients, ...scopedClients];
     setUserSettings(settings);
 
     if (clients.length === 0) {
@@ -187,7 +228,11 @@ function renderClientList() {
         return;
     }
 
-    clients.forEach((client, idx) => {
+    clients.forEach(client => {
+        // 실제 저장 배열(settings.clients, 방금 재구성됨) 안에서의 진짜 인덱스를 써야 한다
+        // (scoped 거래처를 걸러낸 목록의 위치와 다를 수 있다) — openClientModal/deleteClient는
+        // 이 인덱스로 settings.clients를 직접 참조한다.
+        const idx = settings.clients.indexOf(client);
         let badges = '';
         // 즐겨찾기 표시 뱃지(예전 "고정 거래처" 스위치 — 이름/모양만 바뀜, 목록 맨 위 정렬은 그대로)
         if (client.isPinned) {
@@ -349,7 +394,9 @@ function deleteClient(idx) {
 
 function populateClientDataList() {
     const settings = getUserSettings();
-    const clients = settings.clients || [];
+    // scopedToVehicleNumber 거래처(특정 직원기사 전용)는 차주 본인의 운행 입력 자동완성에는
+    // 안 나와야 한다 — "차주 거래처는 차주 것" 원칙.
+    const clients = (settings.clients || []).filter(c => !c.scopedToVehicleNumber);
     const dataList = document.getElementById('clientDataList');
     if (dataList) {
         dataList.innerHTML = '';
@@ -367,7 +414,7 @@ function renderPinnedClientShortcuts() {
     const container = document.getElementById('callClientShortcuts');
     if (!container) return;
 
-    const pinnedClients = (settings.clients || []).filter(client => client.isPinned && client.companyName);
+    const pinnedClients = (settings.clients || []).filter(client => client.isPinned && client.companyName && !client.scopedToVehicleNumber);
     container.innerHTML = '';
     container.style.display = pinnedClients.length ? 'flex' : 'none';
 
@@ -396,6 +443,14 @@ function selectPinnedClient(companyName) {
 let clientModalOpenedFromCallDetail = false;
 
 function openClientModalFromCallDetail() {
+    // 콜상세 모달의 거래처 입력란 옆 "+ 추가" 버튼도 결국 이 함수를 거쳐 거래처 등록
+    // 모달을 연다 — 거래처관리 화면의 "+ 추가"만 숨기고 이 경로를 막지 않으면, 직원기사
+    // 모드 소속기사가 이 버튼으로 여전히 정식 거래처를 등록/수정할 수 있어 제한이
+    // 무의미해진다.
+    if (isEmployeeModeReadOnlyClientView(getUserSettings())) {
+        showToastMessage('거래처 등록은 사장님 계정에서 관리합니다. 거래처명만 입력해 주세요.');
+        return;
+    }
     clientModalOpenedFromCallDetail = true;
     openClientModal(-1);
 }

@@ -354,7 +354,9 @@ function getAppAutocompleteValues(type) {
     };
     const field = { load: 'loadLoc', unload: 'unloadLoc', fare: 'fare', client: 'client' }[type];
     if (type === 'client') {
-        (getUserSettings().clients || []).filter(client => client.companyName).forEach(client => add(client.companyName));
+        // scopedToVehicleNumber 거래처(특정 직원기사 전용, driver-link.js가 관리)는 차주 본인의
+        // 운행 입력 자동완성에는 안 나와야 한다 — "차주 거래처는 차주 것" 원칙.
+        (getUserSettings().clients || []).filter(client => client.companyName && !client.scopedToVehicleNumber).forEach(client => add(client.companyName));
     }
     [...currentTempCallDetails].reverse().forEach(item => add(item?.[field]));
     Object.keys(workData).sort().reverse().forEach(dateKey => {

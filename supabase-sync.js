@@ -439,6 +439,30 @@ async function deleteClientFromSupabase(clientSupabaseId) {
     if (error) throw error;
 }
 
+// "기사 직접 정산" 모드의 연동 기사가 본인 계정에 등록해 둔 거래처를 차주가 조회(읽기 전용)만
+// 할 때 쓴다. 차주의 settings.clients에는 절대 섞여 들어가지 않는다 — 그 계정 소유의
+// clients 행을 그때그때 직접 읽어와서 화면에만 보여주고 로컬에 저장하지 않는다("차주 거래처는
+// 차주 것, 기사 거래처는 기사 것" 원칙). 새 RLS 정책("차주는 기사직접정산 기사의 거래처를
+// 조회 가능", clients 테이블 SELECT 전용)이 있어야 실제로 행이 내려온다 — 없으면 그냥
+// 빈 배열이 온다(에러 아님, RLS가 조용히 0건으로 필터링).
+async function fetchDriverOwnClientsFromSupabase(driverId) {
+    if (!driverId) return [];
+    try {
+        const client = await getSupabaseClient();
+        const { data, error } = await client.from('clients').select('*').eq('user_id', driverId).order('display_order', { ascending: true });
+        if (error) throw error;
+        return (data || []).map(row => ({
+            ...(row.raw && typeof row.raw === 'object' ? row.raw : {}),
+            companyName: row.company_name,
+            bizNumber: row.biz_number || '',
+            managerName: row.manager_name || ''
+        }));
+    } catch (error) {
+        console.error('연동 기사 본인 거래처 조회 실패:', error);
+        return [];
+    }
+}
+
 // Supabase(profiles+vehicles+clients)에서 읽어와 기존 getUserSettings()가 반환하던 것과
 // 동일한 모양으로 조립한 뒤 localStorage(userSettings)에 그대로 반영한다.
 async function initSettingsFromSupabase(userId) {
@@ -1462,6 +1486,18 @@ async function syncEmployerLinkFromSupabase() {
             console.error('연동된 차주 프로필 조회 실패(연결 상태 자체는 복원됨):', profileError);
         }
 
+        // settlementMode(차주가 이 차량에 지정한 "계산서 처리 방식")를 기사 본인 계정에도
+        // 복원해 둔다 — "직원기사"/"기사 직접 정산" 여부에 따라 기사 쪽 거래처 화면의 권한이
+        // 달라지는데(거래처관리 화면이 이 값을 보고 판단), 예전엔 이 값 자체가 기사 계정
+        // 어디에도 동기화되지 않아서 기사 쪽에서는 자신이 어느 모드인지 전혀 알 수 없었다.
+        let settlementMode = settings.employerLink?.settlementMode || '';
+        try {
+            const { data: vehicleRow } = await client.from('vehicles').select('settlement_mode').eq('id', latest.vehicle_id).maybeSingle();
+            if (vehicleRow) settlementMode = vehicleRow.settlement_mode || '';
+        } catch (vehicleError) {
+            console.error('연동 차량 정산 방식 조회 실패(기존 캐시로 계속 진행):', vehicleError);
+        }
+
         settings.employerLink = {
             id: settings.employerLink?.id || latest.id,
             supabaseId: latest.id,
@@ -1471,6 +1507,7 @@ async function syncEmployerLinkFromSupabase() {
             ownerPhone,
             inviteCode: latest.invite_code,
             vehicleId: latest.vehicle_id,
+            settlementMode,
             linkedAt: latest.linked_at || latest.created_at
         };
         localStorage.setItem('userSettings', JSON.stringify(settings));
@@ -1517,6 +1554,10 @@ async function syncDriverLinksFromSupabase() {
                 ...(existing || {}),
                 id: existing?.id || row.id,
                 supabaseId: row.id,
+                // "기사 직접 정산" 모드에서 차주가 그 기사의 거래처를 조회(읽기 전용)할 때
+                // clients 테이블을 user_id=driverId로 직접 조회해야 하는데, 예전엔 이 값
+                // 자체가 로컬에 전혀 없었다 — driverName/phone만 있고 실제 auth id는 빠져 있었다.
+                driverId: row.driver_id || null,
                 driverName: driverProfile?.name || existing?.driverName || '',
                 phone: driverProfile?.phone || existing?.phone || '',
                 inviteCode: row.invite_code,
