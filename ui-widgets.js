@@ -484,6 +484,7 @@ function initBackdropDismissModals() {
         reportCarSelectModal: closeReportCarSelectModal,
         reportShareModal: closeReportShareModal,
         clientModal: cancelClientModal,
+        driverClientFixedRouteModal: closeDriverClientFixedRouteModal,
         confirmModal: closeConfirmModal
     };
 

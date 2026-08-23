@@ -9,17 +9,12 @@
 // 무관하다.
 // ============================================================================
 
-// "직원기사" 모드(계산서 처리 방식이 employee)인 소속기사는 거래처를 스스로 관리하지 않는다
-// — 차주가 "기사 기록 관리" 화면에서 전부 처리하는 방식이라, 기사 본인 계정에서는 지금까지
-// 운행기록에 입력해 온 거래처명만 참고로 보이면 되고 추가/수정 권한은 없다("기사는 기사계정에서
-// 거래처명만 보이면 돼" — 실제로 요청받은 동작). "기사 직접 정산" 모드는 반대로 기사 본인이
-// 실제 주인이라 평소처럼 전체 관리 권한을 그대로 준다.
-function isEmployeeModeReadOnlyClientView(settings) {
-    // "회사 정산"도 직원기사와 동일하게 취급한다 — 둘 다 차주가 전부 처리하는 방식이라
-    // 기사에게 등록/수정 권한을 줄 필요가 없고, 회사 정산은 거래처별 계약 조건을 기사에게
-    // 알리지 않아도 되는 경우가 많다는 요구사항까지 감안했다.
-    return settings.accountType === 'employed_driver'
-        && (settings.employerLink?.settlementMode === 'employee' || settings.employerLink?.settlementMode === 'company');
+// 소속기사는 계산서 처리 방식과 무관하게 거래처를 스스로 "등록"하지 않는다 — 정식 거래처
+// 등록/사업자정보 관리는 전부 차주가 "기사 관리" 화면의 거래처 칩에서 처리한다. 기사 본인
+// 계정에서는 지금까지 운행기록에 입력해 온 거래처명만 참고로 보이고, 유일하게 할 수 있는
+// 조작은 그 거래처를 본인의 "고정노선과 연동"에 쓸지 토글하는 것뿐이다(요청받은 동작).
+function isEmployedDriverAccount(settings) {
+    return settings.accountType === 'employed_driver';
 }
 
 function showClientManagement(returnPage = 'main') {
@@ -27,8 +22,7 @@ function showClientManagement(returnPage = 'main') {
     hideAllPages();
     document.getElementById('clientManagementPage').classList.remove('hidden');
     const settings = getUserSettings();
-    const readOnly = isEmployeeModeReadOnlyClientView(settings);
-    document.querySelector('#clientManagementPage .management-add-wrap')?.classList.toggle('hidden', readOnly);
+    document.querySelector('#clientManagementPage .management-add-wrap')?.classList.toggle('hidden', isEmployedDriverAccount(settings));
     renderClientList();
 }
 
@@ -203,15 +197,26 @@ function renderClientList() {
     const container = document.getElementById('clientListContainer');
     container.innerHTML = '';
 
-    // "직원기사" 모드 소속기사는 거래처를 추가/수정/정렬할 권한이 없다 — 지금까지 운행기록에
-    // 쓴 거래처명만 참고로 보여주고 끝낸다(수정/삭제 버튼, 드래그, 뱃지 전부 없음). 정렬도
-    // 안 하고 저장소도 건드리지 않는다 — 그냥 훑어보기용 읽기 전용 화면이다.
-    if (isEmployeeModeReadOnlyClientView(settings)) {
+    // 소속기사는 거래처를 새로 등록하거나 사업자정보를 수정할 권한이 없다 — 지금까지
+    // 운행기록에 쓴 거래처명만 보여주고, "수정" 버튼은 고정노선 연동 여부만 바꾸는 작은
+    // 모달을 연다(openDriverClientFixedRouteModal). 정렬/드래그도 안 하고 저장소도 그대로
+    // 둔다 — 훑어보기 + 고정노선 토글 전용 화면이다.
+    if (isEmployedDriverAccount(settings)) {
         if (!clients.length) {
             container.innerHTML = '<div class="empty-state">등록된 거래처가 없습니다.</div>';
             return;
         }
-        container.innerHTML = clients.map(c => `<div class="car-card management-list-card client-list-card client-readonly-card"><div class="management-card-inner"><div class="client-card-title"><strong>${escapeDetailText(c.companyName)}</strong></div></div></div>`).join('');
+        container.innerHTML = clients.map(c => {
+            const idx = settings.clients.indexOf(c);
+            return `<div class="car-card management-list-card client-list-card client-readonly-card">
+                <div class="management-card-inner">
+                    <div class="client-card-title"><strong>${escapeDetailText(c.companyName)}</strong>${c.fixedRouteLinked ? '<span class="management-badge tax-invoice">고정노선 연동</span>' : ''}</div>
+                    <div class="car-action-btns">
+                        <button type="button" class="action-icon-btn" onclick="openDriverClientFixedRouteModal(${idx})" title="수정">${editDetailSvg()}</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
         return;
     }
 
@@ -277,6 +282,39 @@ function renderClientList() {
         `;
         container.appendChild(div);
     });
+}
+
+// 소속기사 전용 "고정노선 연동" 미니 모달. 정식 거래처 등록 모달(clientModal) 전체를
+// 열어주지 않고, 이 토글 하나만 바꿀 수 있게 한다 — 소속기사는 거래처 사업자정보를
+// 등록/수정할 권한이 없고(차주가 "기사 관리" 화면에서 전담), 유일하게 필요한 조작은
+// "이 거래처를 내 고정노선 원탭 기록에 쓸지"뿐이기 때문이다.
+function openDriverClientFixedRouteModal(index) {
+    const settings = getUserSettings();
+    const client = settings.clients?.[index];
+    if (!client) return;
+    document.getElementById('driverClientFixedRouteIndex').value = index;
+    document.getElementById('driverClientFixedRouteToggle').checked = !!client.fixedRouteLinked;
+    document.getElementById('driverClientFixedRouteModal').classList.remove('hidden');
+}
+
+function closeDriverClientFixedRouteModal() {
+    document.getElementById('driverClientFixedRouteModal').classList.add('hidden');
+}
+
+// 토글 즉시 저장(별도 저장 버튼 없음) — 계정 전체에서 고정노선 연동 거래처는 최대 1곳이라
+// (saveClient()의 기존 규칙과 동일), 켤 때 나머지 거래처는 자동으로 끈다.
+function saveDriverClientFixedRouteToggle() {
+    const index = parseInt(document.getElementById('driverClientFixedRouteIndex').value, 10);
+    const settings = getUserSettings();
+    if (!settings.clients?.[index]) return;
+    const checked = document.getElementById('driverClientFixedRouteToggle').checked;
+    if (checked) {
+        settings.clients.forEach((c, i) => { if (i !== index) c.fixedRouteLinked = false; });
+    }
+    settings.clients[index].fixedRouteLinked = checked;
+    setUserSettings(settings);
+    showToastMessage(checked ? '고정노선과 연동했습니다.' : '고정노선 연동을 해제했습니다.');
+    renderClientList();
 }
 
 // 예전엔 "고정 거래처" 스위치였는데, 실제로는 "이 거래처를 목록 맨 위에 즐겨찾기"하는
@@ -448,10 +486,9 @@ let clientModalOpenedFromCallDetail = false;
 
 function openClientModalFromCallDetail() {
     // 콜상세 모달의 거래처 입력란 옆 "+ 추가" 버튼도 결국 이 함수를 거쳐 거래처 등록
-    // 모달을 연다 — 거래처관리 화면의 "+ 추가"만 숨기고 이 경로를 막지 않으면, 직원기사
-    // 모드 소속기사가 이 버튼으로 여전히 정식 거래처를 등록/수정할 수 있어 제한이
-    // 무의미해진다.
-    if (isEmployeeModeReadOnlyClientView(getUserSettings())) {
+    // 모달을 연다 — 거래처관리 화면의 "+ 추가"만 숨기고 이 경로를 막지 않으면, 소속기사가
+    // 이 버튼으로 여전히 정식 거래처를 등록/수정할 수 있어 제한이 무의미해진다.
+    if (isEmployedDriverAccount(getUserSettings())) {
         showToastMessage('거래처 등록은 사장님 계정에서 관리합니다. 거래처명만 입력해 주세요.');
         return;
     }
@@ -594,6 +631,11 @@ function applyClientPaymentTerms() {
 
 function openClientModal(index = -1) {
     editingClientIndex = index;
+    // "거래처" 칩(driver-link.js openLinkedDriverClientEditor)에서 편집할 때만 이 블록을
+    // 숨기고, 여기서는 항상 기본값(보임)으로 되돌린다 — 이 모달은 일반 거래처관리/콜상세
+    // "+ 추가"에서도 그대로 재사용되므로, 매번 열릴 때마다 리셋해 둬야 직전에 숨겼던 상태가
+    // 남아있지 않는다.
+    document.getElementById('clientFixedRouteBlock')?.classList.remove('hidden');
     const settings = getUserSettings();
     const clients = settings.clients || [];
 

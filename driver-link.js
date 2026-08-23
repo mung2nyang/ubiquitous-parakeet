@@ -810,7 +810,7 @@ function showLinkedDriverClientsPage() {
     if (!link) return;
     hideAllPages();
     document.getElementById('linkedDriverClientsPage').classList.remove('hidden');
-    document.getElementById('linkedDriverClientsPageTitle').textContent = `${escapeDetailText(link.driverName || '기사')} 거래처`;
+    document.getElementById('linkedDriverClientsPageTitle').textContent = `${escapeDetailText(link.driverName || '기사')} 기사 거래처`;
     renderLinkedDriverClientsPage();
 }
 
@@ -905,10 +905,12 @@ function addLinkedDriverClient() {
 
 // client-management.js의 openClientModal/saveClient를 그대로 재사용한다 — 모달은 페이지
 // 이동 없이 지금 화면 위에 그냥 뜨고 닫히므로 별도 처리가 필요 없다. 닫힐 때(저장/취소
-// 모두) 이 화면을 다시 그려서 최신 상태를 반영한다.
+// 모두) 이 화면을 다시 그려서 최신 상태를 반영한다. 고정노선과 연동은 차주 본인 계정의
+// 일일운행 전용 기능이라 이 기사 전용 거래처 편집에는 필요 없어서 숨긴다.
 function openLinkedDriverClientEditor(index) {
     if (typeof openClientModal !== 'function') return;
     openClientModal(index);
+    document.getElementById('clientFixedRouteBlock')?.classList.add('hidden');
     const modal = document.getElementById('clientModal');
     if (!modal) return;
     const observer = new MutationObserver(() => {
