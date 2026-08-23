@@ -695,7 +695,14 @@ function resetCarForm() {
     selectInfoType('existing');
     document.getElementById('newDriverName').value = '';
     document.getElementById('newUserPhone').value = '';
-    document.getElementById('newCarSettlementMode').value = 'default';
+    // "사용자 기본 설정 사용(default)"은 더 이상 차량에 저장하는 값이 아니다 — 차량관리와
+    // 마이페이지에 같은 걸 두 군데서 따로 설정하는 것처럼 보여 혼란을 준다는 피드백에 따라,
+    // 계산서 처리 방식은 이제 이 차량 드롭다운 하나가 유일한 설정 지점이다. 새 기사차량을
+    // 등록할 때는 가입 때 고른 값(onboardingWizard의 정산방식 질문)을 구체적인 값으로 미리
+    // 채워만 주고, 이후엔 이 차량 자체의 값으로 독립적으로 남는다(나중에 계정 기본값이
+    // 바뀌어도 이미 등록된 차량엔 영향 없음 — 오히려 그게 자연스럽다).
+    const settingsForNewCarDefault = getUserSettings();
+    document.getElementById('newCarSettlementMode').value = settingsForNewCarDefault.defaultDriverSettlementMode || 'company';
     document.getElementById('newCarSettlementMode').parentElement?._dropdownSync?.();
     updateDriverSettlementModeGuide();
     document.getElementById('newBankName').value = '';
@@ -745,7 +752,11 @@ function editCar(idx) {
         const driverLinkEnabled = !!car.driverLinkEnabled || (!!linkedDriver && !car.logEnabled);
         document.getElementById('newDriverName').value = car.driverName || linkedDriver?.driverName || car.personalInfo?.driverName || '';
         document.getElementById('newUserPhone').value = car.driverPhone || linkedDriver?.phone || car.personalInfo?.phone || '';
-        document.getElementById('newCarSettlementMode').value = car.settlementMode || 'default';
+        // 예전에 만든 차량 중엔 'default'(계정 기본값을 그대로 따름)로 저장된 것이 남아있을
+        // 수 있다 — 그 값은 이제 드롭다운 선택지에 없으므로, 지금 계정 기본값(또는 그마저
+        // 없으면 '회사 정산') 기준으로 실제 적용되는 구체적인 값을 대신 보여준다.
+        document.getElementById('newCarSettlementMode').value =
+            (car.settlementMode && car.settlementMode !== 'default') ? car.settlementMode : (settings.defaultDriverSettlementMode || 'company');
         document.getElementById('newCarSettlementMode').parentElement?._dropdownSync?.();
         updateDriverSettlementModeGuide();
         updateCarDriverLinkStatusText(linkedDriver || null);

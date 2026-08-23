@@ -32,13 +32,18 @@ function goBackFromMyPage() {
     returnToLogHome(myPageReturnLogId);
 }
 
+// 예전엔 이 화면에서 "기본 계산서 처리 방식"(defaultDriverSettlementMode)도 같이 정했는데,
+// 차량관리 → 각 기사차량의 "계산서 처리 방식" 드롭다운과 사실상 같은 값을 두 군데서 따로
+// 관리하는 모양이 되어, 하나만 바꾸면 다른 화면은 그대로인 걸 버그로 오해하는 혼란이
+// 반복됐다(실제로 재현·보고됨). 기사차량마다 처리 방식이 다를 수 있다는 게 이 값의 존재
+// 이유 자체이므로 두 값을 동기화하는 대신, "어떻게 처리할지"는 차량관리 화면 하나로
+// 합치고 이 화면은 "기사 매입 계산서를 어떤 금액 기준으로 준비할지"(driverInvoiceBasis)만
+// 남긴다. defaultDriverSettlementMode 자체는 신규 기사차량 등록 시 초깃값으로만 계속
+// 쓰인다(car-management.js resetCarForm 참고).
 function showBillingSettingsPage() {
     const settings = getUserSettings();
-    const modeSelect = document.getElementById('defaultDriverSettlementMode');
     const basisSelect = document.getElementById('driverInvoiceBasis');
-    modeSelect.value = settings.defaultDriverSettlementMode || 'company';
     basisSelect.value = settings.driverInvoiceBasis || 'net';
-    modeSelect.parentElement?._dropdownSync?.();
     basisSelect.parentElement?._dropdownSync?.();
     updateBillingSettingsGuide();
     hideAllPages();
@@ -52,29 +57,24 @@ function saveBillingSettings() {
 
 function commitBillingSettings() {
     const settings = getUserSettings();
-    settings.defaultDriverSettlementMode = document.getElementById('defaultDriverSettlementMode').value || 'company';
     settings.driverInvoiceBasis = document.getElementById('driverInvoiceBasis').value || 'net';
     setUserSettings(settings);
     showToastMessage('정산·계산서 기본 설정을 저장했습니다.');
 }
 
 function updateBillingSettingsGuide() {
-    const mode = document.getElementById('defaultDriverSettlementMode')?.value || 'company';
     const basis = document.getElementById('driverInvoiceBasis')?.value || 'net';
-    const meta = getDriverSettlementModeMeta(mode);
     const basisText = basis === 'gross' ? '기사 매입 계산서는 공제 전 운송료를 기준으로 준비합니다.' : '기사 매입 계산서는 수수료·산재보험료 공제 후 지급액을 기준으로 준비합니다.';
     const guide = document.getElementById('billingSettingsModeGuide');
-    if (guide) guide.innerHTML = `<strong>${meta.label}</strong><br>${meta.description}<br>${basisText}`;
+    if (guide) guide.innerHTML = basisText;
 }
 
 function updateDriverSettlementModeGuide() {
     const select = document.getElementById('newCarSettlementMode');
     const guide = document.getElementById('newCarSettlementModeGuide');
     if (!select || !guide) return;
-    const settings = getUserSettings();
-    const effectiveMode = select.value === 'default' ? (settings.defaultDriverSettlementMode || 'company') : select.value;
-    const meta = getDriverSettlementModeMeta(effectiveMode);
-    guide.textContent = select.value === 'default' ? `기본값 · ${meta.label} — ${meta.description}` : meta.description;
+    const meta = getDriverSettlementModeMeta(select.value);
+    guide.textContent = meta.description;
 }
 
 function showNoticePage() {

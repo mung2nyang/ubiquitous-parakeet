@@ -695,18 +695,8 @@
             </div>
             <section class="billing-settings-hero">
                 <span>BILLING FLOW</span>
-                <strong>기사차량의 기본 정산 방식을 선택하세요.</strong>
-                <p>기사차량마다 다른 경우 차량 정보에서 개별 방식을 선택할 수 있습니다.</p>
-            </section>
-            <section class="billing-settings-card">
-                <label for="defaultDriverSettlementMode">기본 계산서 처리 방식</label>
-                <select id="defaultDriverSettlementMode" class="input-box" data-app-dropdown onchange="saveBillingSettings(); updateBillingSettingsGuide();">
-                    <option value="company">회사 정산</option>
-                    <option value="driver_direct">기사 직접 정산</option>
-                    <option value="employee">직원 기사</option>
-                    <option value="none">계산서 미사용</option>
-                </select>
-                <div id="billingSettingsModeGuide" class="billing-settings-guide"></div>
+                <strong>기사 매입 계산서 발행 기준을 선택하세요.</strong>
+                <p>계산서 처리 방식(회사 정산/기사 직접 정산 등)은 기사차량마다 달라질 수 있어, 이제 차량 정보 화면에서 차량별로 직접 설정합니다.</p>
             </section>
             <section class="billing-settings-card">
                 <label for="driverInvoiceBasis">기사 매입 계산서 기준</label>
@@ -714,6 +704,7 @@
                     <option value="net">공제 후 지급액</option>
                     <option value="gross">공제 전 운송료</option>
                 </select>
+                <div id="billingSettingsModeGuide" class="billing-settings-guide"></div>
                 <p class="billing-settings-note">세무 처리 기준은 거래 형태에 따라 다를 수 있으므로 실제 발급 전 확인해 주세요.</p>
             </section>
         </div>
@@ -1908,7 +1899,6 @@
                 <div class="form-group">
                     <label for="newCarSettlementMode">계산서 처리 방식</label>
                     <select id="newCarSettlementMode" class="input-box" data-app-dropdown onchange="updateDriverSettlementModeGuide()">
-                        <option value="default">사용자 기본 설정 사용</option>
                         <option value="company">회사 정산</option>
                         <option value="driver_direct">기사 직접 정산</option>
                         <option value="employee">직원 기사</option>
