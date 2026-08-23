@@ -1276,6 +1276,17 @@ async function migrateLocalDataToSupabase(userId) {
 //   C에서 비회원으로 정보 입력 → 백업 저장 → B계정으로 로그인 → B계정의 거래처/차량에 C의
 //   정보가 섞여 들어가고 앱 설정이 C의 것으로 덮어써짐).
 async function hydrateFromSupabaseAndMigrate({ allowLocalMigration = false } = {}) {
+    // supabaseHydrationCompleted는 페이지가 로드된 뒤 딱 한 번만 false로 초기화되고(선언부
+    // 참고) 그 뒤로는 이 함수 finally에서만 true로 세워진다 — 이 앱은 SPA라 로그아웃 후
+    // 다른 계정으로 재로그인해도 페이지가 새로고침되지 않으므로, 두 번째 로그인부터는 이
+    // 함수가 시작되는 시점에도 이전 계정의 하이드레이션이 남긴 true가 그대로 남아있었다.
+    // scheduleSupabaseSettingsSync()의 가드(!supabaseHydrationCompleted)가 "아직 하이드레이션
+    // 중"을 감지하지 못해서, 이번 하이드레이션이 로컬 설정(다크모드 등 앱설정 포함)을 다
+    // 채우기 전에 스쳐가는 배경 저장이 끼어들면 그 불완전한 상태가 그대로 서버에 올라갈 수
+    // 있었다 — "로그인할 때마다 다크모드/앱설정이 풀렸다 적용됐다 랜덤하게 달라진다"는
+    // 증상으로 실제 재현·보고됨. 매 하이드레이션 시작 시점에 반드시 다시 false로 내려서,
+    // 이번 하이드레이션이 끝나기 전까지는 어떤 배경 저장도 끼어들지 못하게 막는다.
+    supabaseHydrationCompleted = false;
     const user = await getSupabaseUser();
     if (!user) { supabaseHydrationCompleted = true; return; }
 
