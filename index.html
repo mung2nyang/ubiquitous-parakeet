@@ -2389,7 +2389,11 @@
          supabase-sync.js가 이 파일의 assignmentRangesOverlap/applyEmployerAutoFilledInfo를
          부르는 반대 방향 참조는 이미 typeof 가드가 돼 있다. -->
     <script src="driver-link.js?v=20260823-split-5"></script>
+    <!-- §코드 쪼개기 6차: 알림 패널(연체 미수금/백업 권장/기사연동/오늘자 미입력 안내)을
+         notifications.js로 분리했다. getDdayText는 finance.js도 직접 쓰는 범용 유틸이라
+         script.js에 남겼다(finance.js 상단 주석에 이미 그렇게 명시돼 있음). -->
+    <script src="notifications.js?v=20260823-split-6"></script>
     <script src="supabase-sync.js?v=20260819-supabase-sync"></script>
-    <script src="script.js?v=20260823-split-5"></script>
+    <script src="script.js?v=20260823-split-6"></script>
 </body>
 </html>
