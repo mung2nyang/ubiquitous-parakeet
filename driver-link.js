@@ -826,8 +826,20 @@ async function renderLinkedDriverClientsPage() {
     if (mode === 'driver_direct') {
         addWrap?.classList.add('hidden');
         container.innerHTML = '<div class="empty-state">불러오는 중...</div>';
-        const driverClients = typeof fetchDriverOwnClientsFromSupabase === 'function' ? await fetchDriverOwnClientsFromSupabase(link.driverId) : [];
+        const fetchedDriverClients = typeof fetchDriverOwnClientsFromSupabase === 'function' ? await fetchDriverOwnClientsFromSupabase(link.driverId) : [];
         if (getLinkedDriverById(activeLinkedDriverId)?.id !== link.id || document.getElementById('linkedDriverClientsPage')?.classList.contains('hidden')) return;
+        // 이 목록은 기사 본인 계정의 실제 clients 데이터를 그대로 읽어오기만 하고 차주 쪽에서
+        // 손댈 수 없는(조회 전용) 화면이다 — 그 데이터 자체에 같은 이름이 여러 건 들어있으면
+        // (실제로 이런 사례가 나왔다) 여기서도 그대로 중복으로 보였다. 차주가 정리할 방법이
+        // 없는 화면이니만큼, 최소한 "보여주기"만이라도 같은 이름(앞뒤 공백 무시)은 하나로
+        // 합쳐서 깔끔하게 보여준다 — 실제 데이터 정리는 기사 본인 계정에서 이뤄져야 한다.
+        const seenDriverClientNames = new Set();
+        const driverClients = fetchedDriverClients.filter(c => {
+            const key = (c.companyName || '').trim();
+            if (seenDriverClientNames.has(key)) return false;
+            seenDriverClientNames.add(key);
+            return true;
+        });
         if (!driverClients.length) {
             container.innerHTML = '<div class="empty-state">기사가 등록한 거래처가 없습니다.</div>';
             return;
