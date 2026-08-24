@@ -576,7 +576,17 @@ async function initSettingsFromSupabase(userId) {
     if (vehiclesError) console.error('vehicles 조회 실패:', vehiclesError);
     if (clientsError) console.error('clients 조회 실패:', clientsError);
 
-    const jsonbSettings = (profile && profile.settings && typeof profile.settings === 'object') ? profile.settings : {};
+    // 안전장치: profiles 조회 자체가 실패했다면(로그인 직후 순간적인 시계오차로 인한
+    // JWT 거부, 일시적 네트워크 문제 등) profile이 undefined가 되는데, 이걸 그대로 믿고
+    // 진행하면 jsonbSettings가 {}가 되어 profiles.settings(jsonb)에 들어있던 모든 설정값과
+    // 아래 named 필드(userName/bizName/bizNumber/...)가 로그인 순간 통째로 빈 값으로
+    // 로컬에 덮어써진다(실제로 재현해서 확인한 문제). vehicles/clients처럼 이 경우엔
+    // 서버 응답을 신뢰하지 않고 이 기기의 기존 로컬 설정을 그대로 유지한다.
+    const previousSettings = getUserSettings();
+    if (profileError) console.warn('[Supabase] profiles 조회가 실패해 로컬 설정을 그대로 유지합니다.');
+    const jsonbSettings = profileError
+        ? previousSettings
+        : (profile && profile.settings && typeof profile.settings === 'object') ? profile.settings : {};
 
     const cars = (vehicles || []).map(row => ({
         ...(row.raw && typeof row.raw === 'object' ? row.raw : {}),
@@ -597,7 +607,6 @@ async function initSettingsFromSupabase(userId) {
     // 못 올라간) 차량/거래처가 있으면 그대로 살려서 합쳐준다. 그렇지 않으면 마이그레이션
     // 일부 실패, 방금 추가했지만 아직 백그라운드 동기화가 못 끝난 항목 등이 하이드레이션 한
     // 번에 조용히 사라져버릴 수 있다(실제로 재현해서 확인한 문제).
-    const previousSettings = getUserSettings();
     const previousCars = Array.isArray(previousSettings.cars) ? previousSettings.cars : [];
     const previousClients = Array.isArray(previousSettings.clients) ? previousSettings.clients : [];
     const unsyncedLocalCars = previousCars.filter(c => c && !c.supabaseId);
@@ -633,16 +642,19 @@ async function initSettingsFromSupabase(userId) {
         // 그래야 진짜 신규 유저(둘 다 없음)만 ''가 되고, 기존 유저는 accountType이 실수로
         // 지워지지 않는다.
         accountType: profile?.account_type || jsonbSettings.accountType || previousSettings.accountType || '',
-        userName: profile?.name || '',
-        userPhone: profile?.phone || '',
-        bizName: profile?.business_name || '',
-        bizNumber: profile?.business_number || '',
-        bizAddress: profile?.business_address || '',
-        bizType: profile?.business_type || '',
-        bizItem: profile?.business_item || '',
-        bizEmail: profile?.business_email || '',
-        bankName: profile?.bank_name || '',
-        accountNumber: profile?.account_number || '',
+        // profiles 조회 자체가 실패한 경우엔 위 jsonbSettings가 이미 previousSettings이므로
+        // 아래 named 필드들도 profile 값이 없으면 previousSettings로 떨어져야, 조회 실패
+        // 한 번으로 사업자정보·연락처·계좌정보가 로컬에서 빈 값으로 덮어써지지 않는다.
+        userName: profile?.name || (profileError ? previousSettings.userName : '') || '',
+        userPhone: profile?.phone || (profileError ? previousSettings.userPhone : '') || '',
+        bizName: profile?.business_name || (profileError ? previousSettings.bizName : '') || '',
+        bizNumber: profile?.business_number || (profileError ? previousSettings.bizNumber : '') || '',
+        bizAddress: profile?.business_address || (profileError ? previousSettings.bizAddress : '') || '',
+        bizType: profile?.business_type || (profileError ? previousSettings.bizType : '') || '',
+        bizItem: profile?.business_item || (profileError ? previousSettings.bizItem : '') || '',
+        bizEmail: profile?.business_email || (profileError ? previousSettings.bizEmail : '') || '',
+        bankName: profile?.bank_name || (profileError ? previousSettings.bankName : '') || '',
+        accountNumber: profile?.account_number || (profileError ? previousSettings.accountNumber : '') || '',
         cars: dedupedCars,
         clients: dedupedClients,
         isLoggedIn: true
