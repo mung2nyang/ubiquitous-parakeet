@@ -4147,23 +4147,20 @@ body:not(.pdf-export-mode) .detail-report-table .detail-location-cell {
     cursor: pointer;
 }
 
-.run-count-preset-add-btn {
-    display: block;
+/* "+ 버튼 추가"는 칩 목록 마지막 칸에 다른 횟수 칩과 같은 크기로 자연스럽게 이어진다. */
+.run-count-preset-add-chip {
     width: 100%;
-    margin-top: 6px;
-    padding: 8px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 5px 2px;
     border: 1px dashed var(--primary-color);
     border-radius: 10px;
+    box-sizing: border-box;
     background: transparent;
     color: var(--primary-color);
     font-size: var(--fs-2);
     font-weight: 750;
     cursor: pointer;
-}
-
-.run-count-preset-add-btn:disabled {
-    opacity: .4;
-    cursor: not-allowed;
 }
 
 /* --- 고정노선 상하차지(노선) 등록: 앱 설정 --- */

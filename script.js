@@ -3724,8 +3724,20 @@ function setRunCountPresetChipValues(scope = 'main', value) {
         container.appendChild(wrap);
     });
 
-    const addBtn = document.getElementById(scope === 'sub' ? 'subRunCountPresetAddBtn' : 'runCountPresetAddBtn');
-    if (addBtn) addBtn.disabled = presets.length >= RUN_COUNT_PRESET_MAX;
+    // "+ 버튼 추가"는 이제 별도 버튼이 아니라 이 칩 목록의 마지막 칸에 같은 크기의 "+" 칩으로
+    // 붙는다(피그마 디자인 반영). 최대 개수에 도달하면 더 추가할 수 없으니 아예 그리지 않는다.
+    if (presets.length < RUN_COUNT_PRESET_MAX) {
+        const addWrap = document.createElement('span');
+        addWrap.className = 'run-count-preset-chip-wrap';
+        const addChip = document.createElement('button');
+        addChip.type = 'button';
+        addChip.className = 'run-count-preset-add-chip';
+        addChip.textContent = '+';
+        addChip.setAttribute('aria-label', '횟수 버튼 추가');
+        addChip.addEventListener('click', () => addRunCountPresetChip(scope));
+        addWrap.appendChild(addChip);
+        container.appendChild(addWrap);
+    }
 }
 
 // "+ 버튼 추가" — 마지막 값 다음(안 겹치면)이나 안 쓰인 가장 작은 양수를 새 버튼으로 붙인다.
