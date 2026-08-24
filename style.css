@@ -2411,7 +2411,9 @@ body.account-flow-active #sideMenuOverlay {
 .linked-driver-client-trip-list { display:grid; gap:5px; margin-top:11px; padding-top:11px; border-top:1px dashed var(--border-color); }
 .linked-driver-client-trip-row { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--sub-text-color); font-size:var(--fs-floor); }
 .linked-driver-client-trip-row b { color:var(--text-color); flex:none; }
-.tax-invoice-card-actions.single-action { grid-template-columns:1fr; }
+/* "기사 관리 > 거래처" 카드 전용: 거래처명 옆으로 건수·차량정보를 같은 줄에 붙인다
+   (공용 .tax-invoice-card-head > div는 다른 화면과 함께 쓰므로 여기만 별도 클래스로 오버라이드). */
+.linked-driver-client-head-row { display:flex; flex-direction:row; align-items:baseline; flex-wrap:wrap; gap:6px; }
 .personal-intro {
     position: relative;
     overflow: hidden;

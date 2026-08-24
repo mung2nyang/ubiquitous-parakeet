@@ -240,11 +240,14 @@ function getVehicleSupplierIdentity(car, settings = getUserSettings()) {
         return { key: `owner:${ownerBiz.bizNumber || ownerBiz.name || 'default'}`, biz: ownerBiz, carLabel: '메인 차량', carNumber: null };
     }
     const biz = getCarBusinessInfo(car, settings);
+    // carLabel은 "이 세금계산서가 어느 차량/사업자로 나가는지" 식별용이라, 목록 배지처럼
+    // 공간이 빠듯한 곳과 달리 뒷자리만 보여주면 오히려 헷갈린다(같은 뒷자리 4자리를 쓰는
+    // 차량이 여러 대일 수 있음) — 차주가 등록한 차량번호 전체를 그대로 보여준다.
     if (biz.sameAsOwner) {
-        return { key: `owner:${ownerBiz.bizNumber || ownerBiz.name || 'default'}`, biz: ownerBiz, carLabel: getShortCarNum(car.number), carNumber: car.number };
+        return { key: `owner:${ownerBiz.bizNumber || ownerBiz.name || 'default'}`, biz: ownerBiz, carLabel: car.number, carNumber: car.number };
     }
     const key = `car:${car.number}:${biz.bizNumber || biz.name || 'noinfo'}`;
-    return { key, biz, carLabel: biz.name ? `${biz.name} · ${getShortCarNum(car.number)}` : getShortCarNum(car.number), carNumber: car.number };
+    return { key, biz, carLabel: biz.name ? `${biz.name} · ${car.number}` : car.number, carNumber: car.number };
 }
 
 // 차량 등록 모달의 입력값을 검증하고 settings.cars에 반영(추가/수정)까지 마친 뒤 저장된 차량과

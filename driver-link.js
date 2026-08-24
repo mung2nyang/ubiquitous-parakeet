@@ -28,9 +28,9 @@ function renderLinkedDriverMenu() {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'dropdown-item linked-driver-menu-item';
-            const shortNumber = getShortCarNum(link.vehicleNumber || '차량');
-            button.title = `${link.driverName || '기사'} · ${link.vehicleNumber || '차량 미지정'} 기록 관리`;
-            button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="4"></circle><path d="M2 21v-2a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v2"></path><path d="M17 11h5M19.5 8.5v5"></path></svg><span class="sub-car-menu-label">${escapeDetailText(shortNumber)} 관리</span>`;
+            const driverLabel = link.driverName || '기사';
+            button.title = `${driverLabel} · ${link.vehicleNumber || '차량 미지정'} 기록 관리`;
+            button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="4"></circle><path d="M2 21v-2a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v2"></path><path d="M17 11h5M19.5 8.5v5"></path></svg><span class="sub-car-menu-label">${escapeDetailText(driverLabel)} 기사 관리</span>`;
             button.onclick = () => showLinkedDriverManagement(link.id);
             container.appendChild(button);
         });
@@ -706,15 +706,6 @@ function showLinkedDriverDetailSettingsSoon() {
     showToastMessage('상세설정은 구상중으로 빠르게 업데이트예정입니다.');
 }
 
-// 거래처 카드 펼침/접힘(§16) — 카드마다 독립적으로 상세 운송 건을 열어볼 수 있다.
-let linkedDriverOpenClientKeys = new Set();
-function toggleLinkedDriverClientDetail(encodedKey) {
-    const key = decodeURIComponent(encodedKey);
-    if (linkedDriverOpenClientKeys.has(key)) linkedDriverOpenClientKeys.delete(key);
-    else linkedDriverOpenClientKeys.add(key);
-    document.getElementById(`linkedClientTrips_${encodedKey}`)?.classList.toggle('hidden', !linkedDriverOpenClientKeys.has(key));
-}
-
 // 연동된 기사가 실제로 작성한 운행 기록을 Supabase(daily_logs+transport_details)에서
 // vehicle_id 기준으로 직접 조회한다. 예전에는 같은 브라우저의 localStorage만 봐서 다른
 // 기기에서 작성한 기록은 절대 보이지 않았다 — 이제 그 차량으로 기록된 실제 서버 데이터를 본다.
@@ -786,11 +777,11 @@ async function renderLinkedDriverRecords() {
         // 경우) 이름을 또 붙이면 중복 표시된다 — vehicleLabel 하나만 쓴다.
         const supplierLabel = g.vehicleLabel || g.supplierBiz?.name || '';
         const tripRows = g.trips.map(t => `<div class="linked-driver-client-trip-row"><span>${escapeDetailText(t.dateKey.slice(5).replace('-', '/'))} ${escapeDetailText(t.loadLoc || '상차지')} → ${escapeDetailText(t.unloadLoc || '하차지')}</span><b>${t.fare.toLocaleString()}원</b></div>`).join('');
+        // "상세보기" 버튼은 삭제하고, 운송 건 목록을 처음부터 펼쳐서 보여준다.
         return `<article class="tax-invoice-card">
-            <div class="tax-invoice-card-head"><div><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건${supplierLabel ? ` · ${escapeDetailText(supplierLabel)}` : ''}</span></div></div>
+            <div class="tax-invoice-card-head"><div class="linked-driver-client-head-row"><strong>${escapeDetailText(g.clientName)}</strong><span>${g.count}건${supplierLabel ? ` · ${escapeDetailText(supplierLabel)}` : ''}</span></div></div>
             <div class="tax-invoice-card-money"><span>공급가액 <b>${g.supplyAmount.toLocaleString()}원</b></span><span>세액 <b>${g.taxAmount.toLocaleString()}원</b></span><strong><small>합계</small>${g.totalAmount.toLocaleString()}원</strong></div>
-            <div class="tax-invoice-card-actions single-action"><button type="button" onclick="toggleLinkedDriverClientDetail('${key}')">상세보기</button></div>
-            <div id="linkedClientTrips_${key}" class="linked-driver-client-trip-list hidden">${tripRows}</div>
+            <div id="linkedClientTrips_${key}" class="linked-driver-client-trip-list">${tripRows}</div>
         </article>`;
     }).join('');
 }
