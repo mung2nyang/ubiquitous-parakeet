@@ -3814,6 +3814,17 @@ body:not(.pdf-export-mode) .detail-report-table .detail-location-cell {
     display: none;
 }
 
+/* 위 주석과 동일한 이유로 "매출" 화면에도 각자 별도 규칙이 필요하다: 차주/소속기사
+   화면 전환(#revenueOwnerView, #revenueDriverView)과 상세보기(>) 펼침(.revenue-detail-body). */
+#revenueOwnerView.hidden,
+#revenueDriverView.hidden {
+    display: none;
+}
+
+.revenue-detail-body.hidden {
+    display: none;
+}
+
 .management-add-fab {
     min-height: 44px;
     padding: 8px 13px;
@@ -5164,6 +5175,143 @@ body.pdf-export-mode .summary-row.total {
     color: var(--primary-color);
     font-size: var(--fs-5);
     font-weight: 850;
+}
+
+.revenue-year-row span.negative,
+.revenue-year-total strong.negative {
+    color: var(--sunday-color);
+}
+
+/* 차주 계정 전용 "매출" 화면: 날짜 네비게이터 + 년/월매출·전체손익/차주/기사 탭을 한
+   카드로 묶는다(피그마 목업 기준 — 계정 유형이 차주일 때만 쓰인다). */
+.revenue-top-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 18px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.revenue-top-card .date-navigator {
+    display: flex;
+    width: min(280px, 90%);
+    margin: -4px auto 14px;
+}
+
+.revenue-top-card .revenue-tabs {
+    margin-bottom: 8px;
+}
+
+.revenue-scope-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.revenue-scope-tab {
+    flex: 1;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--sub-text-color);
+    border-radius: 10px;
+    padding: 10px 6px;
+    font-size: var(--fs-2);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.revenue-scope-tab.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+}
+
+.revenue-net-card {
+    margin-bottom: 12px;
+}
+
+.revenue-net-stats {
+    margin: 2px 0 0;
+    color: var(--sub-text-color);
+    font-size: var(--fs-floor);
+}
+
+/* ">" 상세보기 항목 — 누르면 아래 화살표로 바뀌며 세부 내역이 펼쳐진다. */
+.revenue-detail-item {
+    margin-top: 10px;
+}
+
+.revenue-detail-head {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--text-color);
+    font: inherit;
+    font-size: var(--fs-4);
+    cursor: pointer;
+    text-align: left;
+}
+
+.revenue-detail-chevron {
+    display: inline-flex;
+    color: var(--sub-text-color);
+    flex-shrink: 0;
+    transition: transform .15s;
+}
+
+.revenue-detail-chevron svg {
+    width: 16px;
+    height: 16px;
+}
+
+.revenue-detail-head.expanded .revenue-detail-chevron {
+    transform: rotate(90deg);
+}
+
+.revenue-detail-label {
+    flex: 1;
+    color: var(--sub-text-color);
+}
+
+.revenue-detail-amount {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.revenue-detail-amount.negative {
+    color: var(--sunday-color);
+}
+
+.revenue-detail-body {
+    margin: 8px 0 0 22px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--input-bg);
+}
+
+.revenue-detail-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: var(--fs-2);
+    color: var(--text-color);
+}
+
+.revenue-detail-line:not(:last-child) {
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.revenue-detail-empty {
+    padding: 4px 0;
+    color: var(--sub-text-color);
+    font-size: var(--fs-2);
 }
 
 .receivable-group-title {

@@ -1067,37 +1067,73 @@
             </div>
         </div>
 
-        <!-- [월매출 페이지] -->
+        <!-- [매출 페이지] -->
         <div id="revenuePage" class="page hidden">
             <div class="settings-header">
                 <button class="icon-btn" onclick="goBackFromUtilityPage()" title="뒤로가기">
                     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
-                <div class="settings-title">월매출</div>
+                <div class="settings-title">매출</div>
                 <div style="width: 40px;"></div>
             </div>
 
-            <div class="revenue-tabs">
-                <button type="button" class="revenue-tab" id="revenueYearlyTab" onclick="selectRevenueTab('yearly')">년매출</button>
-                <button type="button" class="revenue-tab active" id="revenueMonthlyTab" onclick="selectRevenueTab('monthly')">월매출</button>
-            </div>
+            <!-- 차주 계정 전용: 당월 순이익/운송 수입/운행 지출 상세 화면 -->
+            <div id="revenueOwnerView">
+                <div class="revenue-top-card">
+                    <div class="date-navigator">
+                        <button class="arrow-btn revenue-prev-btn" onclick="changeRevenueDate(-1)" title="이전 달">
+                            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
 
-            <div class="date-navigator" style="margin-bottom:20px;">
-                <button class="arrow-btn" id="revenuePrevBtn" onclick="changeRevenueDate(-1)" title="이전 달">
-                    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                </button>
+                        <div class="date-select-group">
+                            <select id="revenueOwnerYearSelect" class="date-select revenue-year-select" data-app-dropdown onchange="changeRevenueYear(this.value)" title="년도 선택"></select>
+                            <select id="revenueOwnerMonthSelect" class="date-select revenue-month-select" data-app-dropdown onchange="changeRevenueMonth(this.value)" title="월 선택"></select>
+                        </div>
 
-                <div class="date-select-group">
-                    <select id="revenueYearSelect" class="date-select" data-app-dropdown onchange="changeRevenueYearMonth()" title="년도 선택"></select>
-                    <select id="revenueMonthSelect" class="date-select" data-app-dropdown onchange="changeRevenueYearMonth()" title="월 선택"></select>
+                        <button class="arrow-btn revenue-next-btn" onclick="changeRevenueDate(1)" title="다음 달">
+                            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                    </div>
+
+                    <div class="revenue-tabs">
+                        <button type="button" class="revenue-tab revenue-yearly-tab-btn" onclick="selectRevenueTab('yearly')">년 매출</button>
+                        <button type="button" class="revenue-tab revenue-monthly-tab-btn active" onclick="selectRevenueTab('monthly')">월 매출</button>
+                    </div>
+
+                    <div class="revenue-scope-tabs">
+                        <button type="button" class="revenue-scope-tab" data-scope="all" onclick="selectRevenueScope('all')">전체 손익</button>
+                        <button type="button" class="revenue-scope-tab active" data-scope="owner" onclick="selectRevenueScope('owner')">차주</button>
+                        <button type="button" class="revenue-scope-tab" data-scope="driver" onclick="selectRevenueScope('driver')">기사</button>
+                    </div>
                 </div>
 
-                <button class="arrow-btn" id="revenueNextBtn" onclick="changeRevenueDate(1)" title="다음 달">
-                    <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                </button>
+                <div id="revenueOwnerResultContainer"></div>
             </div>
 
-            <div id="revenueResultContainer"></div>
+            <!-- 소속 기사 계정: 기존 화면 그대로 유지 -->
+            <div id="revenueDriverView" class="hidden">
+                <div class="revenue-tabs">
+                    <button type="button" class="revenue-tab revenue-yearly-tab-btn" onclick="selectRevenueTab('yearly')">년매출</button>
+                    <button type="button" class="revenue-tab revenue-monthly-tab-btn active" onclick="selectRevenueTab('monthly')">월매출</button>
+                </div>
+
+                <div class="date-navigator" style="margin-bottom:20px;">
+                    <button class="arrow-btn revenue-prev-btn" onclick="changeRevenueDate(-1)" title="이전 달">
+                        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+
+                    <div class="date-select-group">
+                        <select id="revenueYearSelect" class="date-select revenue-year-select" data-app-dropdown onchange="changeRevenueYear(this.value)" title="년도 선택"></select>
+                        <select id="revenueMonthSelect" class="date-select revenue-month-select" data-app-dropdown onchange="changeRevenueMonth(this.value)" title="월 선택"></select>
+                    </div>
+
+                    <button class="arrow-btn revenue-next-btn" onclick="changeRevenueDate(1)" title="다음 달">
+                        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                </div>
+
+                <div id="revenueResultContainer"></div>
+            </div>
         </div>
 
         <!-- [정비/주유/기타 관리 페이지] -->
@@ -2371,7 +2407,7 @@
         </button>
         <button class="nav-item" onclick="showRevenuePage('main')">
             <svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
-            <span>월매출</span>
+            <span>매출</span>
         </button>
         <button class="nav-item" onclick="showMyPage()">
             <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>

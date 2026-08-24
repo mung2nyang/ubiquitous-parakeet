@@ -731,23 +731,43 @@ let currentRevenueTab = 'monthly'; // 'monthly' | 'yearly'
 let revenueViewYear = new Date().getFullYear();
 let revenueViewMonth = new Date().getMonth(); // 0-11, yearSelect/monthSelect 관례와 동일
 
+// 소속 기사 계정용(기존 화면)과 차주 계정용(신설 상세 화면) 두 세트의 년/월 select가
+// 같은 페이지에 함께 존재한다(계정 유형에 따라 한쪽만 보여준다) — 둘 다 채워둔다.
 function initRevenueDateSelects() {
     populateYearMonthSelects('revenueYearSelect', 'revenueMonthSelect');
+    populateYearMonthSelects('revenueOwnerYearSelect', 'revenueOwnerMonthSelect');
 }
+
+// 차주 화면의 "전체 손익 / 차주 / 기사" 서브탭 — 어느 차량 소스를 집계에 포함할지 결정한다.
+// 'all'=메인+공유 서브차량 전부, 'owner'=메인 차량만(차주 본인 운행분), 'driver'=공유 서브차량만(고용 기사분).
+let currentRevenueScope = 'owner';
 
 function showRevenuePage(returnPage = 'main') {
     setUtilityReturnPage(returnPage);
     hideAllPages();
     document.getElementById('revenuePage').classList.remove('hidden');
+    // 소속 기사 계정은 기존 화면을, 차주 계정은 새 상세 손익 화면을 본다(신설 화면은
+    // "차주만" 적용하라는 요청에 따름).
+    const isDriverAccount = getUserSettings().accountType === 'employed_driver';
+    document.getElementById('revenueOwnerView')?.classList.toggle('hidden', isDriverAccount);
+    document.getElementById('revenueDriverView')?.classList.toggle('hidden', !isDriverAccount);
     selectRevenueTab('monthly');
     setActiveNav('revenue');
 }
 
 function selectRevenueTab(tab) {
     currentRevenueTab = tab === 'yearly' ? 'yearly' : 'monthly';
-    document.getElementById('revenueYearlyTab')?.classList.toggle('active', currentRevenueTab === 'yearly');
-    document.getElementById('revenueMonthlyTab')?.classList.toggle('active', currentRevenueTab === 'monthly');
+    document.querySelectorAll('.revenue-yearly-tab-btn').forEach(el => el.classList.toggle('active', currentRevenueTab === 'yearly'));
+    document.querySelectorAll('.revenue-monthly-tab-btn').forEach(el => el.classList.toggle('active', currentRevenueTab === 'monthly'));
     syncRevenueDateSelects();
+    renderRevenuePage();
+}
+
+function selectRevenueScope(scope) {
+    currentRevenueScope = (scope === 'all' || scope === 'driver') ? scope : 'owner';
+    document.querySelectorAll('.revenue-scope-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.scope === currentRevenueScope);
+    });
     renderRevenuePage();
 }
 
@@ -764,38 +784,47 @@ function changeRevenueDate(delta) {
     renderRevenuePage();
 }
 
-function changeRevenueYearMonth() {
-    const yearSelect = document.getElementById('revenueYearSelect');
-    const monthSelect = document.getElementById('revenueMonthSelect');
-    if (yearSelect) revenueViewYear = parseInt(yearSelect.value, 10);
-    if (currentRevenueTab === 'monthly' && monthSelect) revenueViewMonth = parseInt(monthSelect.value, 10);
+// 소속 기사/차주 두 화면의 select가 각각 onchange로 이 값을 직접 넘겨준다(어느 쪽 DOM이
+// 지금 보이는지 굳이 가리지 않아도 되도록).
+function changeRevenueYear(value) {
+    revenueViewYear = parseInt(value, 10);
     renderRevenuePage();
 }
 
-// 선택값/화살표 타이틀/월 선택 노출 여부를 현재 탭·연·월 상태에 맞춰 동기화한다.
+function changeRevenueMonth(value) {
+    if (currentRevenueTab === 'monthly') revenueViewMonth = parseInt(value, 10);
+    renderRevenuePage();
+}
+
+// 선택값/화살표 타이틀/월 선택 노출 여부를 현재 탭·연·월 상태에 맞춰 동기화한다. 소속
+// 기사/차주 화면 두 세트의 select·버튼에 전부(숨겨진 쪽도 포함) 반영해 둔다 — 둘 중
+// 어느 화면으로 전환되든 항상 최신 상태를 보여주기 위함이다.
 function syncRevenueDateSelects() {
-    const yearSelect = document.getElementById('revenueYearSelect');
-    const monthSelect = document.getElementById('revenueMonthSelect');
-    if (!yearSelect || !monthSelect) return;
+    document.querySelectorAll('.revenue-year-select').forEach(sel => {
+        sel.value = revenueViewYear;
+        sel.parentElement?._dropdownSync?.();
+    });
+    document.querySelectorAll('.revenue-month-select').forEach(sel => {
+        sel.value = revenueViewMonth;
+        sel.parentElement?._dropdownSync?.();
+        // 년매출 탭에서는 월 선택이 의미가 없으므로 숨긴다.
+        if (sel.parentElement) sel.parentElement.style.display = currentRevenueTab === 'yearly' ? 'none' : '';
+    });
 
-    yearSelect.value = revenueViewYear;
-    monthSelect.value = revenueViewMonth;
-    yearSelect.parentElement?._dropdownSync?.();
-    monthSelect.parentElement?._dropdownSync?.();
-
-    // 년매출 탭에서는 월 선택이 의미가 없으므로 숨긴다.
-    if (monthSelect.parentElement) monthSelect.parentElement.style.display = currentRevenueTab === 'yearly' ? 'none' : '';
-
-    const prevBtn = document.getElementById('revenuePrevBtn');
-    const nextBtn = document.getElementById('revenueNextBtn');
     const label = currentRevenueTab === 'yearly' ? '해' : '달';
-    if (prevBtn) prevBtn.title = `이전 ${label}`;
-    if (nextBtn) nextBtn.title = `다음 ${label}`;
+    document.querySelectorAll('.revenue-prev-btn').forEach(btn => { btn.title = `이전 ${label}`; });
+    document.querySelectorAll('.revenue-next-btn').forEach(btn => { btn.title = `다음 ${label}`; });
 }
 
 function renderRevenuePage() {
-    if (currentRevenueTab === 'yearly') renderRevenueYearly();
-    else renderRevenueMonthly();
+    const isDriverAccount = getUserSettings().accountType === 'employed_driver';
+    if (isDriverAccount) {
+        if (currentRevenueTab === 'yearly') renderRevenueYearly();
+        else renderRevenueMonthly();
+        return;
+    }
+    if (currentRevenueTab === 'yearly') renderRevenueOwnerYearly();
+    else renderRevenueOwnerMonthly();
 }
 
 function renderRevenueMonthly() {
@@ -853,6 +882,304 @@ function renderRevenueYearly() {
         <div class="revenue-year-total">
             <span>${revenueViewYear}년 합계</span>
             <strong>${yearTotal.toLocaleString()}원</strong>
+        </div>
+    `;
+}
+
+// ---------- 차주 계정 전용 "매출" 상세 화면 ----------
+
+// "HH:MM" 출발/도착 시각 두 개로 운행 시간(분)을 구한다. 도착이 출발보다 이르면(자정을
+// 넘긴 야간운행) 24시간을 더해 보정한다. 콜상세 카드(renderCallDetailSummaryInMainModal)의
+// 소요시간 표시와 동일한 계산 방식이다.
+function getCallDetailDurationMinutes(detail) {
+    const dep = detail?.departureTime;
+    const arr = detail?.arrivalTime;
+    if (!dep || !arr) return 0;
+    const [sh, sm] = dep.split(':').map(Number);
+    const [eh, em] = arr.split(':').map(Number);
+    if ([sh, sm, eh, em].some(n => Number.isNaN(n))) return 0;
+    let minutes = (eh * 60 + em) - (sh * 60 + sm);
+    if (minutes < 0) minutes += 1440;
+    return minutes;
+}
+
+// 콜상세 한 건의 운임 수수료(거래처에 걸린 브로커/플랫폼 수수료)를 계산한다. 저장 시점의
+// commissionSnapshot이 있으면 그 값을 우선 쓰고(거래처명 변경·수수료율 수정이 이미 저장된
+// 기록을 소급해서 바꾸지 않도록), 없으면(마이그레이션 이전 기록) 현재 거래처 설정으로
+// 폴백한다. renderCallDetailSummaryInMainModal() 내부의 동명 계산과 동일한 공식이다.
+function getCallDetailCommissionAmount(detail, fare, settings) {
+    const snapshot = detail?.commissionSnapshot;
+    let enabled, type, value;
+    if (snapshot) {
+        enabled = snapshot.enabled;
+        type = snapshot.type;
+        value = snapshot.value;
+    } else {
+        const client = (settings.clients || []).find(c => c.companyName === detail?.client);
+        enabled = !!client?.commEnabled;
+        type = client?.commType;
+        value = client?.commValue;
+    }
+    if (!enabled) return 0;
+    return type === 'direct' ? parseCurrencyValue(value) : Math.floor(fare * (parseFloat(value) || 0) / 100);
+}
+
+// "매출 > 차주" 화면 전용 종합 집계. getMonthlyFareRevenue와 동일한 차량 소스 기준으로
+// 운송 수입(운송료/운임 수수료/유가보조금 환급)·운행 지출(정비/주유비/기타)·부가세·
+// 미입금 운송료·총 운행거리/시간을 한 번에 계산해서, 화면의 각 "상세보기(>)" 항목이
+// 펼쳐 보일 세부 목록까지 함께 반환한다.
+// scope: 'all'(메인+공유 서브차량 전부) | 'owner'(메인 차량만) | 'driver'(공유 서브차량만)
+function getOwnerMonthlyFinanceDetail(monthKey, scope = 'owner') {
+    const settings = getUserSettings();
+    const cars = Array.isArray(settings.cars) ? settings.cars : [];
+
+    const sources = [];
+    if (scope !== 'driver') sources.push({ logId: 'main', label: '메인 차량', data: readWorkDataStorage('workData') });
+    if (scope !== 'owner') {
+        cars.filter(car => car.type === 'sub' && isVehicleRevenueSharedWithOwner(car)).forEach(car => {
+            const mode = getEffectiveDriverSettlementMode(car, settings);
+            if (mode === 'company' || mode === 'employee') {
+                sources.push({ logId: car.number, label: getShortCarNum(car.number), data: getDriverCarWorkData(car, settings) });
+            }
+        });
+    }
+
+    const fixedRouteClientForTotals = getFixedRouteClient(settings);
+    const fixedClientLabel = fixedRouteClientForTotals?.companyName || '고정노선';
+
+    let tripCount = 0;
+    let distanceKm = 0;
+    let durationMinutes = 0;
+    let vatAmount = 0;
+
+    const fareByClient = new Map();
+    const commissionByClient = new Map();
+    const maintItems = [];
+    const fuelItems = [];
+    const miscItems = [];
+    const fuelSubsidyItems = [];
+    let fuelSubsidyTotal = 0;
+
+    sources.forEach(source => {
+        const isMain = source.logId === 'main';
+        const activeFixedOn = isMain ? settings.fixedOn : settings.subFixedOn;
+        const activePalletOn = !!fixedRouteClientForTotals?.palletOn;
+        const fixedUnitPrice = parseCurrencyValue(fixedRouteClientForTotals?.fixedUnitPrice);
+        const palletUnitPrice = parseCurrencyValue(fixedRouteClientForTotals?.palletPrice);
+
+        Object.entries(source.data || {}).forEach(([dateKey, record]) => {
+            if (!dateKey.startsWith(monthKey) || !record || typeof record !== 'object' || record.isOff) return;
+
+            if (record.fixedCount > 0) {
+                const count = Number(record.fixedCount) || 0;
+                tripCount += count;
+                const amount = count * fixedUnitPrice;
+                fareByClient.set(fixedClientLabel, (fareByClient.get(fixedClientLabel) || 0) + amount);
+                // 고정노선 건은 개별 부가세 면제 설정이 없어 기본 과세로 계산한다.
+                vatAmount += Math.round(amount * 0.1);
+            }
+            if (record.palletCount > 0 && activeFixedOn && activePalletOn) {
+                const amount = (Number(record.palletCount) || 0) * palletUnitPrice;
+                fareByClient.set(fixedClientLabel, (fareByClient.get(fixedClientLabel) || 0) + amount);
+                vatAmount += Math.round(amount * 0.1);
+            }
+
+            (Array.isArray(record.callDetails) ? record.callDetails : []).forEach(detail => {
+                const type = detail?.distanceType || '';
+                if (type === '공차') {
+                    // 0회 처리(getMonthlyFareRevenue와 동일 규칙)
+                } else if (type === '혼짐') {
+                    if (detail.linkedLoadIndex === 'pending' || detail.linkedLoadIndex === '-1' || detail.linkedLoadIndex === undefined) tripCount += 1;
+                } else {
+                    tripCount += 1;
+                }
+
+                const fare = parseCurrencyValue(detail?.fare);
+                const clientLabel = detail?.client || '미지정 거래처';
+                fareByClient.set(clientLabel, (fareByClient.get(clientLabel) || 0) + fare);
+
+                if (!detail?.vatExempt) vatAmount += Math.round(fare * 0.1);
+
+                const commission = getCallDetailCommissionAmount(detail, fare, settings);
+                if (commission > 0) commissionByClient.set(clientLabel, (commissionByClient.get(clientLabel) || 0) + commission);
+
+                distanceKm += parseCurrencyValue(detail?.distanceKm);
+                durationMinutes += getCallDetailDurationMinutes(detail);
+            });
+
+            (record.maintItems || []).forEach(item => {
+                maintItems.push({ date: dateKey, label: item.name || item.category || '정비', amount: parseCurrencyValue(item.fare) });
+            });
+            (record.fuelItems || []).forEach(item => {
+                const cost = parseCurrencyValue(item.cost);
+                const subsidy = parseCurrencyValue(item.subsidy);
+                fuelItems.push({ date: dateKey, label: `${item.type || '주유'}${item.liter ? ` ${item.liter}L` : ''}`, amount: cost });
+                if (subsidy > 0) {
+                    fuelSubsidyItems.push({ date: dateKey, label: item.type || '주유', amount: subsidy });
+                    fuelSubsidyTotal += subsidy;
+                }
+            });
+            (record.miscItems || []).forEach(item => {
+                miscItems.push({ date: dateKey, label: item.name || item.category || '기타', amount: parseCurrencyValue(item.fare) });
+            });
+        });
+    });
+
+    const sortByDate = (a, b) => a.date.localeCompare(b.date);
+    maintItems.sort(sortByDate);
+    fuelItems.sort(sortByDate);
+    miscItems.sort(sortByDate);
+    fuelSubsidyItems.sort(sortByDate);
+
+    const fareItems = Array.from(fareByClient.entries()).map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
+    const commissionItems = Array.from(commissionByClient.entries()).map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
+
+    const fareTotal = fareItems.reduce((sum, i) => sum + i.amount, 0);
+    const commissionTotal = commissionItems.reduce((sum, i) => sum + i.amount, 0);
+    const maintTotal = maintItems.reduce((sum, i) => sum + i.amount, 0);
+    const fuelTotal = fuelItems.reduce((sum, i) => sum + i.amount, 0);
+    const miscTotal = miscItems.reduce((sum, i) => sum + i.amount, 0);
+
+    const incomeTotal = fareTotal - commissionTotal + fuelSubsidyTotal;
+    const expenseTotal = maintTotal + fuelTotal + miscTotal;
+
+    // 미입금 운송료: 기존 미수금 관리(getReceivableItems)와 동일한 기준(paymentOn/subPaymentOn,
+    // 회사/고용 정산 서브차량)으로 집계된 항목 중 이번 달 운행분만 뽑는다. scope가 'owner'/
+    // 'driver'로 좁혀져 있으면 그에 맞춰 로그 소스도 함께 제한한다.
+    const unpaidItems = getReceivableItems().filter(item => {
+        if (!item.workDate.startsWith(monthKey) || item.remainingAmount <= 0) return false;
+        if (scope === 'owner') return item.logId === 'main';
+        if (scope === 'driver') return item.logId !== 'main';
+        return true;
+    });
+    const unpaidTotal = unpaidItems.reduce((sum, i) => sum + i.remainingAmount, 0);
+
+    return {
+        monthKey,
+        tripCount,
+        distanceKm: Math.round(distanceKm),
+        durationHours: Math.round(durationMinutes / 60),
+        vatAmount,
+        netProfit: incomeTotal - expenseTotal,
+        income: {
+            total: incomeTotal,
+            fare: { total: fareTotal, items: fareItems },
+            commission: { total: commissionTotal, items: commissionItems },
+            fuelSubsidy: { total: fuelSubsidyTotal, items: fuelSubsidyItems }
+        },
+        expense: {
+            total: expenseTotal,
+            maint: { total: maintTotal, items: maintItems },
+            fuel: { total: fuelTotal, items: fuelItems },
+            misc: { total: miscTotal, items: miscItems }
+        },
+        unpaid: { total: unpaidTotal, count: unpaidItems.length, items: unpaidItems }
+    };
+}
+
+// ">" 를 눌러 펼치는 상세 항목 한 줄(라벨+금액, 클릭 시 아래 화살표로 바뀌며 세부 목록이
+// 펼쳐짐)을 만든다. amount는 화면에 표시할 부호 그대로(음수면 "-"가 그대로 붙는다) 받는다.
+function revenueDetailRowHtml(rowId, label, amount, bodyItems, dateLabel) {
+    const bodyHtml = (bodyItems && bodyItems.length)
+        ? bodyItems.map(item => `
+            <div class="revenue-detail-line">
+                <span>${dateLabel && item.date ? `${escapeDetailText(item.date.slice(5).replace('-', '/'))} ` : ''}${escapeDetailText(item.label)}</span>
+                <span>${item.amount.toLocaleString()}원</span>
+            </div>
+        `).join('')
+        : '<div class="revenue-detail-empty">내역이 없습니다.</div>';
+
+    return `
+        <div class="revenue-detail-item">
+            <button type="button" class="revenue-detail-head" onclick="toggleRevenueDetailRow(this)">
+                <span class="revenue-detail-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+                <span class="revenue-detail-label">${escapeDetailText(label)}</span>
+                <span class="revenue-detail-amount${amount < 0 ? ' negative' : ''}">${amount.toLocaleString()}원</span>
+            </button>
+            <div class="revenue-detail-body hidden" id="${rowId}">${bodyHtml}</div>
+        </div>
+    `;
+}
+
+// ">" 클릭 시 아래 화살표로 바뀌며 세부 내용이 펼쳐진다(요청하신 동작).
+function toggleRevenueDetailRow(btn) {
+    const body = btn.nextElementSibling;
+    if (!body) return;
+    const expanding = body.classList.contains('hidden');
+    body.classList.toggle('hidden', !expanding);
+    btn.classList.toggle('expanded', expanding);
+}
+
+function renderRevenueOwnerMonthly() {
+    const container = document.getElementById('revenueOwnerResultContainer');
+    if (!container) return;
+
+    const monthKey = `${revenueViewYear}-${String(revenueViewMonth + 1).padStart(2, '0')}`;
+    const d = getOwnerMonthlyFinanceDetail(monthKey, currentRevenueScope);
+
+    container.innerHTML = `
+        <div class="summary-card revenue-net-card">
+            <div class="summary-row" style="margin-bottom:2px;">
+                <span class="summary-title" style="margin-bottom:0;">당월 순이익</span>
+                <span class="summary-value" style="font-size:var(--fs-7); font-weight:850; color:${d.netProfit < 0 ? 'var(--sunday-color)' : 'var(--primary-color)'};">${d.netProfit.toLocaleString()}원</span>
+            </div>
+            <div class="revenue-net-stats">총 ${d.tripCount}회 운행 / ${d.distanceKm.toLocaleString()}km / ${d.durationHours.toLocaleString()}시간</div>
+            <div class="summary-row" style="margin-top:14px;">
+                <span>당월 부가세(공급가액 기준 10%)</span>
+                <span class="summary-value">${d.vatAmount.toLocaleString()}원</span>
+            </div>
+            ${revenueDetailRowHtml('revenueDetailUnpaid', `미입금 운송료(${d.unpaid.count}건)`, d.unpaid.total, d.unpaid.items.map(i => ({ label: i.client, amount: i.remainingAmount })))}
+        </div>
+
+        <div class="summary-card revenue-net-card">
+            <div class="summary-title">운송 수입</div>
+            ${revenueDetailRowHtml('revenueDetailFare', '운송료', d.income.fare.total, d.income.fare.items)}
+            ${revenueDetailRowHtml('revenueDetailCommission', '운임 수수료', -d.income.commission.total, d.income.commission.items.map(i => ({ label: i.label, amount: -i.amount })))}
+            ${revenueDetailRowHtml('revenueDetailSubsidy', '당월 유가보조금 환급', d.income.fuelSubsidy.total, d.income.fuelSubsidy.items, true)}
+            <div class="summary-row total">
+                <span>합계</span>
+                <span class="summary-value">${d.income.total.toLocaleString()} 원</span>
+            </div>
+        </div>
+
+        <div class="summary-card revenue-net-card">
+            <div class="summary-title">운행 지출</div>
+            ${revenueDetailRowHtml('revenueDetailMaint', '정비', -d.expense.maint.total, d.expense.maint.items.map(i => ({ ...i, amount: -i.amount })), true)}
+            ${revenueDetailRowHtml('revenueDetailFuel', '주유비', -d.expense.fuel.total, d.expense.fuel.items.map(i => ({ ...i, amount: -i.amount })), true)}
+            ${revenueDetailRowHtml('revenueDetailMisc', '기타', -d.expense.misc.total, d.expense.misc.items.map(i => ({ ...i, amount: -i.amount })), true)}
+            <div class="summary-row total" style="color:var(--sunday-color);">
+                <span>합계</span>
+                <span class="summary-value" style="color:var(--sunday-color);">-${d.expense.total.toLocaleString()} 원</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderRevenueOwnerYearly() {
+    const container = document.getElementById('revenueOwnerResultContainer');
+    if (!container) return;
+
+    let yearNet = 0;
+    const rows = [];
+    for (let month = 0; month < 12; month++) {
+        const monthKey = `${revenueViewYear}-${String(month + 1).padStart(2, '0')}`;
+        const d = getOwnerMonthlyFinanceDetail(monthKey, currentRevenueScope);
+        yearNet += d.netProfit;
+        rows.push({ month: month + 1, netProfit: d.netProfit });
+    }
+
+    container.innerHTML = `
+        <div class="revenue-year-list">
+            ${rows.map(row => `
+                <div class="revenue-year-row">
+                    <span>${row.month}월</span>
+                    <span class="${row.netProfit < 0 ? 'negative' : ''}">${row.netProfit.toLocaleString()}원</span>
+                </div>
+            `).join('')}
+        </div>
+        <div class="revenue-year-total">
+            <span>${revenueViewYear}년 순이익 합계</span>
+            <strong>${yearNet.toLocaleString()}원</strong>
         </div>
     `;
 }
