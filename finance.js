@@ -968,44 +968,51 @@ function getOwnerMonthlyFinanceDetail(monthKey, scope = 'owner') {
         const palletUnitPrice = parseCurrencyValue(fixedRouteClientForTotals?.palletPrice);
 
         Object.entries(source.data || {}).forEach(([dateKey, record]) => {
-            if (!dateKey.startsWith(monthKey) || !record || typeof record !== 'object' || record.isOff) return;
+            if (!dateKey.startsWith(monthKey) || !record || typeof record !== 'object') return;
 
-            if (record.fixedCount > 0) {
-                const count = Number(record.fixedCount) || 0;
-                tripCount += count;
-                const amount = count * fixedUnitPrice;
-                fareByClient.set(fixedClientLabel, (fareByClient.get(fixedClientLabel) || 0) + amount);
-                // 고정노선 건은 개별 부가세 면제 설정이 없어 기본 과세로 계산한다.
-                vatAmount += Math.round(amount * 0.1);
-            }
-            if (record.palletCount > 0 && activeFixedOn && activePalletOn) {
-                const amount = (Number(record.palletCount) || 0) * palletUnitPrice;
-                fareByClient.set(fixedClientLabel, (fareByClient.get(fixedClientLabel) || 0) + amount);
-                vatAmount += Math.round(amount * 0.1);
-            }
-
-            (Array.isArray(record.callDetails) ? record.callDetails : []).forEach(detail => {
-                const type = detail?.distanceType || '';
-                if (type === '공차') {
-                    // 0회 처리(getMonthlyFareRevenue와 동일 규칙)
-                } else if (type === '혼짐') {
-                    if (detail.linkedLoadIndex === 'pending' || detail.linkedLoadIndex === '-1' || detail.linkedLoadIndex === undefined) tripCount += 1;
-                } else {
-                    tripCount += 1;
+            // 정비/주유/기타 지출은 "휴무"로 표시된 날에도 입력할 수 있다(예: 쉬는 날 차량
+            // 정비를 맡기는 경우 — autoSaveWorkRecord()가 isOff와 무관하게 이 항목들을
+            // 함께 저장한다). 그래서 운송료/운행 건수와 달리 record.isOff 여부와 관계없이
+            // 항상 집계해야 한다 — isOff인 날을 통째로 건너뛰면 그날 등록한 지출이 "매출"
+            // 화면의 운행 지출에서 누락되는 문제가 있었다(실제로 보고됨).
+            if (!record.isOff) {
+                if (record.fixedCount > 0) {
+                    const count = Number(record.fixedCount) || 0;
+                    tripCount += count;
+                    const amount = count * fixedUnitPrice;
+                    fareByClient.set(fixedClientLabel, (fareByClient.get(fixedClientLabel) || 0) + amount);
+                    // 고정노선 건은 개별 부가세 면제 설정이 없어 기본 과세로 계산한다.
+                    vatAmount += Math.round(amount * 0.1);
+                }
+                if (record.palletCount > 0 && activeFixedOn && activePalletOn) {
+                    const amount = (Number(record.palletCount) || 0) * palletUnitPrice;
+                    fareByClient.set(fixedClientLabel, (fareByClient.get(fixedClientLabel) || 0) + amount);
+                    vatAmount += Math.round(amount * 0.1);
                 }
 
-                const fare = parseCurrencyValue(detail?.fare);
-                const clientLabel = detail?.client || '미지정 거래처';
-                fareByClient.set(clientLabel, (fareByClient.get(clientLabel) || 0) + fare);
+                (Array.isArray(record.callDetails) ? record.callDetails : []).forEach(detail => {
+                    const type = detail?.distanceType || '';
+                    if (type === '공차') {
+                        // 0회 처리(getMonthlyFareRevenue와 동일 규칙)
+                    } else if (type === '혼짐') {
+                        if (detail.linkedLoadIndex === 'pending' || detail.linkedLoadIndex === '-1' || detail.linkedLoadIndex === undefined) tripCount += 1;
+                    } else {
+                        tripCount += 1;
+                    }
 
-                if (!detail?.vatExempt) vatAmount += Math.round(fare * 0.1);
+                    const fare = parseCurrencyValue(detail?.fare);
+                    const clientLabel = detail?.client || '미지정 거래처';
+                    fareByClient.set(clientLabel, (fareByClient.get(clientLabel) || 0) + fare);
 
-                const commission = getCallDetailCommissionAmount(detail, fare, settings);
-                if (commission > 0) commissionByClient.set(clientLabel, (commissionByClient.get(clientLabel) || 0) + commission);
+                    if (!detail?.vatExempt) vatAmount += Math.round(fare * 0.1);
 
-                distanceKm += parseCurrencyValue(detail?.distanceKm);
-                durationMinutes += getCallDetailDurationMinutes(detail);
-            });
+                    const commission = getCallDetailCommissionAmount(detail, fare, settings);
+                    if (commission > 0) commissionByClient.set(clientLabel, (commissionByClient.get(clientLabel) || 0) + commission);
+
+                    distanceKm += parseCurrencyValue(detail?.distanceKm);
+                    durationMinutes += getCallDetailDurationMinutes(detail);
+                });
+            }
 
             (record.maintItems || []).forEach(item => {
                 maintItems.push({ date: dateKey, label: item.name || item.category || '정비', amount: parseCurrencyValue(item.fare) });
