@@ -1,15 +1,17 @@
 # React 이관 감사 보고서 (`react-app`)
 
 기준: `migration-plan.md` (2단계 설계안). 대상: `react-app/src`.  
-범위: 코드 수정 없음. 기존 React 구현을 설계안·도메인 계약과 대조한 Gap 분석, 재사용/폐기 분류, 재이관 순서, 검증 기준.
+범위(최초 작성 시점): 코드 수정 없음. 기존 React 구현을 설계안·도메인 계약과 대조한 Gap 분석, 재사용/폐기 분류, 재이관 순서, 검증 기준. **이후 Step 0~4 및 Step 0-4 감사 보완 1~3차가 실제로 코드를 고치며 진행됐다 — 최신 진행 상황은 "## 0-1. 현재 상태 (Step 4 + 감사 보완 3차 완료 기준)"와 "## 3. 단계별 재이관/수정 실행 계획"의 체크박스·구현 로그를 보라.**
 
-한 줄 요약: 현재 `react-app`은 **기능 단위 수직 슬라이스가 아니라 “화면 껍데기 + localStorage 모듈” 1차 이식**이다. 제어 컴포넌트·리스트 `map`·모달 조건부 렌더는 이미 상당 부분 React답다. 그러나 **스토어/라우트/일지 draft/다중 로그**가 빠져 있어, 설계안의 목표 아키텍처와는 아직 다른 앱이다.
+한 줄 요약(최초 작성 시점, 착수 전): 현재 `react-app`은 **기능 단위 수직 슬라이스가 아니라 “화면 껍데기 + localStorage 모듈” 1차 이식**이다. 제어 컴포넌트·리스트 `map`·모달 조건부 렌더는 이미 상당 부분 React답다. 그러나 **스토어/라우트/일지 draft/다중 로그**가 빠져 있어, 설계안의 목표 아키텍처와는 아직 다른 앱이다.
 
 ---
 
-## 0. 현재 트리 vs 설계안 트리
+## 0. 현재 트리 vs 설계안 트리 (착수 전 스냅샷 — 아래 0-1절 참고)
 
-| 설계안 (`migration-plan.md`) | 실제 `react-app` |
+**이 표는 Step 0 착수 *이전*의 스냅샷이다.** 아래 왼쪽 열("실제 `react-app`")은 지금은 대부분 사실이 아니다 — 예를 들어 `App.jsx`의 `screen`/`appPage` 스위치는 Step 3에서 `react-router-dom` 라우트 트리로, `src/lib/*` 순수 계산은 Step 4에서 `src/domain/*`로, "Router/Zustand 없음"은 Step 1~3에서 자체 pub-sub 스토어(`src/store/app-store.js`, Zustand는 아니지만 같은 역할) + `react-router-dom` 도입으로 이미 바뀌었다. 표 자체는 "왜 이관이 필요했는지"의 기록으로 원문 그대로 남기고, 지우거나 고쳐 쓰지 않는다.
+
+| 설계안 (`migration-plan.md`) | 실제 `react-app` (Step 0 착수 전) |
 |---|---|
 | `src/app` + React Router + `Outlet` | `App.jsx`의 `screen` / `appPage` 문자열 스위치 |
 | `src/store` Zustand 단일 소스 | 페이지마다 `useState(() => loadX(ownerKey))` + `localStorage` |
@@ -19,7 +21,25 @@
 | TypeScript + Router 6 + Zustand | JS + React 19 + Vite. Router/Zustand 없음 |
 | 일지 `/app/day/:date`, 서브 `/app/logs/:logId` | 달력 위에 `WorkLogPage` 통째 교체 (`selected` truthy면 홈 언마운트) |
 
-테스트: `package.json`의 `npm test`는 `node --test`로 `src/lib/*.test.js`만 돈다. Testing Library / 컴포넌트 테스트는 없다.
+테스트(착수 전): `package.json`의 `npm test`는 `node --test`로 `src/lib/*.test.js`만 돈다. Testing Library / 컴포넌트 테스트는 없다.
+
+---
+
+## 0-1. 현재 상태 (Step 4 + Step 0-4 감사 보완 1~3차 완료, Step 5 착수 전)
+
+위 0절 표를 지금 기준으로 다시 채우면:
+
+| 설계안 (`migration-plan.md`) | 실제 `react-app` (현재, Step 5 착수 전) |
+|---|---|
+| `src/app` + React Router + `Outlet` | Step 3에서 완료. `src/app/App.jsx`가 `react-router-dom` 라우트 트리(`/auth`, `/onboarding`, `/app/*`)를 그린다. `AppShell.jsx`가 `/app/*` 레이아웃 + 중첩 라우트. |
+| `src/store` Zustand 단일 소스 | Step 1에서 완료(Zustand는 아니고 자체 pub-sub 스토어). `src/store/app-store.js`(`commitBatch`/`getState`/`subscribe`) + `src/store/owner-state.js`(`initializeOwnerFromPersist`/`replaceOwnerState`) + `src/store/atomicPersist.js`(원자적 localStorage 쓰기, 감사 보완 2차) + `src/store/batchWrites.js`/`commitHelpers.js`(200줄 제한 분리, 감사 보완 3차). **단, UI는 아직 이 스토어를 구독하지 않는다 — 페이지 `useState`가 여전히 진실이고, 스토어는 hydrate/동기화 경로만 쓴다(migration-plan.md 1.3이 금지한 "쓰지 말 것" 상태는 아직 유효).** |
+| `src/domain` 순수함수 | Step 4에서 완료. `finance.js`(627줄, 계획서 5절 예외) 포함 13개 파일이 `src/domain/`으로, `cars`/`clients`/`drivers`/`practiceSettings`/`expenses`/`invoices`는 I/O(`lib/`)와 순수 계산(`domain/`)으로 분리. `hydrateMerge.js`(순수 hydrate 병합, 감사 보완 2차)도 `src/lib/`에 추가. |
+| `src/api` 어댑터 | 부분 완료. `src/lib/cloudSync.js`(893줄, 계획서 5절 "api/hydrate.ts 부트 시퀀스" 예외)가 여전히 hydrate+sync+기사 API를 한 파일에서 담당 — `api/`로의 실제 폴더 분해는 아직 안 함(Step 9 즈음 판단 예정, 감사 보완 2차 알려진 한계에 기록됨). |
+| `src/ui` 파일당 ≤200줄 | 아직 미착수(Step 5~10에서 화면별로 진행). `CarManagementPage.jsx`(298줄)/`ClientManagementPage.jsx`(314줄)/`WorkLogPage.jsx`(811줄) 등은 여전히 200줄을 넘는다 — 감사 보완 3차에서 이 파일들에 각 5~10줄짜리 readiness 가드만 추가했고, 전면 재작성은 Step 7 몫으로 남겼다(범위: "Step 5를 시작하지 말고 차단 항목만 보완하라"). |
+| TypeScript + Router 6 + Zustand | Router는 `react-router-dom@7`로 도입 완료(Step 3). TypeScript는 여전히 미설치 — Step 1부터 매 Step "알려진 한계"로 기록된 갭이 그대로 이어지는 중, Step 11 몫. Zustand는 안 썼지만 같은 역할의 자체 스토어로 대체. |
+| 일지 `/app/day/:date`, 서브 `/app/logs/:logId` | `/app/day/:date`는 Step 3에서 라우트로 분리(`MainPageRoute.jsx`가 `index`/`day/:date` 둘 다 그려서 달력이 언마운트되지 않는다). 서브 차량 워크로그(`/app/logs/:logId`)는 아직 없음 — Step 5~6 이후 범위. |
+
+테스트(현재): `npm test` → **173/173 통과**(착수 전 0개 → Step 0 88개 → 감사 보완 1차 126개 → 2차 158개 → 2차 교차검증 163개 → 3차 173개). `node:test` 기반, Testing Library는 여전히 없음(컴포넌트 렌더 테스트는 각 Step의 "알려진 한계"에 그 이유가 기록돼 있다 — 순수 함수로 뽑아 테스트하고 실제 렌더/라우팅은 브라우저로 확인하는 방식을 대신 쓴다).
 
 ---
 
@@ -450,6 +470,38 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - **재검증**: `npm test` → **`tests 163 / suites 52 / pass 163 / fail 0`**(158 → 163, +5 = `atomicPersist.test.js` 5개; 기존 `cloudSync.test.js`에 회귀 테스트 1개 추가는 이미 163에 포함). `npm run build` → 성공. `npm run lint` → 신규 경고 0개.
 - **결론**: 두 결함 모두 이번 라운드가 원래 겨냥한 "네트워크 조회 실패 시 부분 반영" 버그(항목 1-2)와는 다른 종류(로컬 쓰기 실패, 로그아웃 타이밍)였지만, 사용자가 요구한 "실패 시 롤백/유지가 원자적인지"라는 기준을 문자 그대로 적용해 코드를 다시 읽지 않았다면 놓쳤을 결함이다. 이 재검증을 거친 뒤에야 커밋했다(아래 커밋 로그 참고).
 
+### [x] Step 0-4 감사 보완 3차 (사용자 지시 — Step 5 착수 전 필수, 별도 커밋)
+
+사용자가 지적한 두 개 차단 항목. 11번 항목(커밋 전 자체 교차검증)이 잡은 것과는 또 다른, `commitBatch`/UI mutation 순서에 남아 있던 실제 결함이었다.
+
+**1. `commitBatch`의 도메인 persist + dirty journal을 하나의 all-or-nothing 저장 단위로 묶기**
+
+- 문제: `commitBatch`가 `writeAllOrNothing(entries)`로 도메인 값은 원자적으로 썼지만(11번 항목), 그 다음 `entries.forEach` 루프 안에서 `applyDomainToState`와 **별도로** `markDirty(ownerKey, domain)`를 호출했다 — `markDirty`는 자기 `readJournal`/`writeJournal`로 **독자적인** `localStorage.setItem`을 부른다. 이 두 번째 쓰기가 실패하면(용량 초과 등) **도메인 값은 이미 새 값으로 남았는데 journal은 갱신 안 되는 불일치**가 생겼다 — 그 도메인의 변경이 서버로 영영 안 나갈 수 있는 실질적 버그(11번 항목이 발견한 것과 같은 계열이지만 journal 쪽에 남아 있던 사례).
+- 수정:
+  - [`dirtyJournal.js`](../react-app/src/lib/dirtyJournal.js)에 `planDirtyWrite(ownerKey, domains)` 추가 — 기존 journal을 읽어 "다음 값"만 메모리에서 계산해 `{ key, value }`로 돌려준다(쓰지 않는다). `markDirty()`는 이제 이 함수를 감싼 얇은 래퍼로 재정의.
+  - [`atomicPersist.js`](../react-app/src/store/atomicPersist.js)의 `writeAllOrNothing` 시그니처를 `{ domain, ownerKey, value }`에서 `{ key, value }`로 바꿨다 — journal 키(`reactPracticeDirtyJournal:<owner>`)는 persist.js의 9개 도메인 계약 밖이라 `storageKeyFor`로 못 만들기 때문에, 최종 localStorage 키를 직접 받게 일반화했다.
+  - 신규 [`batchWrites.js`](../react-app/src/store/batchWrites.js) — 도메인 값 쓰기 목록 + (syncToCloud면) owner별 `planDirtyWrite` 결과를 **하나의 배열**로 합쳐 돌려주는 순수 함수 `buildBatchWrites`. `app-store.js`의 `commitBatch`는 이제 이 배열을 `writeAllOrNothing` **한 번**으로 쓰고, 성공했을 때만 `applyDomainToState`/`notify`/`scheduleCloudSync`로 넘어간다.
+  - **200줄 제한 부수 조치**: 이 리팩터로 `app-store.js`가 223줄까지 늘었다가, `commitWorkData`~`commitDismissedNotifications` 8개 얇은 래퍼를 신규 [`commitHelpers.js`](../react-app/src/store/commitHelpers.js)로 옮겨 144줄로 줄었다. `commitHelpers.js`가 `app-store.js`의 `commitBatch`를 가져다 쓰므로, 배럴 재수출(`export * from`) 대신 이 함수들을 쓰던 `lib/{cars,clients,drivers,expenses,invoices,notifications,practiceSettings,profile,workData}.js` 9곳의 import 경로를 `commitHelpers.js`로 직접 옮겨서 순환 참조를 피했다.
+- 검증: [`atomicPersist.test.js`](../react-app/src/store/atomicPersist.test.js)를 새 `{ key, value }` 시그니처로 갱신 + "임의의 key(journal 키)도 도메인 키와 섞어 쓸 수 있다" 테스트 추가. [`app-store.test.js`](../react-app/src/store/app-store.test.js)에 요구된 quota 오류 통합 테스트 추가 — `localStorage.setItem`을 journal 키에서만 던지도록 패치한 뒤 `commitCars()`를 호출해 **도메인 localStorage 원상복구, journal 원상복구, `getState().cars[owner]` 불변, notify 0회, Supabase 스텁 호출 0회**를 전부 확인. **journal 병합 로직을 임시로 제거하고 같은 테스트가 실패하는 것을 확인한 뒤 복원** — 진짜 회귀 테스트임을 증명.
+
+**2. hydration이 ready가 아닐 때 로컬을 먼저 바꾸지 못하게 하기**
+
+- 문제: `CarManagementPage.jsx`/`ClientManagementPage.jsx`/`DriverConnectionPage.jsx`의 차량·거래처 삭제, 기사 상태변경·삭제 핸들러가 전부 **`persist(...)`(로컬 state + localStorage)를 먼저 부르고, 그 다음에야** `deleteVehicleFromSupabase`/`deleteClientFromSupabase`/`updateDriverLinkStatusOnSupabase`/`deleteDriverLinkOnSupabase`를 불렀다. 이 함수들 내부의 `assertCloudWriteReady()`(감사 보완 2차)는 hydrate가 준비 안 됐으면 던지긴 했지만, **이미 로컬은 지워진/바뀐 뒤**였다 — 로컬과 서버가 갈라지는 정확히 그 사고를 막지 못했다.
+- 수정: [`cloudSync.js`](../react-app/src/lib/cloudSync.js)에 `blockedReasonForCloudWrite(cloudId)` 추가 — cloudId(그 레코드의 `supabaseId`)가 없으면(로컬 전용) 항상 허용(`null`), 있는데 `assertCloudWriteReady()`가 던지면 그 메시지를 반환값으로 돌려준다(throw 대신 반환값이라 호출부가 `try/catch` 없이 조기 리턴할 수 있다). 세 컴포넌트의 4개 핸들러(`CarManagementPage.confirmRemove`, `ClientManagementPage.confirmRemove`, `DriverConnectionPage.changeStatus`/`remove`)가 이제 **`persist()` 전에** 이 함수를 불러, 막히면 로컬 변경 자체를 시작하지 않고 토스트만 띄운다. (`DriverConnectionPage.save()`는 애초에 `saveDriverInviteToCloud(...).then(...)`으로 서버 호출 성공 뒤에만 `persist()`를 부르고 있어서 순서가 이미 맞았다 — 손대지 않음.)
+- **durable mutation/tombstone 큐는 구현하지 않았다** — "작업 전체를 중단하고 사용자가 다시 시도한다" 쪽을 택했다(사용자 지시의 두 선택지 중 하나). 반쪽짜리 큐(예: 삭제만 큐잉하고 상태변경은 안 하는 식)를 만드는 것보다 범위를 명확히 좁혀 알려진 한계로 남기는 게 정직하다고 판단했다 — 이 문서 "Step 0-4 감사 보완 2차 6번 항목"에 이미 적힌 것과 같은 판단 기준.
+- **알려진 한계(정직하게 기록)**: `CarManagementPage.jsx`(298줄)/`ClientManagementPage.jsx`(314줄)는 이미 200줄을 넘어 있던 파일이고(1.3절에 이미 "재분할 대상"으로 지정), 이번엔 가드 5~10줄만 추가했다 — 전면 재작성은 Step 7 몫으로 범위 밖에 뒀다(사용자 지시: "Step 5를 시작하지 말고 차단 항목만 보완하라"). 이 프로젝트엔 React Testing Library가 없어 "로컬 차량이 실제로 유지된다"는 걸 컴포넌트 렌더 테스트로 직접 증명하지 못한다 — `blockedReasonForCloudWrite`가 올바른 판정을 내리는 것과 각 handler가 `persist()`보다 먼저 그 판정을 부른다는 것(코드 리뷰로 확인)을 근거로 삼았다. 이전 Step들과 같은 방식(순수 함수 추출 + 단위 테스트 + 브라우저 스모크 확인)을 따랐다.
+- 검증: `cloudSync.test.js`에 `blockedReasonForCloudWrite`(cloudId 없음/ready/failed/로그아웃 4가지 케이스) 3개, "failed 상태에서 UI가 직접 부르는 mutation이 서버를 전혀 호출하지 않는다"(차량 삭제/거래처 삭제/기사 상태변경/기사 삭제, 사용자가 요구한 4개 최소 회귀 테스트 그대로) 4개, "retry 성공 후 다시 시도하면 로컬·서버 모두 반영된다"(요구된 4번째 시나리오: 실패 → 막힘·0회 호출 확인 → `retryHydrate()` 성공 → 같은 삭제를 다시 호출하면 이번엔 1회 나감) 1개, 총 8개 추가. **`blockedReasonForCloudWrite`를 임시로 항상 `null`을 반환하게 바꾸고 관련 테스트 2개가 실패하는 것을 확인한 뒤 복원** — 진짜 회귀 테스트임을 증명.
+
+**3. `migration-audit-plan.md` 갱신**
+
+- 위 "## 0-1. 현재 상태" 절을 신설해 Step 4 + 감사 보완 3차 기준으로 트리 비교표를 다시 채웠다. 원래 "## 0" 절(착수 전 스냅샷)은 지우지 않고 "착수 전 스냅샷"이라고 라벨만 명확히 달았다(4번 원칙 — 기존 기록 삭제 금지).
+- "## 5. 감사 결론"의 마지막 문장("다음 구현은 Step 1부터...")은 이미 Step 4까지 끝난 지금 시점엔 명백히 틀린 지시라, 취소선으로 표시하고 "## 5-1. 현재 결론"을 새로 붙여 다음 구현이 **Step 5**부터임을 명시했다. 원문은 취소선 안에 그대로 남겼다.
+
+**4. 재검증**
+
+- `npm test` → **`tests 173 / suites 56 / pass 173 / fail 0`**(163 → 173, +10 = `app-store.test.js` 1개 quota 통합 테스트 + `atomicPersist.test.js` signature 갱신(순증 0, 케이스 1개 추가로 5→6) + `cloudSync.test.js` 8개 신규 + import 정리). `npm run build` → **155 modules, 성공**. `npm run lint` → 기존 8개 경고만(줄 번호만 1~2줄 밀림), 신규 0개.
+- **알려진 한계**: typecheck 갭은 이전 Step들과 동일(TypeScript 미설치). item 2의 durable mutation 큐 미구현은 위에 기록. 컴포넌트 렌더 테스트 부재도 위에 기록. `cloudSync.js`(920줄)는 여전히 계획서 5절 예외 파일.
+
 ### [ ] Step 5 — 달력 홈 재작성 (슬라이스 3)
 
 - 폐기/대체: `MainPage.jsx`를 `ui/calendar/CalendarPage.tsx` + `CalendarGrid` + `CalendarCell` + `CalendarMonthSummary`로 분할.
@@ -605,10 +657,21 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 
 ---
 
-## 5. 감사 결론
+## 5. 감사 결론 (최초 작성 시점 — 착수 전)
 
 `react-app`은 바닐라 DOM 조작을 JSX로 나열한 수준을 이미 지났다. 작은 컴포넌트(`BottomNav`, `ConfirmModal`, `ExpenseFormModal`, 설정 스위치)와 `lib` 순수함수·Jest는 **자산**이다.
 
 막힌 지점은 UI 문법이 아니라 **상태 경계**다. 페이지 스냅샷 + 메인 로그 하나 + 콜 인덱스 + 비용 이중 저장 + flush/세션 부재는 설계안 0~1절을 충족하지 않는다. `WorkLogPage.jsx`와 `App.jsx` 스위치, `InlineExpandHost`, `cloudSync.js` 전역 `let`은 패치보다 **교체**가 맞다.
 
-다음 구현은 이 문서 Step 1부터, 코드를 고치지 않은 채 합의한 뒤 진행하면 기존 React 화면을 한 번에 박살 내지 않고 슬라이스할 수 있다.
+~~다음 구현은 이 문서 Step 1부터, 코드를 고치지 않은 채 합의한 뒤 진행하면 기존 React 화면을 한 번에 박살 내지 않고 슬라이스할 수 있다.~~ **(낡음 — 아래 5-1절이 실제 진행 상황이다.)**
+
+## 5-1. 현재 결론 (Step 4 + 감사 보완 3차 완료, 2026-08-26 기준)
+
+위 결론이 지목한 문제 중 상당수가 이미 해소됐다:
+
+- **`App.jsx` 스위치** → Step 3에서 라우터 트리로 교체 완료. 옛 `App.jsx`는 삭제됐다.
+- **`cloudSync.js` 전역 `let`** → 완전히 없애지는 않았다(여전히 `cloudUserId`/`cloudOwnerKey`/`syncTimer`/`hydrateGeneration` 모듈 전역이 있다). 대신 감사 보완 1~2차에서 그 전역이 만들던 실제 사고(hydrate 실패가 "완료"로 보이던 것, 부분 반영, dirty 유실, 로그아웃 후 stale hydrate 적용)를 상태기계·durable journal·single-flight·atomicPersist로 하나씩 막았다 — "전역을 없앤다"가 아니라 "전역이 있어도 안전하게" 쪽으로 결론이 바뀌었다. `api/`로의 실제 폴더 분해는 여전히 안 했다(Step 9 즈음 판단).
+- **페이지 스냅샷 + 메인 로그 하나 + 콜 인덱스 + 비용 이중 저장** → 아직 그대로다. 이건 Step 5(달력)·Step 6(일지, 콜 `id` 부여)·Step 7(거래처/차량)의 몫이고, 이번 감사 보완 라운드들은 **의도적으로 이 영역을 건드리지 않았다**(사용자 지시: "Step 5를 시작하지 말고 차단 항목만 보완하라").
+- **`WorkLogPage.jsx`/`InlineExpandHost`** → 그대로 살아 있다. 폐기 대상이라는 2.2절 판정은 유효하며, Step 6에서 교체된다.
+
+남은 진짜 결론: **상태 경계 문제는 스토어 껍데기(Step 1)와 hydrate/동기화 신뢰성(감사 보완 1~3차)에서는 해소됐지만, 화면이 그 스토어를 실제로 구독하는 지점(Step 5~7)은 아직 시작되지 않았다.** `migration-plan.md` 1.3이 금지한 "쓰지 말 것" 상태 — 즉 컴포넌트가 `useState(() => loadX())`로 자기만의 스냅샷을 갖는 것 — 는 지금도 유효하게 남아 있고, 이걸 깨는 게 Step 5의 정확한 시작점이다. 다음 구현은 이 문서 **Step 5**부터, 사용자 승인 뒤 진행한다.
