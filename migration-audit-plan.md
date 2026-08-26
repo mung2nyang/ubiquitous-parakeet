@@ -437,6 +437,19 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - 브라우저 실측: `react-app-dev` 프리뷰로 게스트 홈 진입(콘솔 에러 0건), `HydrationRetryBanner`가 정상(hydrate 안 도는) 상태에서 보이지 않음을 DOM에서 직접 확인, 사이드메뉴 열기/닫기 정상. **실제 Supabase 로그인으로 hydrate 실패→배너 노출→재시도 클릭 흐름은 이 세션에 테스트 계정이 없어 브라우저로 재현하지 못했다** — 이 경로는 `cloudSync.test.js`의 통합 테스트(4번 항목)로 로직을 검증했고, 사람이 실제 계정으로 한 번 더 확인해야 한다.
 - **알려진 한계**: typecheck 갭은 이전 Step들과 동일(TypeScript 미설치). `assertCloudWriteReady()`의 durable 재시도 큐 미구현은 6번 항목에 기록. `cloudSync.js`는 여전히 `migration-plan.md` 5절의 "api/hydrate.ts 부트 시퀀스" 예외 파일이다 — Step 9 즈음 `api/`로 실제 분해할지 판단할 것.
 
+**11. 커밋 전 자체 교차검증 (사용자 지시 — 원칙 업데이트, 158개 테스트 통과 이후 추가로 수행)**
+
+"테스트 통과 = 커밋 가능"이 아니라는 사용자의 새 원칙에 따라, 이미 커밋된 위 10개 항목의 코드를 다시 읽으며 UI 상태(Ready/Failed)·스토어·원격 쓰기 방어가 정말 원자적인지 손으로 재검토했다. 두 가지 실제 결함을 발견해 즉시 수정하고, **수정을 되돌려서 회귀 테스트가 실제로 실패하는 것까지 확인**한 뒤 다시 복원했다(테스트가 진짜로 버그를 잡는지, 그냥 통과하는 테스트가 아닌지 검증).
+
+- **결함 A — `commitBatch`의 persist 단계가 원자적이지 않았다.** `entries.forEach`로 도메인마다 `writeJsonKey`(→ `localStorage.setItem`)를 순서대로 호출했는데, 그중 하나가 실패하면(용량 초과, 또는 값에 순환 참조가 있어 `JSON.stringify` 자체가 실패) **이미 쓴 앞쪽 도메인은 새 값으로 남고 뒤쪽은 그대로인 부분 반영 상태**가 될 수 있었다 — 이번 라운드가 hydrate 조회 실패 경로에서 없앤 것과 같은 종류의 결함이 쓰기 경로에 남아 있었던 것.
+  - 수정: 신규 [`src/store/atomicPersist.js`](../react-app/src/store/atomicPersist.js) `writeAllOrNothing(entries)` — (1) 먼저 전부 `JSON.stringify`부터 계산해, 순환 참조 등으로 하나라도 실패하면 **아무것도 쓰지 않고** 던진다. (2) 실제 `setItem` 전에 각 키의 기존 값을 백업해 두고, 도중 실패하면 **이미 쓴 키만 원래 값으로 복원**(신규 키였다면 `removeItem`)한 뒤 던진다. `app-store.js`의 `commitBatch`가 이제 이 함수를 거친다.
+  - 검증: [`atomicPersist.test.js`](../react-app/src/store/atomicPersist.test.js) 5개 — 전체 성공, 직렬화 실패 시 전무 반영, 쓰기 도중 실패 시 기존 값 롤백, 신규 키는 롤백 시 완전히 삭제. **롤백 로직을 임시로 제거하고 같은 테스트를 돌려 실제로 실패하는 것을 확인한 뒤 복원** — 진짜 회귀 테스트임을 증명.
+- **결함 B — `endCloudSession()`(로그아웃)이 `hydrateGeneration`을 올리지 않았다.** single-flight의 stale 세대 가드(8번 항목)는 "owner가 바뀌면 이전 hydrate를 버린다"는 목적이었는데, 로그아웃은 이 세대를 올리지 않아서 **로그아웃 시점에 아직 응답을 기다리던 이전 계정의 hydrate가 로그아웃 이후에 성공하면, `myGeneration === hydrateGeneration`이 여전히 참이 되어 로그아웃한 계정의 데이터가 게스트/새 세션 화면에 뒤늦게 반영될 수 있었다**(예: 느린 네트워크에서 로그인 직후 바로 로그아웃).
+  - 수정: `endCloudSession()`에도 `hydrateGeneration += 1` 추가 — 로그아웃도 "이전 요청은 전부 오래된 것"으로 만드는 이벤트로 취급.
+  - 검증: `cloudSync.test.js`의 `endCloudSession — 로그아웃이 지연 응답 중인 hydrate를 무효화한다` — hydrate를 게이트로 지연시킨 채 로그아웃 → 게이트 해제 → hydrate가 뒤늦게 성공해도 `status`가 `idle`로 남고 로그아웃 이전 서버 값이 localStorage에 안 씀을 확인. **이 수정도 되돌려서 테스트가 실패하는 것을 확인한 뒤 복원.**
+- **재검증**: `npm test` → **`tests 163 / suites 52 / pass 163 / fail 0`**(158 → 163, +5 = `atomicPersist.test.js` 5개; 기존 `cloudSync.test.js`에 회귀 테스트 1개 추가는 이미 163에 포함). `npm run build` → 성공. `npm run lint` → 신규 경고 0개.
+- **결론**: 두 결함 모두 이번 라운드가 원래 겨냥한 "네트워크 조회 실패 시 부분 반영" 버그(항목 1-2)와는 다른 종류(로컬 쓰기 실패, 로그아웃 타이밍)였지만, 사용자가 요구한 "실패 시 롤백/유지가 원자적인지"라는 기준을 문자 그대로 적용해 코드를 다시 읽지 않았다면 놓쳤을 결함이다. 이 재검증을 거친 뒤에야 커밋했다(아래 커밋 로그 참고).
+
 ### [ ] Step 5 — 달력 홈 재작성 (슬라이스 3)
 
 - 폐기/대체: `MainPage.jsx`를 `ui/calendar/CalendarPage.tsx` + `CalendarGrid` + `CalendarCell` + `CalendarMonthSummary`로 분할.
