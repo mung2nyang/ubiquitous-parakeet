@@ -470,7 +470,9 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - **재검증**: `npm test` → **`tests 163 / suites 52 / pass 163 / fail 0`**(158 → 163, +5 = `atomicPersist.test.js` 5개; 기존 `cloudSync.test.js`에 회귀 테스트 1개 추가는 이미 163에 포함). `npm run build` → 성공. `npm run lint` → 신규 경고 0개.
 - **결론**: 두 결함 모두 이번 라운드가 원래 겨냥한 "네트워크 조회 실패 시 부분 반영" 버그(항목 1-2)와는 다른 종류(로컬 쓰기 실패, 로그아웃 타이밍)였지만, 사용자가 요구한 "실패 시 롤백/유지가 원자적인지"라는 기준을 문자 그대로 적용해 코드를 다시 읽지 않았다면 놓쳤을 결함이다. 이 재검증을 거친 뒤에야 커밋했다(아래 커밋 로그 참고).
 
-### [x] Step 0-4 감사 보완 3차 (사용자 지시 — Step 5 착수 전 필수, 별도 커밋)
+### [~] Step 0-4 감사 보완 3차 (사용자 지시 — Step 5 착수 전 필수, 별도 커밋) — **재분류: 성급한 완료였음**
+
+**정정(사용자 지시 6번 원칙 업데이트 이후, 아래 4차에서 실제로 재작업):** 이 3차 라운드는 아래 item 2(readiness 검사)를 "작업 전체를 중단"으로 처리하고 durable mutation/tombstone 큐를 "이번 라운드 범위 밖 — 알려진 한계"로 문서화한 채 `[x]` 완료·커밋했다. 이후 사용자가 "요구사항에 직접 관련된 미구현 사항을 '알려진 한계'로 기록하는 것만으로 완료 처리하지 마라"는 원칙을 명시적으로 추가하면서, 이 처리가 실제로는 요구사항(ready 상태에서 서버 실패 시 durable 복구, hydrate 재등장 방지)을 충족하지 못한 성급한 완료였다고 지적했다. 원래 로그는 지우지 않고 아래 그대로 남기되, 체크박스를 `[~]`(부분 완료 → 4차에서 완전히 재작업)로 바로잡는다. 실제 완전한 처리는 "Step 0-4 감사 보완 4차"를 보라.
 
 사용자가 지적한 두 개 차단 항목. 11번 항목(커밋 전 자체 교차검증)이 잡은 것과는 또 다른, `commitBatch`/UI mutation 순서에 남아 있던 실제 결함이었다.
 
@@ -500,7 +502,192 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 **4. 재검증**
 
 - `npm test` → **`tests 173 / suites 56 / pass 173 / fail 0`**(163 → 173, +10 = `app-store.test.js` 1개 quota 통합 테스트 + `atomicPersist.test.js` signature 갱신(순증 0, 케이스 1개 추가로 5→6) + `cloudSync.test.js` 8개 신규 + import 정리). `npm run build` → **155 modules, 성공**. `npm run lint` → 기존 8개 경고만(줄 번호만 1~2줄 밀림), 신규 0개.
-- **알려진 한계**: typecheck 갭은 이전 Step들과 동일(TypeScript 미설치). item 2의 durable mutation 큐 미구현은 위에 기록. 컴포넌트 렌더 테스트 부재도 위에 기록. `cloudSync.js`(920줄)는 여전히 계획서 5절 예외 파일.
+- **알려진 한계 (3차 시점 — 4차에서 재작업됨)**: typecheck 갭은 이전 Step들과 동일(TypeScript 미설치). item 2의 durable mutation 큐 미구현은 위에 기록. 컴포넌트 렌더 테스트 부재도 위에 기록. `cloudSync.js`(920줄)는 여전히 계획서 5절 예외 파일.
+
+### [~] Step 0-4 감사 보완 4차 (사용자 지시 — durable mutation outbox 전수 구현, Step 5 착수 전 필수, 별도 커밋) — **재분류: 성급한 완료였음**
+
+**정정(사용자 지시 12개 항목 재작업 이후):** 이 4차 라운드는 아래 내용을 `[x]` 완료로 문서화한 채 커밋 대기 상태였다. 그런데 실제로 브라우저/교차검증 과정에서 사용자가 12개의 진짜 결함(차량 추가/수정 시 `saveCars` 누락으로 새로고침 후 유실, 기사 배정 충돌이 durable retry로 잘못 처리됨, outbox의 session epoch 재검증 누락, 로그아웃 직후 재로그인이 stale hydrate에 합류, 신규 기사 insert의 비멱등성, 삭제된 테이블 hydrate 오류 테스트 누락, 저장 실패의 unhandled rejection 가능성, `hydrateMerge.js`의 `unknown` 잔존 등)을 지적했다 — 아래 "4차 재작업" 섹션에서 12개 전부를 실제로 고치고 검증했다. 원래 로그는 지우지 않고 그대로 남기되, 체크박스를 `[~]`(부분 완료 → 4차 재작업에서 완전히 재작업)로 바로잡는다. 실제 완전한 처리는 "Step 0-4 감사 보완 4차 재작업"을 보라.
+
+3차가 "알려진 한계"로 남긴 durable mutation/tombstone 큐를 실제로 구현했다. 범위는 삭제뿐 아니라 차량 삭제·거래처 삭제·기사 상태변경·기사 삭제·**기사 초대 생성/수정**까지 직접 Supabase mutation 전체.
+
+**0. `cloudSync.js`(920줄) 책임별 완전 분해 (사용자 지시 7번)**
+
+이번 라운드에서 다시 손대야 했으므로, 계획서 5절 예외를 유지하지 않고 실제로 쪼갰다 — 전부 200줄 이하:
+
+| 신규 파일 | 줄 수 | 책임 |
+|---|---|---|
+| [`cloudStorage.js`](../react-app/src/lib/cloudStorage.js) | 115 | practice 스냅샷 localStorage I/O 원시 함수 |
+| [`cloudSession.js`](../react-app/src/lib/cloudSession.js) | 92 | 로그인 세션 + 세대(epoch), `assertCloudWriteReady`/`blockedReasonForCloudWrite` |
+| [`hydrate.js`](../react-app/src/lib/hydrate.js) | 125 | hydrate 전체(2차 로직 + outbox 재적용) |
+| [`mutationOutbox.js`](../react-app/src/lib/mutationOutbox.js) | 132 | durable outbox 핵심(순수 계산 + 저장) |
+| [`outboxReconcile.js`](../react-app/src/lib/outboxReconcile.js) | 53 | hydrate 결과에 tombstone/pending 겹쳐 적용(순수) |
+| [`directMutations.js`](../react-app/src/lib/directMutations.js) | 97 | Supabase 실행기(삭제/기사 링크 CRUD) |
+| [`outboxFlush.js`](../react-app/src/lib/outboxFlush.js) | 117 | outbox 재시도 엔진(single-flight, 세션 재검증) |
+| [`directMutationActions.js`](../react-app/src/lib/directMutationActions.js) | 147 | 컴포넌트가 직접 부르는 고수준 서비스 함수 |
+| [`syncVehiclesClients.js`](../react-app/src/lib/syncVehiclesClients.js) | 55 | 일반 동기화 큐 — 차량/거래처 upsert |
+| [`syncWorkData.js`](../react-app/src/lib/syncWorkData.js) | 63 | 일반 동기화 큐 — 운행기록 upsert |
+| [`syncExpenseRecords.js`](../react-app/src/lib/syncExpenseRecords.js) | 109 | 일반 동기화 큐 — 정비/주유/기타 upsert |
+| [`syncTaxInvoicesTable.js`](../react-app/src/lib/syncTaxInvoicesTable.js) | 56 | 일반 동기화 큐 — 세금계산서 upsert |
+| [`syncQueue.js`](../react-app/src/lib/syncQueue.js) | 96 | 디바운스 동기화 큐 오케스트레이션 |
+
+옛 `cloudSync.js`(920줄)와 `cloudSync.test.js`(343줄)는 삭제했다(Step 3가 옛 `App.jsx`를 삭제했던 것과 같은 판단 — 모든 책임이 새 파일로 옮겨졌고 참조가 전부 갱신됐음을 확인한 뒤 제거). `App.jsx`/`boot.js`/`HydrationRetryBanner.jsx`/`syncFlushListeners.js`/`app-store.js`의 import 5곳을 새 위치로 갱신했다.
+
+**1. 로컬 변경과 outbox 기록의 원자성 (사용자 지시 항목 1)**
+
+- [`mutationOutbox.js`](../react-app/src/lib/mutationOutbox.js)의 `planOutboxAppend()`가 기존 outbox를 읽어 "다음 값"만 메모리에서 계산(쓰지 않음). [`directMutationActions.js`](../react-app/src/lib/directMutationActions.js)의 `commitWithOutboxAndFlush()`가 도메인 값 + outbox 값을 **하나의 `writeAllOrNothing` 호출**로 쓴다. 성공했을 때만 `commitBatch(..., { persist:false, syncToCloud:false })`로 store 상태를 반영하고 notify를 정확히 한 번 부른다. 원격 호출(`flushMutationOutbox`)은 이 로컬 쓰기가 전부 성공한 **이후에만** 시작한다.
+- 순서는 사용자 지시 7번 그대로다: readiness 검사(`blockedReasonForCloudWrite`) → 도메인 값 계산 → outbox 값 계산(직렬화까지 `writeAllOrNothing` 내부에서) → 백업 → all-or-nothing 쓰기 → store 반영 → notify 1회 → outbox flush(원격) 순.
+- 검증: `directMutationActions.test.js`의 "outbox localStorage 쓰기가 실패하면 도메인 값도 롤백되고, store/notify/서버 호출이 전부 0이다" — `localStorage.setItem`을 outbox 키에서만 실패하게 패치한 뒤 도메인 localStorage 원상복구, store 미반영, notify 0회, Supabase 호출 0회를 전부 assert.
+
+**2. Durable outbox 범위 (사용자 지시 항목 2)**
+
+- 차량 삭제·거래처 삭제는 tombstone(`kind:'tombstone'`), 기사 상태변경·초대 생성/수정은 mutation(`kind:'mutation'`)으로 표현. 작업 객체는 `{ id, ownerKey, userId, resourceType, resourceId, kind, operation, payload, sessionEpoch, createdAt }`을 전부 기록한다.
+- resourceId는 차량/거래처는 `supabaseId`, 기사 링크는 **로컬 driver.id**를 쓴다 — 초대 생성 시점엔 supabaseId가 아직 없어서, 생성·수정·상태변경·삭제 전체 생애주기가 같은 resourceId로 병합 규칙을 공유하게 하기 위해서다.
+- `mergeOutboxOp()`(순수 함수)이 병합 규칙을 구현: 같은 리소스의 mutation은 최신 것으로 교체(latest wins), tombstone은 그 리소스의 모든 대기 작업을 대체(삭제 우선), 이미 tombstone이 있으면 새 mutation은 버린다. `mutationOutbox.test.js` 10개로 이 규칙 자체를 단위 검증.
+- 재시도 idempotent 여부: 삭제(vehicle/client/driverLink)는 delete-of-already-deleted-row가 에러 없이 성공하는 Supabase 기본 동작에 기대 자연히 idempotent — `outboxFlush.test.js`의 "멱등성" 테스트가 중간 테이블만 성공한 뒤 재시도해도 안전함을 실측. 기사 초대 upsert는 `supabaseId`가 확정된 뒤에는 update라 idempotent이고, 확정 전(신규 생성) 재시도는 재시도 때마다 `findOverlappingDriverLinkOnSupabase`를 다시 돌려서 — **이미 성공한 첫 삽입이 있다면 그 자체가 "겹침"으로 잡혀 중복 삽입을 막는다**(데이터 오염은 막되, 이 특정 엣지 케이스는 자동으로 스스로 안 풀리고 사람이 봐야 한다 — 아래 알려진 한계에 정직하게 기록).
+
+**3. 원격 실패 처리 (사용자 지시 항목 3)**
+
+- [`outboxFlush.js`](../react-app/src/lib/outboxFlush.js)의 `flushOnce()`가 각 op을 실행하고, 성공(원격 반영 확정)했을 때만 `removeOutboxOp()`으로 제거한다. 실패(throw 또는 `{data:null,error}` 던짐)하면 `console.error`로 남기고 outbox에는 그대로 둔다 — 콘솔 출력만 하고 끝내지 않는다(다음 flush가 이어서 시도).
+- outbox 제거(`removeOutboxOp`) 자체가 실패해도(예: 저장 공간) 그냥 둔다 — 다음 flush가 이미 끝난 작업을 다시 실행하지만, 실행기가 idempotent해서 데이터가 안 깨진다.
+- 성공/대기 토스트 구분: [`directMutationActions.js`](../react-app/src/lib/directMutationActions.js)의 `commitWithOutboxAndFlush()`가 flush 직후 그 op이 outbox에서 사라졌는지 확인해 `succeeded`를 계산하고, 성공이면 확정 토스트("삭제했습니다"), 실패(아직 대기)면 "…연결이 복구되면 자동으로 반영됩니다" 문구를 돌려준다 — "삭제했습니다"라는 확정 성공 문구는 원격 반영이 실제로 끝났을 때만 나간다.
+
+**4. hydrate 재등장 방지 (사용자 지시 항목 4)**
+
+- 신규 [`outboxReconcile.js`](../react-app/src/lib/outboxReconcile.js) — `reconcileCars`/`reconcileClients`가 활성 tombstone이 있는 리소스를 병합 결과에서 걸러내고, `reconcileDrivers`가 tombstone 필터링 + pending mutation(상태변경/생성) 재적용 + 서버 병합이 통째로 떨어뜨릴 수 있는 pending 생성건 복구까지 처리한다. `hydrate.js`의 `performHydrate()`가 차량/거래처/기사 병합 직후 이 함수들을 통과시킨다.
+- 검증: `hydrate.test.js`의 "활성 tombstone이 있는 차량은 서버 응답에 있어도 hydrate 결과에서 제외된다", "대기 중인 기사 상태변경은 서버 값이 아니라 로컬 pending 값으로 유지된다" — 둘 다 실측.
+- reload/재로그인/hydrate retry 후에도 outbox는 localStorage 기반이라 그대로 유지되고, `hydrate.js`가 성공 직후 `hasPendingOps(ownerKey)`를 확인해 자동으로 `flushMutationOutbox`를 부른다. `syncQueue.js`의 `flushCloudSync()`(pagehide)도 도메인 동기화 큐와 outbox 둘 다 플러시한다.
+
+**5. 세션/동시성 보호 (사용자 지시 항목 5, 11번 원칙)**
+
+- [`cloudSession.js`](../react-app/src/lib/cloudSession.js)의 `captureSession()`/`isSessionStillCurrent()` — userId/ownerKey/sessionEpoch(세대) 셋을 한 번에 캡처·재검증한다. `hydrate.js`가 hydrate 시작 시 캡처하고 커밋 직전 재검증(2차부터 있던 세대 보호를 이 공용 유틸로 통합), `outboxFlush.js`의 `flushOnce()`가 **flush 시작 시점**과 **op마다 실행 직전**에 재검증해서, 세션이 바뀌면 그 owner의 남은 op을 전부 그대로 두고 조용히 멈춘다(다른 owner 자격으로 원격 호출을 내보내지 않는다).
+- outbox flush는 owner별 running/dirty 큐(`outboxFlush.js`의 `outboxQueues` Map)로 single-flight — 실행 중 새 op이 추가되면 dirty 플래그로 표시해 두고 한 번 더 돈 뒤에야 resolve한다(기존 `queueSync`와 같은 패턴).
+- 검증: `outboxFlush.test.js`의 "flush 도중 로그아웃하면 남은 op은 그대로 두고 원격 호출을 멈춘다", "flush 시작 시점에 이미 다른 owner가 현재 세션이면 아예 실행하지 않는다", "single-flight + dirty 재실행" 3개. `hydrate.test.js`의 "hydrate 도중 owner(계정) 변경"(신규 — A가 진행 중에 B가 시작해 성공하면 A의 뒤늦은 완료가 B의 ready 상태/데이터를 절대 건드리면 안 됨을 실측) + "hydrate 도중 로그아웃"(기존 2차 테스트 이전).
+
+**6. 테스트의 진실성 (사용자 지시 항목 6, 12번 원칙)**
+
+- **API 함수만 테스트하지 않았다** — `CarManagementPage.jsx`/`ClientManagementPage.jsx`/`DriverConnectionPage.jsx`의 삭제·상태변경·초대저장 오케스트레이션을 [`directMutationActions.js`](../react-app/src/lib/directMutationActions.js)의 `requestVehicleDeletion`/`requestClientDeletion`/`requestDriverStatusChange`/`requestDriverDeletion`/`requestDriverInviteSave`로 뽑아냈다. 컴포넌트는 이 함수만 부른다(코드 리뷰로 호출 순서 확인) — 렌더 테스트 없이도, 이 함수들을 직접 테스트하는 것이 곧 실제 UI 호출 경로를 테스트하는 것이다.
+- **실제로 이 방식이 버그를 잡았다**: `directMutationActions.test.js` 작성 중 `requestDriverInviteSave`의 성공 토스트가 "초대를 저장했습니다"가 아니라 항상 "기사 할당 정보를 수정했습니다"로 나오는 실제 버그를 발견했다 — 컴포넌트가 `editingId` 대신 `newId`(항상 truthy)를 넘기고 있었다. `DriverConnectionPage.jsx`의 `save()`를 고쳐 원래 `editingId`(신규면 null)를 그대로 넘기도록 수정. **API 레벨 테스트만 했다면 절대 못 잡았을 버그**(서비스 함수 자체는 파라미터를 있는 그대로 신뢰하므로) — 실제 호출부를 테스트한 것의 가치를 스스로 증명한 사례.
+- 18개(`directMutationActions.test.js`) + 9개(`outboxFlush.test.js`) + 10개(`mutationOutbox.test.js`) + 8개(`hydrate.test.js`) + 10개(`cloudSession.test.js`) + 4개(`syncQueue.test.js`) = 59개 신규. 각각 Store 상태·도메인 localStorage·dirty journal/outbox·notify 횟수·Supabase 메서드별 호출 횟수·성공/대기 토스트를 실제 assert.
+- 필수 실패 주입 커버: 도메인 localStorage 쓰기 실패, outbox 쓰기 실패(`directMutationActions.test.js`), Supabase throw·`{data:null,error}`(`outboxFlush.test.js`, `directMutationActions.test.js`), 차량 다중 테이블 작업 중간 실패+재시도(`outboxFlush.test.js` 멱등성 테스트), 원격 성공 후 outbox 제거는 실패해도 안전(설계상 idempotent 실행기로 보장, 별도 실패 주입은 안 함 — 알려진 한계에 기록), 실행 중 로그아웃/owner 전환(`outboxFlush.test.js`, `hydrate.test.js`), reload 후 재시도(`directMutationActions.test.js`의 "retry 성공 후 다시 시도" 시나리오), hydrate 시 tombstone 대상 재등장 방지(`hydrate.test.js`), 직접 mutation 실행 직전 hydration이 hydrating으로 바뀌는 경우(`directMutationActions.test.js`).
+- 모든 신규 테스트는 각자 고유한 owner 키를 써서 실행 순서에 의존하지 않는다. **핵심 회귀(commitBatch 원자성, blockedReasonForCloudWrite 게이트, directMutationActions의 outbox 병합)는 수정을 임시로 되돌려 테스트가 실제로 실패하는 것을 확인한 뒤 복원했다** — 그 사이 버그를 실제로 하나 더 발견(위 토스트 버그)했다는 것 자체가 이 검증 절차의 실효성을 보여준다.
+
+**7. 200줄 규칙 (사용자 지시 항목 7)**
+
+수정한 컴포넌트 4개를 폼 모달과 목록/액션으로 분리했다:
+
+| 파일 | 이전 | 이후 |
+|---|---|---|
+| `CarManagementPage.jsx` | 298 | 118 |
+| `CarFormModal.jsx`(신규) | — | 101 |
+| `ClientManagementPage.jsx` | 314 | 139 |
+| `ClientFormModal.jsx`(신규) | — | 78 |
+| `DriverConnectionPage.jsx` | 214 | 146 |
+| `DriverFormModal.jsx`(신규) | — | 51 |
+
+`cloudSync.js`(920줄)는 위 0번 항목에서 13개 파일로 완전히 분해했다. 신규/수정 프로덕션 파일 전부가 200줄 이하임을 `wc -l`로 재확인(아래 재검증 로그).
+
+**8. 타입 검증 (사용자 지시 항목 8)**
+
+- `package.json`에는 여전히 `typecheck` 명령이 없다 — **build/lint를 typecheck 통과로 보고하지 않는다.** "typecheck 명령 미구성"이 정확한 상태다.
+- `any`/`unknown`/JSDoc `*`/`@ts-ignore`/`@ts-expect-error`/타입 회피 단언 — 신규·수정 프로덕션 코드 전체(`grep -rn`)에서 0건. `app-store.js`의 `@property {*} value`/`@returns {Array<*>}`, `batchWrites.js`의 `value: *`도 제거하고 `DomainValue`(`object|Array<object>|Array<string>`), `JsonValue`(재귀적 JSON 타입) typedef로 대체했다.
+
+**9. 문서와 완료 처리 (사용자 지시 항목 9)**
+
+- 3차의 `[x]` 체크를 `[~]`로 바로잡고 "성급한 완료였음"을 명시했다(위 참고). 이 4차 항목은 위 1~8번 요구사항과 실패 매트릭스가 전부 통과한 뒤에만 `[x]`로 표시한다.
+- Step 5는 시작하지 않았다.
+
+**10. 재검증**
+
+- `npm test` → **`tests 211 / suites 77 / pass 211 / fail 0`**(173 → 211, +38 = 신규 59개 − 삭제된 `cloudSync.test.js` 21개). `npm run build` → **170 modules, 성공**. `npm run lint` → 신규 경고 0개(오히려 `DriverConnectionPage.jsx`의 기존 `setCars` 미사용 경고가 리팩터 과정에서 자연히 없어져 기존 8개 → 7개로 줄었다).
+- **알려진 한계(현재 요구사항을 위반하지 않는다고 판단한 것들, 정직하게 기록)**:
+  - typecheck 명령 미구성(TypeScript 미설치) — 이전 Step들과 동일한 갭.
+  - 기사 초대 **신규 생성**의 첫 삽입이 "네트워크가 커밋 후 응답 전에 끊기는" 정확히 그 순간에 실패하면, 재시도 시 `findOverlappingDriverLinkOnSupabase`가 방금 성공한 그 행을 "겹침"으로 잡아 재시도를 막는다 — 데이터 중복/오염은 막지만, 그 op이 outbox에 영구히 멈춘 채(자동으로 안 풀리고) 사람이 확인해야 한다. 이 특정 엣지 케이스만 그렇고, 삭제·상태변경·이미 확정된 supabaseId가 있는 수정은 전부 완전히 idempotent하다.
+  - `notify()` 자체(app-store.js)는 구독자 콜백이 던지는 경우를 try/catch로 감싸지 않는다 — 이번 요구사항이 요청한 실패 주입 목록엔 없었고 Step 1부터 있던 기존 구조라 범위 밖으로 남겼다.
+  - 컴포넌트 JSX 렌더 테스트는 여전히 없다 — 사용자 지시 6번이 명시한 대안(오케스트레이션을 서비스 함수로 추출해 그 함수를 테스트)을 택했고, 실제로 그 방식이 버그를 잡아낸 사례(위 6번 항목)로 실효성을 보였다.
+  - 브라우저 라이브 검증: 새 탭에서 `/app/cars` 진입 → 사이드메뉴/폼 모달/목록 렌더까지 콘솔 에러 0건으로 확인했고, 차량 추가 후 목록에 새 항목이 반영되는 것도 확인했다. 다만 이 개발 환경의 라우트가 상호작용 몇 초 뒤 `/app`으로 되돌아가는 현상(이전 Step들에도 이미 기록된, HMR/개발 서버 관련으로 보이는 환경 아티팩트로 추정)이 있어 삭제 확인 모달 → 토스트까지 이어지는 전체 흐름을 라이브 화면에서 끝까지 캡처하지는 못했다 — 그 흐름 자체는 `directMutationActions.test.js`가 실제 호출 경로 레벨에서 커버한다. **정정(4차 재작업에서 근본 원인 확인): "HMR/개발 서버 아티팩트"라는 추정은 틀렸다. `App.jsx`가 plain `<BrowserRouter>`를 쓰고 있어 `useNavigate()`가 react-router의 `useNavigateUnstable()` 경로를 타는데, 이 구현은 `navigate` 함수를 `location.pathname`이 바뀔 때마다 새로 만든다. `goHome`이 `useCallback(fn, [navigate])`로 감싸여 있고 부트 이펙트가 `useEffect(fn, [goHome])`이므로, **로그인된(게스트가 아닌) 사용자가 어떤 라우트로 이동해도 그 즉시 부트 이펙트가 다시 실행되어 `restoreSessionOnBoot()`(세션 재조회 + 전체 hydrate)를 다시 돌리고, 끝나면 `goHome()`이 다시 `navigate('/app', {replace:true})`를 불러 강제로 홈으로 되돌린다** — 실제 프로덕션에서 로그인 계정은 홈 탭을 벗어날 수 없는 심각한 버그다(게스트는 `restoreSessionOnBoot()`이 `null`을 돌려줘 `goHome()`을 안 부르므로 이 증상이 없다 — 그래서 게스트 경로로 진행한 이전 검증들이 이 버그를 놓쳤다). 사용자의 12개 항목에는 없는 별도 결함이라 이번 라운드에서 고치지 않았고, 이 문서 정정 후 별도로 사용자에게 보고한다. 재현: `console.count`로 부트 이펙트 실행 횟수를 계측하면 로그인 계정에서 라우트 전환마다 실행 횟수가 2씩 증가함을 확인했다(StrictMode 이중 실행 포함). 이번 라운드의 차량 추가/수정 새로고침 검증(아래 4차 재작업 참고)은 이 버그를 피해 비회원(게스트) 모드로 수행했다 — 데이터 계층(`saveCars`)은 로그인 여부와 무관하게 동일하게 동작하므로 검증 유효성에는 영향이 없다.**
+
+### [x] Step 0-4 감사 보완 4차 재작업 (사용자 지시 — 12개 감사 차단 항목, Step 5 착수 전 필수, 별도 커밋)
+
+4차가 `[x]`로 문서화했던 durable outbox 구현에서, 실제 브라우저/코드 재검토로 드러난 12개의 진짜 결함을 전부 고쳤다. `git reset`/`checkout`/`clean` 없이 기존 파일에 이어서 작업했다.
+
+**1. `CarManagementPage.jsx` 차량 추가/수정 시 `saveCars` 누락**
+
+- 원인: 4차 리팩터에서 삭제 경로의 `persist()` 헬퍼를 제거하면서 추가/수정 경로의 영속화 호출도 실수로 함께 빠졌다 — `setCars(result.cars)`만 부르고 `saveCars(ownerKey, result.cars)`를 안 불러서, React state에는 반영되지만 새로고침하면 유실됐다.
+- 수정: [`CarManagementPage.jsx`](../react-app/src/components/CarManagementPage.jsx)의 `save()`에 `saveCars(ownerKey, result.cars)` 호출 복원.
+- 검증: 브라우저 실측(아래 "브라우저 라이브 재검증" 참고) + 기존 `cars.test.js`/`directMutationActions.test.js` 회귀 없음.
+
+**2. 클라우드 사용자의 차량 미할당 기사 초대도 기존처럼 로컬 저장**
+
+- 원인: [`requestDriverInviteSave.js`](../react-app/src/lib/requestDriverInviteSave.js)(옛 `directMutationActions.js`)의 "차량/시작일 미입력" 조기 반환이 `{ items, blocked:null, toast:null }`만 돌려주고 `items`를 localStorage에 전혀 쓰지 않았다 — 클라우드 시도만 건너뛰어야 하는데 로컬 저장까지 건너뛴 것.
+- 수정: 이 분기를 `commitLocalOnly()`로 라우팅해 항상 로컬에 저장하고 적절한 성공 토스트를 반환하도록 수정.
+- 검증: `directMutationActions.test.js`의 "입력이 불완전해도(차량/시작일 없음) 사용자 지시 2번대로 로컬에는 항상 저장되고 저장 토스트가 뜬다" — `readJsonKey('drivers', ...)`가 실제로 반영됨을 assert.
+
+**3. 기사 배정 기간 충돌 = 확정 validation 실패(durable retry 금지)**
+
+- 원인: 기존 구현은 배정 기간 충돌을 outbox flush 도중 발견되는 일반 `Error`로 던져, 영원히 성공할 수 없는 작업이 outbox에 무한정 남았다(재시도해도 항상 같은 충돌).
+- 수정: (a) [`requestDriverInviteSave.js`](../react-app/src/lib/requestDriverInviteSave.js)에 동기적 사전 충돌 검사(`checkDriverAssignmentConflict`)를 추가해 이미 동기화된 차량이면 낙관적 로컬/outbox 기록을 만들기 **전에** 충돌을 확정 실패로 즉시 반환한다(가장 흔한 경로에서 잔여물이 아예 안 생긴다). (b) [`mutationOutbox.js`](../react-app/src/lib/mutationOutbox.js)에 `createPermanentFailure()`를 추가하고 [`outboxFlush.js`](../react-app/src/lib/outboxFlush.js)의 `flushOnce()`가 `.permanent` 표시가 된 에러는 재시도하지 않고 op을 제거(TOCTOU로 flush 시점에만 드러나는 좁은 레이스를 커버).
+- 검증: `directMutationActions.test.js`의 "사용자 지시 3번 — 차량이 이미 동기화돼 있고 겹침이 있으면 확정 실패로 즉시 처리하고 로컬/outbox에 아무 것도 안 남긴다" — `result.blocked` truthy, `hasPendingOps===false`, `readJsonKey('drivers',...).length===0`을 assert(예전엔 이 자리에서 `hasPendingOps===true`를 기대하던 반대 방향 테스트였다 — 뒤집었다).
+
+**4. outbox의 모든 await 이후 + reconcile/제거 직전 session epoch 재검증**
+
+- 수정: [`outboxFlush.js`](../react-app/src/lib/outboxFlush.js)의 `executeOp(op, captured)`가 `captured` 세션을 받아 원격 호출(await) 직후 `isSessionStillCurrent(captured)`를 재확인한 뒤에만 reconcile을 진행하도록 수정. `flushOnce()`도 op 제거 직전에 재검증.
+- 검증: 기존 `outboxFlush.test.js`의 "flush 도중 로그아웃"/"owner 전환" 테스트가 이 경로를 커버(회귀 없음 재확인).
+
+**5. 기사 upsert 서버 확정값을 localStorage + Store에 원자적으로 반영**
+
+- 수정: [`outboxFlush.js`](../react-app/src/lib/outboxFlush.js)에 `reconcileDriverAfterUpsertAndRemoveOp(op, savedRow)`를 신규 작성 — drivers 도메인 값 쓰기 + outbox 제거를 **하나의 `writeAllOrNothing` 호출**로 묶고, 성공하면 `commitBatch(..., {persist:false, syncToCloud:false})`로 Store도 같은 틱에 반영한다(이전엔 localStorage만 갱신되고 Store가 갱신 안 돼 화면에 반영이 늦거나 안 되는 경우가 있었다).
+- 검증: 기존 `outboxFlush.test.js`의 "기사 초대 upsert — 성공 시 로컬에 서버 확정값을 되반영한다" 테스트로 회귀 확인.
+
+**6. 로그아웃 후 같은 owner로 즉시 재로그인 시 stale hydrate에 합류 금지**
+
+- 원인: `hydrateFromSupabase`가 `singleFlight('hydrate:'+ownerKey, ...)`로 감싸져 있는데, 로그아웃 시점에 그 owner의 hydrate가 아직 진행 중이었다면 singleFlight 맵에 항목이 남아있어 바로 이어지는 재로그인(같은 owner)의 새 `hydrateFromSupabase` 호출이 그 오래된 in-flight Promise에 "합류"해서 새 조회를 아예 안 하고, 세대 불일치로 결과가 조용히 버려져 `status`가 영원히 `ready`가 안 됐다.
+- 수정: [`singleFlight.js`](../react-app/src/lib/singleFlight.js)에 `evict(key)` 추가, [`cloudSession.js`](../react-app/src/lib/cloudSession.js)의 `endCloudSession()`이 로그아웃 시 그 owner의 `hydrate:${ownerKey}` 항목을 강제로 제거하도록 수정.
+- 검증(신규 테스트, 회귀 실측 포함): `hydrate.test.js`의 "사용자 지시 6번 — 로그아웃 후 같은 owner로 즉시 재로그인 > 로그아웃 시점에 아직 진행 중이던 이전 hydrate에 재로그인이 합류하지 않고 새로 실행된다" — 재로그인 후 `profiles` 조회가 2번(총) 나갔는지, `status==='ready'`인지, 이전 요청이 뒤늦게 응답해도 최신 값이 안 덮이는지 assert. **버그 임시 복원 확인**: `endCloudSession()`의 `evict()` 호출을 지우고 재실행하면 재로그인의 `hydrateFromSupabase` 호출이 로그아웃 이전 게이트에 걸린 채 영원히 끝나지 않아 테스트가 **행(hang)** 상태로 실패함을 실측(타임아웃으로 확인 후 수정 복원).
+
+**7. 일반 syncQueue도 epoch로 실행 중 로그아웃/owner 전환 방어**
+
+- 수정: [`syncQueue.js`](../react-app/src/lib/syncQueue.js)의 `queueSync()`가 시작 시 `captureSession()`으로 세션을 캡처하고, 각 `syncAll()` 재실행 직전과 `clearDirty()` 직전에 `isSessionStillCurrent(captured)`를 재검증한다 — 그 사이 로그아웃/owner 전환이 있었으면 해당 owner의 dirty journal을 "성공적으로 비웠다"고 잘못 표시하지 않고 그대로 둔다(다음 재로그인이 다시 정확히 판단한다).
+- 검증(신규 테스트): `syncQueue.test.js`의 "실패 주입 — syncQueue 실행 중 로그아웃/owner 전환" 2개 — "로그아웃 이후에 도착한 성공 응답으로 clearDirty가 불리면 안 된다", "다른 owner로 전환되면 원래 owner의 dirty 표시는 지워지지 않는다". **버그 임시 복원 확인**: `queueSync()`의 두 `isSessionStillCurrent` 재검증을 지우고 재실행하면 두 테스트 모두 `false !== true`로 실제 실패함을 실측 후 복원.
+
+**8. 신규 기사 insert의 응답 유실 상황도 자동 수렴하는 진짜 멱등성**
+
+- 원인: 기존엔 신규 insert 응답이 유실되면 재시도 시 `findOverlappingDriverLinkOnSupabase`가 방금 성공한 그 행을 "겹침"으로 오판해 영구히 막혔다(4차가 "알려진 한계"로 기록했던 바로 그 문제).
+- 수정: [`directMutations.js`](../react-app/src/lib/directMutations.js)에 `findExistingDriverLinkInsert(vehicleId, assignmentStart, inviteCode)`를 추가 — `(vehicle_id, assignment_start, invite_code)` 자연키로 "이미 내가 성공시킨 이전 시도"를 조회해서, 있으면 그 행을 그대로 쓰고 재삽입하지 않는다. `upsertDriverLinkOnSupabase`(즉시 경로)와 `outboxFlush.js`의 `executeDriverUpsertOp`(재시도 경로) 둘 다 겹침 검사보다 먼저 이 조회를 거친다.
+- 버그 수정 중 발견한 2차 결함: `findExistingDriverLinkInsert`의 최초 구현이 `return data || null`이라 빈 배열(`[]`, truthy)을 "찾았다"로 오판할 수 있었다(가짜 Supabase 테스트 더블이 `.maybeSingle()`과 배열 반환 `.select()`를 구분 못 해 실제로 이 케이스가 테스트에서 드러났다) — `if (!data || Array.isArray(data)) return null`로 방어 강화.
+- 검증: `directMutationActions.test.js`의 "사용자 지시 8번 — insert 응답이 유실된 뒤(즉시 재시도) 같은 payload로 다시 저장해도 중복 삽입 없이 그 행을 그대로 쓴다".
+
+**9. 삭제된 vehicles/clients/driver_links/tax_invoices hydrate 오류 통합 테스트 복원**
+
+- 수정: [`hydrate.test.js`](../react-app/src/lib/hydrate.test.js)에 4개 테스트를 복원 — `vehicles`/`clients`/`driver_links`/`tax_invoices` 각각 조회 실패 시 `status==='failed'`로 남고 해당 도메인의 로컬 값이 그대로 유지됨을 개별 assert(기존엔 `profiles`/`transport_details`만 있었다).
+
+**10. localStorage/outbox 저장 실패가 unhandled rejection이 되지 않도록**
+
+- 수정: [`outboxCommit.js`](../react-app/src/lib/outboxCommit.js)(신규) — `commitLocalOnly()`/`commitWithOutboxAndFlush()`가 저장 실패를 try/catch로 잡아 **항상 resolve**하고 `{ failed 또는 storageFailed, toast }`를 돌려준다. `directMutationActions.js`의 5개 서비스 함수 전부가 이 계약을 따라 실패 시 원래 값 + 실패 토스트를 반환(호출부에서 절대 throw가 새어나가지 않는다).
+- 검증: `directMutationActions.test.js`의 "실패 주입 — 도메인+outbox 원자적 쓰기 자체가 실패하는 경우"(예전엔 `assert.rejects`를 기대하던 테스트였다 — item 10 수정으로 계약이 "던지지 않음"으로 바뀌어 `assert.doesNotReject` + 실패 토스트 + 롤백/notify 0회/서버 호출 0회로 다시 작성) + "입력이 불완전한데 로컬 저장 자체가 실패하면(사용자 지시 10번) 예외를 던지지 않고 실패 토스트를 돌려준다"(신규).
+
+**11. `hydrateMerge.js`의 `unknown` 제거**
+
+- 수정: `@param {Record<string, unknown>} labeledErrors`를 실제 읽는 필드만 적은 `@typedef {{ message: string, code?: string }|Error|null} SupabaseQueryError`로 교체.
+- 재확인: 신규·수정 프로덕션 파일 전체에서 `any`/`unknown`/`@ts-ignore`/`@ts-expect-error` 재검색(`grep -rn`) → 주석 설명문 2건("any/unknown 대신...") 외 0건.
+
+**12. 문서/완료 처리**
+
+- 4차의 `[x]` 체크를 `[~]`로 바로잡았다(위 참고). 이 "4차 재작업" 항목은 아래 재검증이 전부 통과한 뒤에만 `[x]`로 표시한다.
+- Step 5는 시작하지 않았다. `git reset`/`checkout`/`clean`은 실행하지 않았다.
+
+**브라우저 라이브 재검증 (사용자 지시 — 차량 추가/수정 후 새로고침 유지 확인)**
+
+- 위 "정정" 각주에서 밝힌 로그인 계정 전용 라우팅 버그(별도 결함, 12개 항목 밖) 때문에 비회원(게스트) 모드로 검증했다 — `saveCars`/`upsertCar`/localStorage 경로는 로그인 여부와 무관하게 동일하다.
+- 실측 절차: 개발 서버(`npm run dev`) 기동 → 비회원으로 시작 → 마이페이지 → 차량 관리 → "99가9999"/"5톤" 추가 → 저장 → `localStorage['reactPracticeCars:guest']`에 반영 확인 → **완전한 하드 새로고침**(`navigate`로 전체 리로드, `App.jsx`의 React state가 전부 초기화됨) → 비회원 재시작 → 차량 목록에 "99가9999 (5톤)"가 그대로 남아 있음을 화면에서 확인. 이어서 "수정"으로 톤수를 "11톤"으로 바꾸고 저장 → localStorage 반영 확인 → 다시 하드 새로고침 → 비회원 재시작 → "99가9999 (11톤)"로 남아 있음을 화면에서 확인. 추가·수정 둘 다 새로고침 생존을 실측했다.
+
+**재검증**
+
+- `node --experimental-test-module-mocks --test` (전체 79개 스위트) → **`tests 220 / suites 79 / pass 220 / fail 0`**(211 → 220, +9 = `hydrate.test.js` 8→13(+5: 항목 9 복원 4개 + 항목 6 신규 1개) + `syncQueue.test.js` 4→6(+2: 항목 7 신규) + `directMutationActions.test.js` 18→20(+2 순증: 항목 2/3/8/10 관련 재작성·추가)).
+- `npm run build` → 성공(경고 0).
+- `npm run lint` → 신규 경고 0개(기존 `InlineExpandHost.jsx`/`AppShell.jsx`/`ReceivablesPage.jsx`/`TaxInvoicePage.jsx`의 기존 경고 7개만 그대로).
+- 200줄 제한: 이번에 수정/신규한 프로덕션 파일 전부 `wc -l`로 재확인 — `CarManagementPage.jsx`(122), `directMutations.js`(122), `mutationOutbox.js`(146), `outboxFlush.js`(174), `outboxCommit.js`(신규, 42), `requestDriverInviteSave.js`(신규, 78), `directMutationActions.js`(99), `singleFlight.js`(43), `cloudSession.js`(110), `syncQueue.js`(102), `hydrateMerge.js`(156), `DriverConnectionPage.jsx`(146) — 전부 200줄 이하.
+- **핵심 회귀는 버그를 임시로 되돌려 테스트가 실제로 실패하는 것을 확인한 뒤 복원했다**: 항목 6(evict 제거 → 재로그인 hydrate가 행), 항목 7(epoch 재검증 제거 → 두 테스트 모두 `false!==true`로 실패), 항목 8(빈 배열 오판 버그가 실제로 2개 테스트를 실패시켰던 것을 수정 전 상태에서 확인). 항목 3은 사전 검사(정적) + `createPermanentFailure`(레이스) 이중 구조라 정적 경로는 설계상 검증했고 레이스 경로는 `flushOnce`의 `.permanent` 분기 코드 리뷰로 확인했다(별도 레이스 재현 테스트는 작성하지 않음 — 알려진 한계로 기록).
+- **알려진 한계(정직하게 기록)**: (a) 위 "정정" 각주의 로그인 계정 전용 라우팅 버그 — 사용자의 12개 항목 밖이라 이번 라운드에서 고치지 않았고, 별도로 보고한다. (b) 항목 3의 TOCTOU 레이스(정적 사전 검사를 통과한 직후 다른 클라이언트가 겹치는 배정을 커밋하는 극히 좁은 창) 전용 실패 주입 테스트는 없다 — `createPermanentFailure` 분기가 코드 상 존재함만 확인했다. (c) typecheck 명령 미구성(TypeScript 미설치)은 이전 Step들과 동일한 기존 갭.
 
 ### [ ] Step 5 — 달력 홈 재작성 (슬라이스 3)
 
