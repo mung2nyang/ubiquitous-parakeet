@@ -795,12 +795,61 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - `npm run lint` → 신규 경고 0개(기존 7개만 그대로).
 - **알려진 한계(정직하게 기록)**: 이 SQL은 여전히 라이브 DB에 미적용·미검증이다 — 사용자가 스테이징 등에서 먼저 실행해 문법 오류나 스키마 불일치(특히 `vehicle_id`의 실제 컬럼 타입, `driver_links`에 이미 걸려 있는 RLS 정책의 정확한 조건)가 없는지 확인해야 한다. 클라이언트 코드 연결은 여전히 하지 않았다.
 
-### [ ] Step 5 — 달력 홈 재작성 (슬라이스 3)
+### [x] Step 5 — 달력 홈 재작성 (슬라이스 3) — 1차 구현 + 재감사 1~3차 완료
 
 - 폐기/대체: `MainPage.jsx`를 `ui/calendar/CalendarPage.tsx` + `CalendarGrid` + `CalendarCell` + `CalendarMonthSummary`로 분할.
 - 뱃지: `domain`에서 `DayRecord` → `workBadge` / `isOff` / `hasUnpaid`. `inputMode === 'fare'` 연결.
 - `unitPrice`는 설정 스토어. 고정노선 단가와 달력 합계 소스를 문서화(한쪽으로 통일하는 작업은 Step 6과 함께).
 - 완료: 새로고침 후 같은 달, 셀 클릭 시 `/app/day/:date`.
+
+**실제 구현 (`react-app`, `.jsx`/`.js` — 이 코드베이스는 Step 0-4 내내 실제 `.tsx`가 아니라 JSDoc 타입의 `.jsx`/`.js`를 써 왔으므로, 설계안의 `.tsx` 파일명은 그 관례에 맞춰 옮겼다):**
+
+- **`MainPage.jsx` 폐기, `src/components/calendar/` 신설**: `CalendarPage.jsx`(103줄, 오케스트레이션) + `CalendarHeader.jsx`(89줄, 배너/알림·메뉴 버튼/년월 네비게이션) + `CalendarGrid.jsx`(50줄, 요일 헤더+셀 map, 뱃지를 domain 함수로 미리 계산) + `CalendarCell.jsx`(54줄, 순수 렌더) + `CalendarMonthSummary.jsx`(83줄, 미수 카드+운송료 정산 카드) + `calendar.css`(22줄). 어느 파일도 200줄을 넘지 않는다. `MainPageRoute.jsx`(122줄)만 남기고 `MainPage.jsx`는 삭제했다.
+- **뱃지/URL 계산을 "타입 전용" domain 모듈로 분리**(재감사 3번): `dayFareTotal`/`dayWorkBadgeLabel`/`dayHasUnpaid`/`formatFareShort`는 `domain/calendarBadges.js`(신규, `// @ts-check`)로, `viewDateFromSearchParams`/`searchParamsForViewDate`는 `domain/calendarViewDate.js`(신규, `// @ts-check`)로 옮겼다 — `day-record.js`/`money.js`/`calendar.js`에 직접 `// @ts-check`를 붙여 실측해 보니(`tsc`) 그 파일들의 **선행 타입 부채**(암묵적 any 등, 내가 만들지 않은 기존 코드)가 그대로 드러나서, 신규 로직만 담는 전용 모듈로 뺐다. `hasUnpaid`(빨간 점, `.unpaid-dot`)는 이 react 포트에 아예 없던 기능이라 바닐라 `script.js`에서 새로 옮겼다.
+- **`inputMode === 'fare'` 실제 연결**: `formatFareShort`(만원 이상 "N만", 미만 "N원")를 바닐라에서 그대로 옮겼다. `AppSettingsPage.jsx`의 "금액 표시는 달력에 나중에 붙입니다. 지금은 저장만 됩니다." 안내문(미구현 표시)을 지웠다 — 이제 실제로 붙었다.
+- **고정노선 단가 vs 달력 합계 소스 — 통일하지 않고 문서화만**(Step 6으로 미룸): 바닐라는 별도 "1회 단가" 필드 없이 고정노선 연결 거래처의 `fixedUnitPrice`만으로 달력 합계를 계산한다. 이 포트는 아직 거래처 연동(Step 7) 이전이라 설정 스토어의 독립적인 `unitPrice`를 쓴다 — 근거를 `dayFareTotal`(`domain/calendarBadges.js`) 주석에 남겼다.
+- **완료 조건 1 "새로고침 후 같은 달"**: `viewDate`를 `/app`의 `?y=&m=` 쿼리에 둔다(`domain/calendarViewDate.js`, 순수 함수). `CalendarPage.jsx`가 `useSearchParams()`로 읽고 쓴다.
+- **완료 조건 2 "셀 클릭 시 `/app/day/:date`"**: Step 3의 라우팅 계약(`onSelectDay` → `navigate`, `resolveWorkLogCloseTarget`)을 그대로 재사용한다.
+- **화면이 store를 직접 구독한다 — CalendarPage뿐 아니라 MainPageRoute(일지 입력)까지**(재감사 4번, `migration-plan.md` 1.3이 금지한 "페이지가 자기만의 `useState(() => loadX())` 스냅샷을 갖는" 패턴을 처음 깬다): 1차 구현은 `CalendarPage.jsx`만 store를 구독하고 `MainPageRoute.jsx`(WorkLogPage 입력)는 여전히 `useState(() => loadWorkData(...))` 로컬 스냅샷을 썼는데, 재감사에서 **화면마다 서로 다른 workData 소스를 갖는 게 바로 그 금지 패턴의 일종**이라는 지적을 받아 고쳤다. `store/ownerDataHooks.js`(신규, `// @ts-check`)에 `useOwnerWorkData`/`useOwnerSettings`를 만들어 `CalendarPage.jsx`와 `MainPageRoute.jsx` 둘 다 이 훅 하나로 같은 store 값을 구독한다. `useState`+`useEffect(() => subscribe(...))` 대신 React의 `useSyncExternalStore(subscribe, getSnapshot)`를 썼다 — "초기 렌더에서 store를 읽은 시점"과 "구독을 실제로 등록한 시점" 사이에 놓친 갱신이 없도록 React가 보장해 주는 정식 API라서다(수동 조합은 그 사이의 갱신을 놓칠 수 있다). `getSnapshot`은 참조 안정성이 필요해서(그렇지 않으면 React가 무한 루프로 본다) `settings`는 원본(store, 참조 안정적)만 구독하고 `normalizeSettings`는 렌더 바디에서 `useMemo`로 정규화한다. `saveDay`(`MainPageRoute.jsx`)는 커밋 직전에 `getState()`로 최신 workData를 다시 읽어(`readOwnerWorkData`) 그 위에 병합한다 — 별도 `setWorkData` 이중 상태 없이 `saveWorkData` 호출 자체가 store 갱신 + 구독자 알림을 겸한다.
+- **`WorkLogPage.jsx`는 이번 Step 5 diff에서 완전히 제외했다**(재감사 2차 — 811줄짜리 이 파일에 `clients` 매개변수 타입 주석 하나만 넣었던 이전 시도가 "수정 파일 200줄 이하" 원칙을 위반한다는 지적을 받았다): `git hash-object`로 이 파일이 HEAD의 커밋된 blob과 바이트 단위로 완전히 동일함을 확인했다(`git status`가 여전히 `M`으로 표시하는 건 그 자체와 무관한 줄바꿈 정규화 캐시 아티팩트다 — 내용은 동일). 대신 `MainPageRoute.jsx`(`// @ts-check`)와 `WorkLogPage.jsx`(미타입) 사이의 경계를 담당하는 신규 파일 쌍 `app/typedWorkLogPage.js`(11줄) + `app/typedWorkLogPage.d.ts`(31줄)를 만들었다: `WorkLogPage`의 `clients` 매개변수는 기본값 `[]`만 있고 타입 주석이 없어서, TS가 다른 파일에서 그 함수의 타입을 볼 때 `clients`를 `never[]`로 좁힌다(빈 배열 리터럴 기본값의 알려진 추론 함정 — 실측 확인). 처음엔 `object`를 경유하는 이중 단언으로 풀었는데, **그건 사실상 `object`를 `unknown` 대용으로 써서 TS의 "두 타입이 충분히 겹치지 않는다"는 비호환 경고를 우회한 것과 다를 바 없다는 지적을 받고 재감사 3차에서 없앴다.** 대신 `.js`(런타임 재수출 `export { default as TypedWorkLogPage } from '../components/WorkLogPage.jsx'` 한 줄뿐, 캐스팅 없음)와 그 옆의 동명 `.d.ts`(타입 선언만) 쌍으로 바꿨다 — 같은 이름의 `.d.ts`가 있으면 TS는 `.js` 구현에서 타입을 추론하지 않고 `.d.ts`를 그대로 쓰는 정식 모듈 해석 규칙이라, 캐스팅 자체가 필요 없어졌다. `.d.ts`의 `clients`/`settings` 필드는 각각 `ReturnType<typeof loadClients>`/`ReturnType<typeof normalizeSettings>`로 실제 그 값을 만드는 함수의 반환 타입에서 파생한다(지어낸 타입이 원본 함수와 어긋날 위험이 없다). `any`/`unknown`/`{*}`/`@ts-ignore`/중간 단언은 전혀 안 썼다. `MainPageRoute.jsx`는 `WorkLogPage`가 아니라 이 `TypedWorkLogPage`를 렌더한다(import 방식 변경 없음, 기존 활성 typecheck 통과·`App.test.js` 렌더 테스트 그대로 통과 확인) — Step 6 전체 재작성으로 범위를 넓히지 않았다.
+- **부트 세션 복원이 달력 월 쿼리를 지우는 버그를 브라우저 검증 중 발견해 수정**(`App.jsx`): 로그인 사용자가 `/app?y=2026&m=6`을 새로고침하면 `restoreSessionOnBoot()` 성공 후 항상 `goHome()`을 불러 쿼리를 지워 버렸다(게스트는 `restoreSessionOnBoot()`이 null이라 증상이 없었다). 이미 `/app`/`/onboarding`에 진입해 있었으면 세션만 채우고 경로·쿼리를 건드리지 않도록 고쳤다 — 판단 자체는 순수 함수 `isAlreadyInAppOnBoot`(`app/bootHomeGuard.js`, 신규, `// @ts-check`, 재감사 6번에서 200줄 제한 때문에 분리)로 뺐다.
+- **`isAlreadyInAppOnBoot`을 경로 세그먼트 기준으로 다시 고쳤다**(재감사 2차): `pathname.startsWith('/app')`는 `/application`처럼 접두어만 같은 무관한 경로도 true로 잘못 판정했다. `/app`/`/onboarding` 그 자체이거나 `/app/`·`/onboarding/`으로 시작하는(=다음 문자가 경로 구분자인) 경우만 true로 좁혔다. `bootHomeGuard.test.js`에 `/application`/`/app-old`/`/onboarding-old`가 전부 false인 음성 테스트를 추가했다.
+- **`.unpaid-dot`을 `<span aria-hidden="true">`로**(재감사 2차, 사용자 지시): `<button>` 안에 인터랙티브하지 않은 순수 장식 표시라 `div`보다 `span`이 맞고, 별도로 읽어 줄 텍스트가 없어 스크린리더에서 숨긴다. `CalendarCell.test.js`의 두 렌더 테스트(hasUnpaid true/false)가 여전히 통과함을 확인했다 — `.unpaid-dot` 클래스 선택자는 태그와 무관해 그대로 유효하다.
+
+**typecheck 게이트 반영(재감사 3번)** — Step 5에서 신규·수정한 프로덕션 로직 전부에 `// @ts-check`를 붙였다: `CalendarPage.jsx`/`CalendarHeader.jsx`/`CalendarGrid.jsx`/`CalendarCell.jsx`/`CalendarMonthSummary.jsx`, `domain/calendarBadges.js`/`domain/calendarViewDate.js`(신규, 뱃지/URL 계산 전용), `store/ownerDataHooks.js`(신규), `app/bootHomeGuard.js`(신규), `app/typedWorkLogPage.js` + `app/typedWorkLogPage.d.ts`(신규, 재감사 2~3차), `app/MainPageRoute.jsx`. `App.jsx`는 이미 대상이었다. `any`/`unknown`/`{*}`/`@ts-ignore`/`@ts-expect-error`/중간 단언은 한 곳도 안 썼다 — 경계에서 타입이 막힐 때마다 `.d.ts` 선언이나 실제 함수의 `ReturnType`에서 파생한 타입만으로 풀었고, `day-record.js`의 `saveDayRecord`에도 매개변수 모양만(로직 변경 없이) JSDoc으로 추가했다. `WorkLogPage.jsx` 자체는 이제 diff가 없다(위 항목 참고).
+  - `npm run typecheck` → **0 errors**.
+  - `npm run typecheck:strict-inventory` — **재감사 2차에서 집계 방식 오류를 발견해 정정했다**: `tsc --pretty false` 출력의 총 줄 수(`wc -l`)를 오류 개수로 세고 있었는데, `TS2322` 등 여러 줄짜리 진단은 후속 설명 줄("Type X is not assignable...")까지 딸려 나와 그만큼 과다 집계됐다(기준 커밋에서 실제로는 +92줄, 이번 라운드에서는 +95줄 부풀려짐 — 우연히도 테스트/support 파일 쪽 진단은 대부분 한 줄짜리라 그 수치만 우연히 문서와 일치해서 처음엔 "환경이 다르다"고 잘못 결론 내렸었다). `error TS\d+:`가 포함된 진단 시작 줄만 세는 방식(`grep -c "error TS[0-9]+:"`, 파일 분류는 경로에 `.test.`/`testSupport` 포함 여부)으로 다시 측정했다:
+    - 기준 커밋 `0281224`(react-app, `git worktree`로 재현): **전체 1343 / 프로덕션 1132 / 테스트·지원 211**(문서에 원래 기록된 값과 정확히 일치 — 재현 방식만 잘못됐었다).
+    - 이번 재감사 시점: **전체 1309 / 프로덕션 1084 / 테스트·지원 225**.
+    - 델타: **전체 -34 / 프로덕션 -48 / 테스트·지원 +14** — 프로덕션 오류가 늘지 않았고 오히려 줄었다(신규 타입 모듈들이 이전에 `MainPage.jsx`/`WorkLogPage.jsx` 타입 실험이 만들던 부채보다 적은 부채로 정착됐다). 테스트·지원 쪽 +14는 이번에 추가한 신규 테스트 파일들이 `checkJs:true`로 분석되면서 생긴 것(활성 게이트 대상이 아니라 이 부채 측정 명령에서만 보인다).
+  - `tsconfig.strict-inventory.json`에 `"types": ["vite/client", "node"]`를 추가했다(`tsconfig.json`과 맞춤) — CSS 부작용 import(`import '*.css'`)에 대한 타입 선언이 없어서 `App.jsx`/`RevenuePage.jsx`/`main.jsx` 등 기존 파일에서도 이미 나던 `TS2882` 5개를 없앴다(내가 만든 게 아니라 이 부채 측정 설정 자체의 구멍이었다 — `vite/client`가 `*.css` 모듈을 선언한다). 위 수치는 이 수정을 반영한 뒤의 값이다.
+
+**테스트 (재감사 5번 — 컴포넌트 회귀 테스트 4개 추가, revert-and-confirm-fail 전부 확인):**
+
+- `domain/calendarBadges.test.js`(신규, `money.test.js`에서 이동+통합): `formatFareShort` 3개, `dayWorkBadgeLabel`/`dayFareTotal` 5개, `dayHasUnpaid` 4개.
+- `domain/calendarViewDate.test.js`(신규, `calendar.test.js`에서 이동): `viewDateFromSearchParams`/`searchParamsForViewDate` 4개.
+- `app/bootHomeGuard.test.js`(신규, 재감사 2차에서 1개 추가): `isAlreadyInAppOnBoot` 4개(경로 그대로/하위 세그먼트/그 외/**접두어만 같고 세그먼트가 다른 경로**(`/application`, `/app-old`, `/onboarding-old`) 전부 false).
+- `components/calendar/CalendarCell.test.js`(신규 — 재감사 5번, 실제 jsdom 렌더): hasUnpaid=true → `.unpaid-dot` 존재, hasUnpaid=false → 없음. **되돌려서 확인**: `{hasUnpaid && ...}`를 `{false && hasUnpaid && ...}`로 임시로 바꾸니 첫 번째 테스트가 실제로 실패(`actual: null`)했고, 되돌리자 다시 통과했다.
+- `app/App.test.js`(기존 파일에 2개 추가, 실제 `<BrowserRouter>+<App/>` 렌더):
+  - "로그인 세션 복원 상태로 `/app?y=2026&m=6`을 렌더하면 pathname과 search가 그대로 보존된다" — **되돌려서 확인**: `App.jsx`의 조건부 분기를 임시로 예전처럼 무조건 `goHome()`으로 바꾸니 `search`가 `''`로 지워져 실제로 실패했고, 되돌리자 통과했다.
+  - "store 구독: 마운트 후 외부에서 커밋한 workData를 CalendarPage/WorkLogPage가 보고, 한 날짜 편집이 다른 날짜를 지우지 않는다" — 마운트 후(=초기 렌더가 끝난 뒤) `commitWorkData`로 store에 두 날짜(B)를 외부에서 커밋하고, 달력 셀이 이미 그 값을 보여주는지, 셀 클릭 후 `WorkLogPage`의 입력값이 B와 일치하는지, 이어서 한 날짜만 편집(`#modalFixedCountInput`에 실제 `input` 이벤트)한 뒤 **건드리지 않은 다른 날짜가 store와 localStorage 양쪽에서 그대로 남는지**를 확인한다. **되돌려서 확인**: `MainPageRoute.jsx`를 임시로 예전 로컬 스냅샷(`useState(() => loadWorkData(...))`) 패턴으로 되돌리니 "WorkLogPage가 store의 최신값(B, 5회)을 받아야 한다" 단계에서 실제로 실패(`'' !== '5'`)했고, 되돌리자 통과했다.
+- `package.json`의 `npm test` 파일 목록에 위 신규 테스트 파일을 전부 등록했다(재감사 2번 — 전에는 `money.test.js`를 만들어 놓고 이 목록에 안 넣어서 3개 테스트가 한 번도 실행된 적이 없었다. `git diff`로 실행 로그의 "244 pass"가 그 3개를 빼먹은 숫자였다는 걸 확인했다).
+- `npm test` → **255/255 통과**(재감사 1차 이전 244개 — 그나마도 3개는 안 돌고 있었다 — 전부 포함해서 늘었다).
+
+**브라우저 검증 (Browser pane, 로그인 계정 "테스트님" — 1차 구현 때 실시, 재감사에서는 위 App.test.js가 같은 시나리오를 실제 렌더로 재확인해 자동화됐다):**
+
+1. `/app`에서 "이전 달" 클릭 → URL이 `?y=2026&m=6`으로 바뀜 → 새로고침해도 "7월" 유지(완료 조건 1).
+2. 달력 셀(7월 6일) 클릭 → `/app/day/2026-07-06`, `WorkLogPage` 정상 렌더(완료 조건 2).
+3. 일지의 "뒤로가기" 클릭 → `/app?y=2026&m=6`으로 정확히 복귀(달 유지).
+4. 설정에서 "금액" 모드 전환 → 고정 횟수 3, 단가 150,000원 → 달력 셀 뱃지 "45만", 정산 카드 450,000/45,000/495,000원 정확히 표시.
+5. 검증에 쓴 테스트 계정("테스트님")의 임시 데이터는 확인 후 되돌렸다 — 클라우드 동기화 계정이라 완전한 원복은 보장 못 한다(실제 사용자 데이터는 아니다).
+
+**원자성 교차검증**: Step 5는 새 쓰기 경로를 만들지 않았다 — `saveUnitPrice`/`saveDay`는 기존 `savePracticeSettings`/`saveWorkData`(→`commitBatch`→`writeAllOrNothing`)를 그대로 부른다. `commitBatch`/`writeAllOrNothing`/session-epoch 가드 자체는 한 줄도 안 바꿨고, 그 경로를 검증하던 기존 테스트가 전부 그대로 통과했다. 재감사 5번에서 실제 `saveDay`(store 최신값 기준 병합)에 대한 컴포넌트 수준 회귀 테스트(위 App.test.js 두 번째 신규 테스트)를 추가해 "다른 날짜 유실 안 됨 + store/localStorage 일치"를 실제로 검증했다 — 1차 구현 때는 이 부분에 별도 실패 주입 테스트가 없었는데, 이번에 닫았다.
+
+**알려진 한계(정직하게 기록)**:
+- `useCalendarDays.ts` 훅은 만들지 않았다 — 설계안에는 있지만 `migration-audit-plan.md` Step 5 항목엔 없어서, 셀 계산은 기존 `buildCalendarCells`를 `CalendarPage.jsx`가 `useMemo`로 직접 쓰는 더 단순한 형태로 남겼다.
+- 바닐라의 `maint-badge`(정비/주유/기타 비용 합계 뱃지)는 옮기지 않았다 — Step 5 항목이 `workBadge`/`isOff`/`hasUnpaid` 세 가지만 명시했고, 비용 관련 기능은 Step 6 영역이라 판단했다.
+- 검증용 테스트 계정("테스트님") 데이터 복구 불완전 가능성(클라우드 동기화 계정이라 완전 원복 미보장).
 
 ### [ ] Step 6 — 일지 재작성 (슬라이스 4) — 가장 큰 교체
 
@@ -940,7 +989,7 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 - 백그라운드 flush
 - 파렛트·고정노선 거래처 단가·일지 파렛트
 - 서브 차량 일지/클라우드
-- 달력 금액 모드
+- ~~달력 금액 모드~~ (Step 5 재감사에서 완료 — `inputMode==='fare'`가 실제로 달력 셀 뱃지에 연결됐다)
 - 온보딩 저장
 - PDF
 - 설정 `callDetail`이 일지 섹션을 숨김
@@ -958,13 +1007,14 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 
 ~~다음 구현은 이 문서 Step 1부터, 코드를 고치지 않은 채 합의한 뒤 진행하면 기존 React 화면을 한 번에 박살 내지 않고 슬라이스할 수 있다.~~ **(낡음 — 아래 5-1절이 실제 진행 상황이다.)**
 
-## 5-1. 현재 결론 (Step 4 + 감사 보완 3차 완료, 2026-08-26 기준)
+## 5-1. 현재 결론 (Step 5 재감사 완료 기준, 2026-08-27)
 
 위 결론이 지목한 문제 중 상당수가 이미 해소됐다:
 
 - **`App.jsx` 스위치** → Step 3에서 라우터 트리로 교체 완료. 옛 `App.jsx`는 삭제됐다.
 - **`cloudSync.js` 전역 `let`** → 완전히 없애지는 않았다(여전히 `cloudUserId`/`cloudOwnerKey`/`syncTimer`/`hydrateGeneration` 모듈 전역이 있다). 대신 감사 보완 1~2차에서 그 전역이 만들던 실제 사고(hydrate 실패가 "완료"로 보이던 것, 부분 반영, dirty 유실, 로그아웃 후 stale hydrate 적용)를 상태기계·durable journal·single-flight·atomicPersist로 하나씩 막았다 — "전역을 없앤다"가 아니라 "전역이 있어도 안전하게" 쪽으로 결론이 바뀌었다. `api/`로의 실제 폴더 분해는 여전히 안 했다(Step 9 즈음 판단).
-- **페이지 스냅샷 + 메인 로그 하나 + 콜 인덱스 + 비용 이중 저장** → 아직 그대로다. 이건 Step 5(달력)·Step 6(일지, 콜 `id` 부여)·Step 7(거래처/차량)의 몫이고, 이번 감사 보완 라운드들은 **의도적으로 이 영역을 건드리지 않았다**(사용자 지시: "Step 5를 시작하지 말고 차단 항목만 보완하라").
+- **페이지 스냅샷** → **Step 5에서 해소됐다.** `CalendarPage.jsx`와 `MainPageRoute.jsx`(일지 입력) 둘 다 `useState(() => loadX())` 로컬 스냅샷이 아니라 `store/ownerDataHooks.js`의 `useSyncExternalStore` 구독으로 store를 직접 읽는다(재감사 4번). `migration-plan.md` 1.3이 금지한 "쓰지 말 것" 상태는 이제 없다.
+- **메인 로그 단일 구조 + 콜 인덱스 + 비용 이중 저장** → 아직 그대로다. 이건 Step 6(일지 재작성, 콜 `id` 부여)·Step 7(거래처/차량)의 몫으로 **분리해서 남는다** — Step 5는 페이지 스냅샷 문제만 다뤘고, 서브 차량 로그 구조나 콜상세 인덱싱, 정비/주유/기타 비용이 `day record`와 `expenses` 스토어 양쪽에 따로 저장되는 문제는 손대지 않았다(의도적 — 사용자 지시로 Step 5 범위를 달력 홈으로 좁혔다).
 - **`WorkLogPage.jsx`/`InlineExpandHost`** → 그대로 살아 있다. 폐기 대상이라는 2.2절 판정은 유효하며, Step 6에서 교체된다.
 
-남은 진짜 결론: **상태 경계 문제는 스토어 껍데기(Step 1)와 hydrate/동기화 신뢰성(감사 보완 1~3차)에서는 해소됐지만, 화면이 그 스토어를 실제로 구독하는 지점(Step 5~7)은 아직 시작되지 않았다.** `migration-plan.md` 1.3이 금지한 "쓰지 말 것" 상태 — 즉 컴포넌트가 `useState(() => loadX())`로 자기만의 스냅샷을 갖는 것 — 는 지금도 유효하게 남아 있고, 이걸 깨는 게 Step 5의 정확한 시작점이다. 다음 구현은 이 문서 **Step 5**부터, 사용자 승인 뒤 진행한다.
+남은 진짜 결론: **상태 경계 문제는 스토어 껍데기(Step 1)와 hydrate/동기화 신뢰성(감사 보완 1~3차)에서 해소됐고, 화면이 그 스토어를 실제로 구독하는 지점도 Step 5에서 완전히 깼다** — `CalendarPage.jsx`뿐 아니라 `MainPageRoute.jsx`까지. 남은 것은 `WorkLogPage.jsx` 자신의 **UI**(폼/입력 컴포넌트 트리 + 메인 로그 단일 구조/콜 인덱스/비용 이중 저장)를 다시 짜는 일이고, 그건 Step 6 몫이다. 다음 구현은 이 문서 **Step 6**부터, 사용자 승인 뒤 진행한다.
