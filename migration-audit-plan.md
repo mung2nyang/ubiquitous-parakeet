@@ -604,9 +604,9 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
   - 기사 초대 **신규 생성**의 첫 삽입이 "네트워크가 커밋 후 응답 전에 끊기는" 정확히 그 순간에 실패하면, 재시도 시 `findOverlappingDriverLinkOnSupabase`가 방금 성공한 그 행을 "겹침"으로 잡아 재시도를 막는다 — 데이터 중복/오염은 막지만, 그 op이 outbox에 영구히 멈춘 채(자동으로 안 풀리고) 사람이 확인해야 한다. 이 특정 엣지 케이스만 그렇고, 삭제·상태변경·이미 확정된 supabaseId가 있는 수정은 전부 완전히 idempotent하다.
   - `notify()` 자체(app-store.js)는 구독자 콜백이 던지는 경우를 try/catch로 감싸지 않는다 — 이번 요구사항이 요청한 실패 주입 목록엔 없었고 Step 1부터 있던 기존 구조라 범위 밖으로 남겼다.
   - 컴포넌트 JSX 렌더 테스트는 여전히 없다 — 사용자 지시 6번이 명시한 대안(오케스트레이션을 서비스 함수로 추출해 그 함수를 테스트)을 택했고, 실제로 그 방식이 버그를 잡아낸 사례(위 6번 항목)로 실효성을 보였다.
-  - 브라우저 라이브 검증: 새 탭에서 `/app/cars` 진입 → 사이드메뉴/폼 모달/목록 렌더까지 콘솔 에러 0건으로 확인했고, 차량 추가 후 목록에 새 항목이 반영되는 것도 확인했다. 다만 이 개발 환경의 라우트가 상호작용 몇 초 뒤 `/app`으로 되돌아가는 현상(이전 Step들에도 이미 기록된, HMR/개발 서버 관련으로 보이는 환경 아티팩트로 추정)이 있어 삭제 확인 모달 → 토스트까지 이어지는 전체 흐름을 라이브 화면에서 끝까지 캡처하지는 못했다 — 그 흐름 자체는 `directMutationActions.test.js`가 실제 호출 경로 레벨에서 커버한다. **정정(4차 재작업에서 근본 원인 확인): "HMR/개발 서버 아티팩트"라는 추정은 틀렸다. `App.jsx`가 plain `<BrowserRouter>`를 쓰고 있어 `useNavigate()`가 react-router의 `useNavigateUnstable()` 경로를 타는데, 이 구현은 `navigate` 함수를 `location.pathname`이 바뀔 때마다 새로 만든다. `goHome`이 `useCallback(fn, [navigate])`로 감싸여 있고 부트 이펙트가 `useEffect(fn, [goHome])`이므로, **로그인된(게스트가 아닌) 사용자가 어떤 라우트로 이동해도 그 즉시 부트 이펙트가 다시 실행되어 `restoreSessionOnBoot()`(세션 재조회 + 전체 hydrate)를 다시 돌리고, 끝나면 `goHome()`이 다시 `navigate('/app', {replace:true})`를 불러 강제로 홈으로 되돌린다** — 실제 프로덕션에서 로그인 계정은 홈 탭을 벗어날 수 없는 심각한 버그다(게스트는 `restoreSessionOnBoot()`이 `null`을 돌려줘 `goHome()`을 안 부르므로 이 증상이 없다 — 그래서 게스트 경로로 진행한 이전 검증들이 이 버그를 놓쳤다). 사용자의 12개 항목에는 없는 별도 결함이라 이번 라운드에서 고치지 않았고, 이 문서 정정 후 별도로 사용자에게 보고한다. 재현: `console.count`로 부트 이펙트 실행 횟수를 계측하면 로그인 계정에서 라우트 전환마다 실행 횟수가 2씩 증가함을 확인했다(StrictMode 이중 실행 포함). 이번 라운드의 차량 추가/수정 새로고침 검증(아래 4차 재작업 참고)은 이 버그를 피해 비회원(게스트) 모드로 수행했다 — 데이터 계층(`saveCars`)은 로그인 여부와 무관하게 동일하게 동작하므로 검증 유효성에는 영향이 없다.**
+  - 브라우저 라이브 검증: 새 탭에서 `/app/cars` 진입 → 사이드메뉴/폼 모달/목록 렌더까지 콘솔 에러 0건으로 확인했고, 차량 추가 후 목록에 새 항목이 반영되는 것도 확인했다. 다만 이 개발 환경의 라우트가 상호작용 몇 초 뒤 `/app`으로 되돌아가는 현상(이전 Step들에도 이미 기록된, HMR/개발 서버 관련으로 보이는 환경 아티팩트로 추정)이 있어 삭제 확인 모달 → 토스트까지 이어지는 전체 흐름을 라이브 화면에서 끝까지 캡처하지는 못했다 — 그 흐름 자체는 `directMutationActions.test.js`가 실제 호출 경로 레벨에서 커버한다. **정정(4차 재작업에서 근본 원인 확인): "HMR/개발 서버 아티팩트"라는 추정은 틀렸다. `App.jsx`가 plain `<BrowserRouter>`를 쓰고 있어 `useNavigate()`가 react-router의 `useNavigateUnstable()` 경로를 타는데, 이 구현은 `navigate` 함수를 `location.pathname`이 바뀔 때마다 새로 만든다. `goHome`이 `useCallback(fn, [navigate])`로 감싸여 있고 부트 이펙트가 `useEffect(fn, [goHome])`이므로, **로그인된(게스트가 아닌) 사용자가 어떤 라우트로 이동해도 그 즉시 부트 이펙트가 다시 실행되어 `restoreSessionOnBoot()`(세션 재조회 + 전체 hydrate)를 다시 돌리고, 끝나면 `goHome()`이 다시 `navigate('/app', {replace:true})`를 불러 강제로 홈으로 되돌린다** — 실제 프로덕션에서 로그인 계정은 홈 탭을 벗어날 수 없는 심각한 버그다(게스트는 `restoreSessionOnBoot()`이 `null`을 돌려줘 `goHome()`을 안 부르므로 이 증상이 없다 — 그래서 게스트 경로로 진행한 이전 검증들이 이 버그를 놓쳤다). 사용자의 12개 항목에는 없는 별도 결함이라 이번 라운드에서 고치지 않았고, 이 문서 정정 후 별도로 사용자에게 보고했다. 재현: `console.count`로 부트 이펙트 실행 횟수를 계측하면 로그인 계정에서 라우트 전환마다 실행 횟수가 2씩 증가함을 확인했다(StrictMode 이중 실행 포함). 이번 라운드의 차량 추가/수정 새로고침 검증(아래 4차 재작업 참고)은 이 버그를 피해 비회원(게스트) 모드로 수행했다 — 데이터 계층(`saveCars`)은 로그인 여부와 무관하게 동일하게 동작하므로 검증 유효성에는 영향이 없다. **후속(4차 재작업 후속 보완 사용자 지시 5번에서 실제로 고쳤다 — 아래 새 절 참고.)**
 
-### [x] Step 0-4 감사 보완 4차 재작업 (사용자 지시 — 12개 감사 차단 항목, Step 5 착수 전 필수, 별도 커밋)
+### [x] Step 0-4 감사 보완 4차 재작업 (+후속 보완 8개 항목 +재감사 4건 +SQL 재재감사) (사용자 지시 — 12개 감사 차단 항목 + 후속 8개 항목 + 재감사 4건 + SQL 재재감사, Step 5 착수 전 필수, 별도 커밋)
 
 4차가 `[x]`로 문서화했던 durable outbox 구현에서, 실제 브라우저/코드 재검토로 드러난 12개의 진짜 결함을 전부 고쳤다. `git reset`/`checkout`/`clean` 없이 기존 파일에 이어서 작업했다.
 
@@ -649,7 +649,9 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - 수정: [`syncQueue.js`](../react-app/src/lib/syncQueue.js)의 `queueSync()`가 시작 시 `captureSession()`으로 세션을 캡처하고, 각 `syncAll()` 재실행 직전과 `clearDirty()` 직전에 `isSessionStillCurrent(captured)`를 재검증한다 — 그 사이 로그아웃/owner 전환이 있었으면 해당 owner의 dirty journal을 "성공적으로 비웠다"고 잘못 표시하지 않고 그대로 둔다(다음 재로그인이 다시 정확히 판단한다).
 - 검증(신규 테스트): `syncQueue.test.js`의 "실패 주입 — syncQueue 실행 중 로그아웃/owner 전환" 2개 — "로그아웃 이후에 도착한 성공 응답으로 clearDirty가 불리면 안 된다", "다른 owner로 전환되면 원래 owner의 dirty 표시는 지워지지 않는다". **버그 임시 복원 확인**: `queueSync()`의 두 `isSessionStillCurrent` 재검증을 지우고 재실행하면 두 테스트 모두 `false !== true`로 실제 실패함을 실측 후 복원.
 
-**8. 신규 기사 insert의 응답 유실 상황도 자동 수렴하는 진짜 멱등성**
+**8. 신규 기사 insert의 응답 유실 상황에서 서버 행 중복 삽입을 막는 안전장치**
+
+**정정(재감사 4번에서 바로잡음):** 이 표제를 원래 "자동 수렴하는 진짜 멱등성"이라고 적었던 것은 부정확했다 — 자연키(vehicle_id+assignment_start+invite_code) 조회는 invite_code가 23505 충돌로 재발급된 채 응답이 유실되면 "같은 시도"를 못 알아본다(아래 알려진 한계, `supabase/migrations/0001_driver_links_idempotency_key.sql` 참고). 실제로 보장하는 건 "서버 행이 중복으로 늘어나지는 않는다"(겹침 검사가 항상 살아 있어 재삽입 자체를 막음)이지 "항상 정확히 내 이전 시도를 알아본다"(진짜 멱등성)가 아니다 — 후자는 그 케이스에서 실패하고, 대신 확정 실패로 오판해 로컬을 롤백한다.
 
 - 원인: 기존엔 신규 insert 응답이 유실되면 재시도 시 `findOverlappingDriverLinkOnSupabase`가 방금 성공한 그 행을 "겹침"으로 오판해 영구히 막혔다(4차가 "알려진 한계"로 기록했던 바로 그 문제).
 - 수정: [`directMutations.js`](../react-app/src/lib/directMutations.js)에 `findExistingDriverLinkInsert(vehicleId, assignmentStart, inviteCode)`를 추가 — `(vehicle_id, assignment_start, invite_code)` 자연키로 "이미 내가 성공시킨 이전 시도"를 조회해서, 있으면 그 행을 그대로 쓰고 재삽입하지 않는다. `upsertDriverLinkOnSupabase`(즉시 경로)와 `outboxFlush.js`의 `executeDriverUpsertOp`(재시도 경로) 둘 다 겹침 검사보다 먼저 이 조회를 거친다.
@@ -687,7 +689,111 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - `npm run lint` → 신규 경고 0개(기존 `InlineExpandHost.jsx`/`AppShell.jsx`/`ReceivablesPage.jsx`/`TaxInvoicePage.jsx`의 기존 경고 7개만 그대로).
 - 200줄 제한: 이번에 수정/신규한 프로덕션 파일 전부 `wc -l`로 재확인 — `CarManagementPage.jsx`(122), `directMutations.js`(122), `mutationOutbox.js`(146), `outboxFlush.js`(174), `outboxCommit.js`(신규, 42), `requestDriverInviteSave.js`(신규, 78), `directMutationActions.js`(99), `singleFlight.js`(43), `cloudSession.js`(110), `syncQueue.js`(102), `hydrateMerge.js`(156), `DriverConnectionPage.jsx`(146) — 전부 200줄 이하.
 - **핵심 회귀는 버그를 임시로 되돌려 테스트가 실제로 실패하는 것을 확인한 뒤 복원했다**: 항목 6(evict 제거 → 재로그인 hydrate가 행), 항목 7(epoch 재검증 제거 → 두 테스트 모두 `false!==true`로 실패), 항목 8(빈 배열 오판 버그가 실제로 2개 테스트를 실패시켰던 것을 수정 전 상태에서 확인). 항목 3은 사전 검사(정적) + `createPermanentFailure`(레이스) 이중 구조라 정적 경로는 설계상 검증했고 레이스 경로는 `flushOnce`의 `.permanent` 분기 코드 리뷰로 확인했다(별도 레이스 재현 테스트는 작성하지 않음 — 알려진 한계로 기록).
-- **알려진 한계(정직하게 기록)**: (a) 위 "정정" 각주의 로그인 계정 전용 라우팅 버그 — 사용자의 12개 항목 밖이라 이번 라운드에서 고치지 않았고, 별도로 보고한다. (b) 항목 3의 TOCTOU 레이스(정적 사전 검사를 통과한 직후 다른 클라이언트가 겹치는 배정을 커밋하는 극히 좁은 창) 전용 실패 주입 테스트는 없다 — `createPermanentFailure` 분기가 코드 상 존재함만 확인했다. (c) typecheck 명령 미구성(TypeScript 미설치)은 이전 Step들과 동일한 기존 갭.
+- **알려진 한계(정직하게 기록, 이 시점 기준)**: (a) 위 "정정" 각주의 로그인 계정 전용 라우팅 버그 — 사용자의 12개 항목 밖이라 이번 라운드에서 고치지 않았고, 별도로 보고한다. (b) 항목 3의 TOCTOU 레이스(정적 사전 검사를 통과한 직후 다른 클라이언트가 겹치는 배정을 커밋하는 극히 좁은 창) 전용 실패 주입 테스트는 없다 — `createPermanentFailure` 분기가 코드 상 존재함만 확인했다. (c) typecheck 명령 미구성(TypeScript 미설치)은 이전 Step들과 동일한 기존 갭. **(a)와 (c)는 아래 "4차 재작업 후속 보완"에서 실제로 처리했다(각각 사용자 지시 5번, 7번) — (b)는 여전히 미해결로 그 절에도 다시 기록한다.**
+
+**후속 보완 (사용자 지시 — 8개 항목, 브라우저 검증 중 발견한 잔여 결함 + typecheck 인프라)**
+
+위 12개 항목을 고친 뒤 사용자가 코드를 다시 검토해 8개의 잔여 결함/미비를 추가로 지적했다. `git reset`/`checkout`/`clean` 없이 이어서 작업했고, 이 절이 전부 통과할 때까지 이 heading의 체크박스를 `[~]`로 되돌려 뒀다가(작업 중), 아래 재검증이 전부 끝난 뒤에만 다시 `[x]`로 바꿨다.
+
+**1. 미동기화 차량 배정 충돌의 로컬 롤백 + 명시적 결과 enum**
+
+- [`mutationOutbox.js`](../react-app/src/lib/mutationOutbox.js)에 `OUTBOX_RESULT = { SUCCESS, RETRYABLE, PERMANENT_FAILURE, STALE_SESSION }`을 추가했다. `flushOnce()`가 매 op마다 이 값(+실패 사유 message) 중 하나를 `Map<opId, {status, message}>`에 담아 돌려주고, [`outboxCommit.js`](../react-app/src/lib/outboxCommit.js)의 `commitWithOutboxAndFlush()`가 "outbox에 남아 있는지"로 성공을 추론하는 대신 이 맵에서 자기 op.id를 직접 찾아 판단한다(못 찾으면 안전하게 retryable로 취급).
+- [`requestDriverInviteSave.js`](../react-app/src/lib/requestDriverInviteSave.js)가 op을 만들 때 `payload.previousDriverSnapshot`(수정 전 기사 스냅샷, 신규 생성이면 `null`)을 함께 실어 보낸다. [`outboxRollback.js`](../react-app/src/lib/outboxRollback.js)(신규)의 `rollbackDriverUpsertAndRemoveOp()`가 permanentFailure일 때 이 스냅샷으로 drivers 도메인의 **그 리소스 하나만** 되돌리고(신규 생성이면 배열에서 제거) outbox 제거와 원자적으로 묶는다 — 그 사이 다른 기사에 생긴 변경은 건드리지 않는다.
+- 검증(신규, `outboxFlush.test.js`): "미동기화 차량이 뒤늦게 동기화된 뒤 발견된 배정 충돌은 낙관적 값을 롤백한다" — Store/localStorage 둘 다 수정 전 스냅샷으로 돌아가는지, notify가 정확히 1회인지, outbox가 비는지 확인. **버그 임시 복원 확인**: 롤백 호출을 지우면 이 테스트가 실제로 실패함(낙관적 값이 그대로 남음)을 실측 후 복원.
+
+**2. outboxFlush/다단계 삭제/기사 upsert의 매 원격 await 직후 epoch 재검증**
+
+- [`cloudSession.js`](../react-app/src/lib/cloudSession.js)에 `assertSessionStillCurrent(captured)`를 추가(세션이 바뀌었으면 `.staleSession` 표시된 에러를 던진다). [`directMutations.js`](../react-app/src/lib/directMutations.js)의 모든 실행기(차량/거래처 다단계 삭제, 기사 upsert의 update/insert 재시도 루프)가 `captured`를 필수로 받아 **모든 원격 await 직후**(자식 테이블 삭제 Promise.all 이후, daily_logs 이후, vehicles 본체 이후 등 각 단계마다) 재검증한다. `outboxFlush.js`도 `executeDriverUpsertOp`의 `syncVehicles` 호출 직후 등에서 같은 재검증을 한다.
+- 이 `.staleSession` 에러 하나로 판정을 통일해, `flushOnce()`가 어디서 감지됐든 같은 방식(현재 op 보존, 로컬 반영/제거 전부 건너뜀, 남은 op도 처리 중단)으로 처리한다.
+- 검증(신규, `outboxFlush.test.js`): "차량 삭제 자식 테이블 처리 중 로그아웃하면, 이후 단계(daily_logs/vehicles) 원격 호출이 0회이고 op이 보존된다". **버그 임시 복원 확인**: `deleteVehicleFromSupabase`의 재검증 호출들을 지우면 이 테스트가 실제로 실패함(daily_logs/vehicles 호출이 나감)을 실측 후 복원.
+
+**3. syncQueue.syncAll()의 각 단계 사이 epoch 재검증**
+
+- [`syncQueue.js`](../react-app/src/lib/syncQueue.js)의 `syncAll()`이 profile upsert부터 vehicles/clients/workData/fuel/maintenance/misc/taxInvoices까지 **매 단계 직후** `assertSessionStillCurrent(captured)`를 부른다 — 이전엔 `queueSync()`가 `syncAll()` 호출 *전체*를 감쌀 뿐 내부 단계 사이에는 재검증이 없어서, profile 응답을 기다리는 동안 로그아웃해도 vehicles 이하가 그대로 실행됐다. `queueSync()`는 `.staleSession`을 조용히 흡수해(실패 로그 없이) `clearDirty`를 건너뛴다.
+- 검증(신규, `syncQueue.test.js`): "profile 응답을 기다리는 도중 로그아웃하면 vehicles/clients 이하 호출이 0회이고 dirty가 유지된다". **버그 임시 복원 확인**: 각 단계 사이 재검증을 지우면 이 테스트가 실제로 실패함(정확히는 세션이 끊긴 채 `syncVehicles`가 실행되며 크래시)을 실측 후 복원.
+
+**4. driver_links insert 멱등성 — 조회 오류 처리 + DB 레벨 근본 해결**
+
+- [`directMutations.js`](../react-app/src/lib/directMutations.js)의 `findExistingDriverLinkInsert()`가 조회 자체 실패(`{data:null, error}`)를 더 이상 `null`로 삼키지 않는다 — 그대로 던져 outbox가 retryable로 남기고 insert를 시도하지 않는다(있는지 없는지 모르는 채 insert하면 중복 위험). 검증(신규): "findExistingDriverLinkInsert 조회가 {data:null,error}를 반환하면 insert를 시도하지 않고 op이 남는다" — **버그 임시 복원 확인**: `throw error`를 `return null`로 되돌리면 실제로 실패함(insert가 나감)을 겹침조회는 정상 응답하도록 분리한 뒤 실측 후 복원.
+- 근본 원인(invite_code 재발급 + 응답 유실이 겹치면 자연키로 "같은 시도"를 못 알아봄)은 client-side만으로는 완전히 닫을 수 없다고 판단했다 — **사용자에게 물어 "SQL 파일만 작성, 라이브 DB는 직접 건드리지 않는다"로 진행 방향을 확정**했다. [`supabase/migrations/0001_driver_links_idempotency_key.sql`](../react-app/supabase/migrations/0001_driver_links_idempotency_key.sql)에 `idempotency_key` 컬럼 + 부분 고유 인덱스 + **실제로 실행 가능한(예시/스케치가 아닌) 원자적 upsert RPC**(`upsert_driver_link_idempotent`, `INSERT ... ON CONFLICT (idempotency_key) DO UPDATE ... RETURNING *`로 조회+삽입을 한 트랜잭션으로 묶음)를 작성했다 — **Claude는 이 SQL을 실행하지 않았고 실행할 방법도 갖고 있지 않다**(Supabase CLI/DB 자격증명 없음). 사용자가 Supabase 대시보드/CLI로 직접 검토(특히 `vehicle_id`/`owner_id` 컬럼 타입이 파일에 적은 `bigint`/`uuid` 추정과 실제 스키마가 맞는지) 후 적용해야 하며, **적용을 사용자가 확인해 주기 전까지는 클라이언트 코드(`findExistingDriverLinkInsert`/`upsertDriverLinkOnSupabase`)를 이 RPC에 연결하지 않는다** — 마이그레이션 전에 연결하면 존재하지 않는 컬럼/RPC 호출로 전체 기능이 깨진다.
+- **재감사 4번에서 문구 정정**: 이전 버전 문서/코드 주석의 "자동 수렴하는 진짜 멱등성"이라는 표현은 부정확했다(위 알려진 한계와 모순) — "서버 행 중복 삽입을 막는 안전장치"로 바로잡았다(아래 4차 재작업 8번 항목의 정정 참고).
+- 검증(신규): "23505로 코드가 재발급된 뒤 응답이 유실돼도, 재시도에서 새로 insert하지 않아 서버 행이 정확히 1개다" — 마이그레이션 적용 전 현재 코드로도 겹침 검사(안전장치)가 항상 살아 있어 **중복 insert는 절대 안 일어남**을 확인했다(다만 그 안전장치가 "확정 실패"로 오판해 로컬을 롤백하는 부작용은 남아 있다 — 마이그레이션 적용 + 클라이언트 연결 전까지는 알려진 한계로 남는다).
+
+**5. App.jsx 부트 복원이 라우트 전환마다 재실행되던 버그 수정**
+
+- 원인은 위 "정정" 각주에 기록: `<BrowserRouter>`의 `useNavigate()`가 `location.pathname`이 바뀔 때마다 새 함수를 반환하는데, `goHome`이 `useCallback(fn, [navigate])`로 감싸여 있고 부트 이펙트가 `useEffect(fn, [goHome])`였다.
+- 수정: [`App.jsx`](../react-app/src/app/App.jsx) — `navigate`를 `useRef`로 감싸고(`useEffect(() => { navigateRef.current = navigate })`, 의존성 배열 없이 매 렌더 후 갱신) `goHome`이 `navigateRef.current`를 호출하도록 바꿔 `useCallback(fn, [])`로 진짜 고정시켰다. 부트 이펙트는 `useEffect(fn, [goHome])`를 유지하되 `goHome`이 이제 항상 같은 참조라 실질적으로 마운트 시 한 번만 실행된다.
+- 검증(신규 인프라 도입): 이 프로젝트에 컴포넌트 렌더 테스트가 없었으므로, `src/testSupport/jsxLoaderHook.mjs`(Node 모듈 커스터마이징 훅 + esbuild로 `.jsx`를 즉석 트랜스파일, `.css`는 빈 모듈로 대체 — 이 테스트 전용, 프로덕션 빌드 경로는 무변경)를 추가하고 `src/app/App.test.js`를 작성했다. 실제 `<BrowserRouter><App/></BrowserRouter>`를 jsdom에 렌더링해 로그인 계정으로 부트 → `/app` 도착 확인 → 마이페이지 탭 실제 DOM 클릭(`/app/me`로 이동) → 600ms 대기 → **여전히 `/app/me`에 머무는지 + `profiles.select` 호출 횟수가 늘지 않았는지**를 assert한다. **버그 임시 복원 확인**: `goHome`을 `useCallback(fn, [navigate])`로 되돌리면 이 테스트가 즉시 실패(`/app`으로 되돌아감)함을 실측 후 복원.
+
+**6. 신규 테스트 6개(위 1~5번에 이미 기록) 정리**
+
+`outboxFlush.test.js` 4개(롤백, 다단계삭제 로그아웃, 멱등성 조회실패, invite코드 재발급+응답유실) + `syncQueue.test.js` 1개(profile 대기 중 로그아웃) + `src/app/App.test.js` 1개(부트 재실행 방지) = 신규 6개. 기존 "기사 초대 upsert 성공" 테스트에도 Store 값/notify 횟수 assert를 추가했다(사용자 지시 6번의 "기사 upsert 성공 시 Store 값과 notify 횟수도 검증" 요구).
+
+**7. 점진적 typecheck 인프라 (전체 106개 파일 완전 전환은 Step 11 범위)**
+
+- `tsconfig.strict-inventory.json`: `strict:true, checkJs:true`로 전체 `src`를 검사하는 **부채 측정 전용** 설정(`npm run typecheck:strict-inventory`). Step 11(전체 JS→TS 전환) 완료 전까지 이 명령은 "아직 안 고친 게 몇 개인지"를 재는 용도이지, 통과 조건이 아니다. **기준선(2026-08-27, 이번 후속 보완 착수 시점): 총 1532개(프로덕션 파일 91개에 걸쳐 1269개, 테스트/testSupport 파일 34개에 걸쳐 263개)** — 대부분(TS7006/TS7031, 1042개)이 기존 컴포넌트/함수의 매개변수에 JSDoc 타입이 없어서 나는 "암묵적 any" 경고다. 이번 후속 보완이 아래 10개 프로덕션 파일 + 신규 타입 인프라 2개를 고친 뒤 재측정하면 **1333개(프로덕션 1132 + 테스트/support 201)**로 줄어든다 — 그 차이(199개)는 이번에 고친 파일 자신의 에러뿐 아니라, 그 파일들을 가져다 쓰는(아직 `// @ts-check`는 안 붙였지만 `checkJs:true`로는 여전히 분석되는) 다른 파일·테스트에서 타입이 더 정확해져 부수적으로 줄어든 에러도 포함한다. 나머지 1333개는 여전히 Step 11 몫이다.
+- 실제 게이트 `npm run typecheck`(`tsc --noEmit`, `tsconfig.json`)는 `strict:true, checkJs:false`로 설정해, **`// @ts-check` pragma가 붙은 파일만** 엄격 검사한다(checkJs가 꺼져 있어도 파일 맨 위 `// @ts-check` 한 줄이 그 파일 하나는 강제로 엄격 검사하게 만드는 TypeScript 표준 동작). 이번에 수정한 프로덕션 파일 10개(`App.jsx`, `DriverConnectionPage.jsx`, `cloudSession.js`, `directMutations.js`, `mutationOutbox.js`, `outboxCommit.js`, `outboxFlush.js`, `requestDriverInviteSave.js`, `syncQueue.js`, `outboxRollback.js`) 전부에 `// @ts-check`를 붙이고, 이 설정에서 나던 135개(정확히는 133개, 코드 재검토 중 겹침조회 관련 케이스 2개가 사용자 카운트와 약간 다름 — 실제 `tsc` 출력 기준) 에러를 **any/unknown/@ts-ignore/@ts-expect-error/@ts-nocheck/strict·checkJs 완화 없이** 전부 구체적인 타입으로 고쳐 **0개**로 만들었다. 앞으로 이 10개 파일이나 새로 만드는 프로덕션 파일을 수정할 때도 같은 규칙(`// @ts-check` 유지 + 0 에러)을 적용한다.
+- 새 타입 인프라: [`outboxTypes.js`](../react-app/src/lib/outboxTypes.js)(신규, 런타임 코드 없음 — `OutboxOp`/`OutboxPayload`/`DriverRecord`/`CarRecord`/`DriverLinkRow`/`SessionCapture`/`AppSession` 등 여러 파일이 공유하는 JSDoc 타입만 모음)와 [`outboxErrors.js`](../react-app/src/lib/outboxErrors.js)(신규, 이 시점엔 `isStaleSessionError`/`isPermanentFailure`/`toErrorMessage` — catch(error)의 `unknown`을 한 번만 좁히는 타입가드 3개였다 — **재감사 3번에서 `StaleSessionError`/`PermanentFailureError` 전용 클래스로 대체됐다. 아래 재감사 절 참고.**). 기존 `PersistDomain`(`store/persist.js`)/`DomainValue`(`store/app-store.js`)/`JsonValue`(`store/atomicPersist.js`) typedef를 그대로 재사용했다 — 새로 발명하지 않았다.
+- 환경 타입: `@types/node`, `@types/jsdom`을 devDependency로 추가했고, `env.d.ts` + tsconfig의 `"types": ["vite/client", "node"]`로 `import.meta.env`/Node 내장 모듈/CSS import(`vite/client.d.ts`가 이미 `declare module '*.css' {}'`를 제공)를 커버한다.
+- `outboxCommit.js`의 `domainValue: unknown`(재작업 1차 때 실수로 남긴 원칙 위반)을 `import('../store/app-store.js').DomainValue`로 즉시 교체했다 — `DomainValue`(object|Array<object>|Array<string>)가 `writeAllOrNothing`이 요구하는 `JsonValue`와 구조적으로 완전히 같지는 않아(임의 object가 인덱스 시그니처를 만족한다고 TS가 보장 못함) 그 경계 한 곳에만 `/** @type {JsonValue} */` 단언을 남기고 이유를 주석으로 적었다(any/unknown 아님 — 두 구체 타입 사이의 단언).
+- 재검증(모두 통과 후에만 이 절을 `[x]`로 확정): `npm run typecheck` → **0 error**. `npm run typecheck:strict-inventory` → 1532 → **1333**로 감소(위에 기록한 부수 효과 포함, Step 11 전까지는 여전히 통과 조건 아님). `npm test` → **`tests 226 / suites 83 / pass 226 / fail 0`**(220 → 226, +6 = 위 6번 항목). `npm run build` → 성공. `npm run lint` → 신규 경고 0개(수정 중 생겼던 `outboxRollback.js`의 미사용 import 경고 1개는 그 자리에서 제거해 다시 0으로 만들었다).
+- **알려진 한계(정직하게 기록)**: (a) 전체 1532개 legacy 타입 부채(프로덕션 1269 + 테스트/support 263) 제거는 이번 라운드 범위 밖 — Step 11(200줄 강제 및 TS)에서 전체 JS→TS 전환과 함께 처리한다. (b) 항목 4의 TOCTOU/invite_code 재발급 레이스는 DB 마이그레이션(`0001_driver_links_idempotency_key.sql`)을 사용자가 직접 검토·적용하고 클라이언트 코드를 그 컬럼을 쓰도록 바꿔야 완전히 닫힌다 — 이번 라운드는 SQL 작성 + 조회 오류 처리 개선까지만 했다. (c) 항목 3의 TOCTOU 레이스(정적 사전 검사 통과 직후 다른 클라이언트가 겹치는 배정을 커밋)는 여전히 별도 실패 주입 테스트가 없다(기존 4차 재작업 라운드의 같은 알려진 한계와 동일).
+
+**재감사 4건 (사용자 지시 — 후속 보완 코드를 다시 검토해 지적한 4개 항목, 전체 1333개 legacy 타입 부채나 다른 리팩터링으로 범위를 넓히지 않음)**
+
+**1. driverLink/upsert가 확정 전 여러 번 병합돼도 최초 롤백 앵커(id/previousDriverSnapshot)를 유지**
+
+- 원인: `mergeOutboxOp()`의 "latest wins"가 같은 리소스의 upsert op을 매번 통째로 교체해서, A→B→C로 확정 전에 여러 번 편집되면 `previousDriverSnapshot`도 최신 op의 것(B, 서버가 확인한 적 없는 값)으로 바뀌었다 — 나중에 확정 실패가 나면 A가 아니라 B로 잘못 복원됐다.
+- 수정: [`outboxDriverMerge.js`](../react-app/src/lib/outboxDriverMerge.js)(신규)의 `mergeDriverUpsert()` — 같은 리소스의 driverLink/upsert끼리 병합할 때는 최초 op의 `id`와 `payload.previousDriverSnapshot`을 그대로 이어받고 나머지 필드(실제 배정 내용)만 최신으로 갱신한다. [`mutationOutbox.js`](../react-app/src/lib/mutationOutbox.js)의 `mergeOutboxOp()`이 이 함수를 호출하고, `planOutboxAppend()`가 병합 결과(`effectiveOp`)를 함께 돌려준다 — id가 바뀔 수 있으므로 [`outboxCommit.js`](../react-app/src/lib/outboxCommit.js)의 `commitWithOutboxAndFlush()`는 자신이 만든 `op.id`가 아니라 이 `effectiveOp.id`로 flush 결과를 찾는다(안 그러면 최신 편집의 호출자가 이미 다른 id로 병합된 op의 결과를 못 찾는다).
+- 검증(신규): `mutationOutbox.test.js`에 순수 병합 단위 테스트("A→B→C로 연속 병합돼도 최초 op의 id/previousDriverSnapshot을 그대로 이어받는다") + `outboxFlush.test.js`에 종단 테스트 2개("기존 기사 A→B→C로 편집된 뒤 확정 실패하면 최초 A로 복원된다", "신규 기사 생성 직후 재편집한 뒤 확정 실패하면 완전히 제거된다"). **버그 임시 복원 확인**: `mergeDriverUpsert`를 `return incoming`만 하도록 되돌리면 세 테스트 모두 실제로 실패함(최초 id 대신 최신 id가 남고, A 대신 B가 복원됨)을 실측 후 복원.
+
+**2. requestDriverInviteSave의 사전 조회에도 session epoch 재검증**
+
+- 원인: 사전 겹침/멱등성 조회(`checkDriverAssignmentConflict`)는 세션을 캡처하지도, 조회 도중 재검증하지도 않았다 — 조회 응답을 기다리는 동안 로그아웃해도 그대로 커밋까지 진행할 수 있었다.
+- 수정: [`requestDriverInviteSave.js`](../react-app/src/lib/requestDriverInviteSave.js)가 조회를 시작하기 *전에* `captureSession()`으로 세션을 캡처하고, `checkDriverAssignmentConflict()` 내부의 두 await(멱등성 조회, 겹침 조회) 직후 + 로컬+outbox 커밋을 시작하기 직전, 총 세 지점에서 `assertSessionStillCurrent()`로 재검증한다. 어느 지점에서든 세션이 바뀌었으면(`StaleSessionError`) 로컬/outbox/원격 호출을 전혀 손대지 않고 조용히 반환한다.
+- 검증(신규, `directMutationActions.test.js`): "겹침 조회 대기 중 로그아웃하면 Store/localStorage/outbox/이후 원격 호출이 전부 0이다" — notify 0회, Store 미반영, localStorage 원래 값 유지, outbox 비어 있음, 이후 원격 호출(insert/update/다른 테이블 select) 전부 0회를 확인. **버그 임시 복원 확인**: 조회 내부 재검증과 커밋 직전 재검증을 둘 다 지우면(둘 중 하나만 지우면 나머지 하나가 여전히 막아서 이 종단 테스트로는 구분이 안 된다 — 방어가 이중으로 겹쳐 있다는 뜻) 실제로 notify가 1회 발생해 실패함을 실측 후 복원.
+
+**3. outboxErrors.js/syncQueue.js의 명시적 unknown 5건 제거**
+
+- 수정: [`outboxErrors.js`](../react-app/src/lib/outboxErrors.js)를 `isStaleSessionError`/`isPermanentFailure`/`toErrorMessage`(unknown 매개변수 3개) 대신 `StaleSessionError`/`PermanentFailureError` 전용 Error 서브클래스 2개로 다시 썼다. [`cloudSession.js`](../react-app/src/lib/cloudSession.js)의 `assertSessionStillCurrent()`가 `throw new StaleSessionError()`로, [`outboxFlush.js`](../react-app/src/lib/outboxFlush.js)의 겹침 확정 실패가 `throw new PermanentFailureError(...)`로, 두 파일의 모든 판정이 `instanceof` 직접 비교로 바뀌었다. `syncQueue.js`의 두 `.catch((error) => ...)`(unknown 매개변수 2개)는 `Error`로 명시했다 — `queueSync`/`flushMutationOutbox`가 실제로 던지는 건 우리 코드의 `Error`류이거나 `@supabase/postgrest-js`의 `PostgrestError`(`extends Error`로 확인)뿐이라 정확한 타입이다. `mutationOutbox.js`의 `createPermanentFailure()`(레거시 팩토리, 기존에도 미사용)도 `new PermanentFailureError(message)`로 위임하도록 고쳐 새 클래스와 일관되게 맞췄다.
+- 재확인: `grep -n "\bunknown\b"`로 두 파일 전수 검색 — 실제 코드에는 0건(설명 주석에서 "unknown을 안 쓴다"고 언급하는 프로즈 2건만 남음).
+- `npm run typecheck` → 이 변경 이후에도 0 error 유지.
+
+**4. SQL 마이그레이션을 실제 실행 가능한 형태로 완성 + "완전한 멱등성" 문구 정정**
+
+- [`supabase/migrations/0001_driver_links_idempotency_key.sql`](../react-app/supabase/migrations/0001_driver_links_idempotency_key.sql)의 원자적 upsert RPC를 주석 처리된 예시가 아니라 실제로 실행 가능한 `create or replace function public.upsert_driver_link_idempotent(...)`로 완성했다 — `INSERT ... ON CONFLICT (idempotency_key) DO UPDATE ... RETURNING *`로 조회+삽입을 한 트랜잭션에 묶어, 같은 idempotency_key로 동시에 여러 번 불려도 정확히 한 행만 남는다. 컬럼 타입(`vehicle_id bigint`, `owner_id uuid`)은 이 코드베이스의 JS 사용 패턴에서 추론했다고 파일에 명시했다 — 실제 스키마와 다르면 사용자가 확인 후 고쳐야 한다.
+- **여전히 Claude는 이 SQL을 실행하지 않았고 실행할 방법도 없다**(Supabase CLI/DB 자격증명 없음). 클라이언트 코드(`findExistingDriverLinkInsert`/`upsertDriverLinkOnSupabase`)도 사용자가 마이그레이션 적용을 확인해 주기 전에는 이 RPC에 연결하지 않았다 — 지금 연결하면 마이그레이션 미적용 환경에서 존재하지 않는 컬럼/RPC 호출로 전체 기능이 깨진다.
+- 문구 정정: 4차 재작업 8번 항목의 표제 "자동 수렴하는 진짜 멱등성"을 "서버 행 중복 삽입을 막는 안전장치"로 바로잡고 정정 각주를 남겼다(위 8번 항목 참고). `directMutations.js`/`outboxFlush.test.js`의 관련 주석·테스트 설명은 원래부터 "서버 행 1개로 수렴" 같은 정확한 표현을 쓰고 있어(재검토 결과 "완전한 멱등성" 같은 과장 표현은 8번 항목 표제 외에는 없었다) 추가로 고치지 않았다.
+
+**재검증(재감사 4건, 모두 통과 후에만 이 절 전체를 `[x]`로 확정)**
+
+- `npm run typecheck` → **0 error**(변경 없음, 여전히 통과).
+- `npm run typecheck:strict-inventory` → 1333 → **1343**(+10, 전부 이번에 추가한 신규 테스트 코드에서 나온 것 — 테스트 파일은 애초에 `// @ts-check` 대상이 아니라 이 부채 측정 명령에서만 보인다. 프로덕션 파일 쪽 에러 수는 1132로 그대로다 — 이번 변경이 프로덕션 타입 안전성을 후퇴시키지 않았다는 뜻).
+- `npm test` → **`tests 231 / suites 84 / pass 231 / fail 0`**(226 → 231, +5 = `mutationOutbox.test.js` 2개 + `outboxFlush.test.js` 2개 + `directMutationActions.test.js` 1개).
+- `npm run build` → 성공.
+- `npm run lint` → 신규 경고 0개(기존 7개만 그대로).
+- 200줄 제한: 이번에 수정/신규한 프로덕션 파일 전부 `wc -l`로 재확인 — `mutationOutbox.js`(197), `outboxErrors.js`(23), `outboxDriverMerge.js`(26), `cloudSession.js`(137), `outboxFlush.js`(198), `syncQueue.js`(139), `outboxCommit.js`(84), `requestDriverInviteSave.js`(126), `directMutations.js`(182, 무변경), `outboxRollback.js`(72, 무변경), `outboxTypes.js`(85, 무변경) — 전부 200줄 이하.
+- **핵심 회귀는 버그를 임시로 되돌려 테스트가 실제로 실패하는 것을 확인한 뒤 복원했다**(항목별 임시 복원 기록은 위 각 항목 참고).
+- Store/localStorage/outbox/원격 호출 수 교차검증: 항목 1(A→B→C 롤백 테스트가 `readJsonKey`/`hasPendingOps`로 직접 확인), 항목 2(신규 테스트가 notify 횟수·`getState()`·`readJsonKey`·`hasPendingOps`·`countOf` 5종을 전부 확인) 둘 다 이 절의 요구를 충족한다.
+- **알려진 한계(정직하게 기록, 변경 없음)**: (a) 항목 4의 TOCTOU/invite_code 재발급 레이스는 마이그레이션을 사용자가 적용하고 클라이언트를 연결해야 완전히 닫힌다. (b) 이전 라운드부터의 항목 3(현 문서 기준 "3. 원격 실패 처리") TOCTOU 레이스는 여전히 별도 실패 주입 테스트가 없다. (c) 전체 1343개 legacy 타입 부채는 Step 11 범위로 그대로 남겨 뒀다 — 이번 재감사에서 건드리지 않았다.
+
+**SQL 재재감사 (사용자 지시 — 재감사 4건 중 SQL 마이그레이션 1건만 추가 보완, Step 5/전체 타입 부채/다른 리팩터링으로 범위를 넓히지 않음)**
+
+사용자가 위 SQL 마이그레이션([`0001_driver_links_idempotency_key.sql`](../react-app/supabase/migrations/0001_driver_links_idempotency_key.sql))을 다시 검토해 5개의 실무 보안/정확성 결함을 지적했다. 애플리케이션 코드는 전혀 건드리지 않고 이 SQL 파일 하나만 고쳤다.
+
+1. **owner 단위 격리**: 고유 인덱스를 `(idempotency_key)` 단일 컬럼에서 `(owner_id, idempotency_key)` 복합 부분 인덱스(`driver_links_owner_idempotency_key_key`)로 바꿨다 — 서로 다른 owner가 우연히 같은 idempotency_key 문자열을 만들어도 서로 충돌하지 않는다. `ON CONFLICT (owner_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO UPDATE ...`로 RPC의 conflict target도 이 부분 인덱스와 정확히 같은 predicate를 명시해 Postgres가 이 인덱스를 올바르게 추론하게 했다(부분 유니크 인덱스로 ON CONFLICT를 추론시키려면 WHERE 절이 인덱스 정의와 정확히 일치해야 한다).
+2. **입력 검증**: 함수 본문 맨 앞에 `p_idempotency_key`가 `null`이거나 공백(`btrim(...) = ''`)이면 `RAISE EXCEPTION ... USING ERRCODE = '22023'`(invalid_parameter_value)로 즉시 거절하도록 추가했다 — 빈 키가 통과하면 여러 서로 다른 삽입이 전부 "키 없음"으로 취급돼(부분 인덱스가 null을 걸러내므로 고유 제약이 아예 안 걸림) 멱등성 판정 자체가 무력화되는 것을 막는다.
+3. **owner_id 위조 방지**: `p_owner_id` 매개변수를 아예 없앴다(사용자가 제시한 두 방법 중 "가장 안전한" 쪽을 그대로 택함) — `auth.uid()`를 그 자리에서 직접 써서, 호출자가 임의의 owner_id를 지정해 다른 사람 행세를 할 방법 자체가 없다.
+4. **함수 권한**: `revoke all ... from public`, `revoke execute ... from anon`으로 기본/익명 실행 권한을 명시적으로 회수하고 `grant execute ... to authenticated`로 로그인한 사용자에게만 부여했다. `security invoker`는 그대로 유지하고, driver_links의 기존 RLS 정책이 이 함수의 INSERT/UPDATE에도 그대로 적용된다는 것을 주석으로 명시했다(함수가 RLS 우회 통로가 되지 않는다).
+5. **문서 표현 정정**: 파일 상단에 "실행 가능한 SQL로 작성했으나 라이브 DB에는 미적용·미검증"이라고 명시했다 — 이전 표현이 "실제로 실행해서 검증됨"으로 오해될 여지가 있었던 것을 바로잡았다. Claude는 이번에도 이 SQL을 라이브 프로젝트에 실행하지 않았고 실행할 방법도 없다(Supabase CLI/DB 자격증명 없음) — 문법·논리를 정적으로 검토해 작성했을 뿐, 실제 Postgres/Supabase 인스턴스에 대고 돌려 본 적은 없다.
+
+**재검증(SQL 파일만 변경 — 애플리케이션 코드는 무변경이므로 아래 4개 명령은 이전 라운드와 동일하게 통과해야 정상이다)**
+
+- `npm run typecheck` → **0 error**(변경 없음).
+- `npm test` → **`tests 231 / suites 84 / pass 231 / fail 0`**(변경 없음 — 이번 라운드는 `.sql` 파일 하나만 고쳤다).
+- `npm run build` → 성공.
+- `npm run lint` → 신규 경고 0개(기존 7개만 그대로).
+- **알려진 한계(정직하게 기록)**: 이 SQL은 여전히 라이브 DB에 미적용·미검증이다 — 사용자가 스테이징 등에서 먼저 실행해 문법 오류나 스키마 불일치(특히 `vehicle_id`의 실제 컬럼 타입, `driver_links`에 이미 걸려 있는 RLS 정책의 정확한 조건)가 없는지 확인해야 한다. 클라이언트 코드 연결은 여전히 하지 않았다.
 
 ### [ ] Step 5 — 달력 홈 재작성 (슬라이스 3)
 
