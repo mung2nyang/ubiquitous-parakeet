@@ -851,7 +851,7 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - 바닐라의 `maint-badge`(정비/주유/기타 비용 합계 뱃지)는 옮기지 않았다 — Step 5 항목이 `workBadge`/`isOff`/`hasUnpaid` 세 가지만 명시했고, 비용 관련 기능은 Step 6 영역이라 판단했다.
 - 검증용 테스트 계정("테스트님") 데이터 복구 불완전 가능성(클라우드 동기화 계정이라 완전 원복 미보장).
 
-### [~] Step 6 — 일지 재작성 (슬라이스 4) — 가장 큰 교체 — 재감사 9차 FAIL, 10차 수정 진행 중
+### [x] Step 6 — 일지 재작성 (슬라이스 4) — 가장 큰 교체 — 사용자 최종 승인 (2026-08-29, 재감사 17차까지)
 
 - 폐기: `WorkLogPage.jsx`, `InlineExpandHost.jsx`.
 - 신규: `DayLogPage` + `useDayDraft` + `day-log-reducer`. `CallDetailForm` / `ExpenseForm` variant sheet.
@@ -1181,7 +1181,228 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 
 **상태**: 위 모든 검증을 통과했다. 이번 라운드부터 적용되는 작업 원칙에 따라 **사용자 최종 승인 전까지 Step 6은 `[~]`로 유지한다.** 사용자가 승인하면 그때 `[x]`로 바꾸고 커밋한다.
 
+**상태(10차 정정)**: 위 "모든 검증을 통과했다", "전부 수정", "전부 @ts-check", "금지 타입 0건"은 성급한 판단이었다. 9차 `isValidPayment`는 신규 `addPartialPayment` 값만 보고 id 필수·amount 숫자 전용으로 강제해, 실제로 존재하는 레거시 payments(`{ amount: "1,000" }`, `{ amount: 1000 }`, id 없음)를 durable 접수에서 거절할 수 있었고, 10차 WIP의 `<App/>` 통합 테스트 A는 palletOn 거래처를 안 심어 `#modalPalletCount`가 없는 채로 복구 편집을 시도해 TypeError로 실패했다. 아래 "Step 6 재감사 10차" 절에서 그 실패 원인과 수정을 기록한다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
 ---
+
+## Step 6 재감사 10차 — 진행 중 (레거시 payments 계약 + register false 경로 + `<App/>` 통합 A/B + 타입 재검사 + 문서)
+
+9차 보고 후 사용자가 다시 검토해 Step 6을 `[~]`로 유지한 채 10차를 지시했다. 이 라운드는 사용자 최종 승인 전까지 `[x]`로 바꾸지 않는다. Step 7은 시작하지 않는다.
+
+**1. payments 계약** — `domain/callDetail.js`의 `PaymentLike`(id/amount/paidAt/note 전부 optional, amount는 `string|number`)와 `payments.js`가 보존하는 레거시 값, `callDetailSchema.js` 런타임 검증을 맞춘다. 허용: `[{ amount: "1,000" }]`, `[{ amount: 1000 }]`, payment id 없음, 문자열·숫자 amount 혼재. 거부: 임의 문자열(`"oops"`), 음수, NaN, Infinity, 잘못된 중첩 객체.
+
+**2. `registerPendingDayWrite()` false 경로** — `useDayDraft.js`가 반환값을 무시하지 않는다. false면 `markUnsafeRegistrationFailure(ownerKey, dateKey, patch)`로 owner/date 단위 격리. 같은 키가 durable/fallback에 안전하게 접수되거나 실제 커밋되면 `clearUnsafeRegistrationFailure`. owner A의 unsafe가 남은 동안 owner B 성공으로 전체 경고가 해제되면 안 된다.
+
+**3. `<App/>` 통합 테스트 A/B** — 실패 단계 Assert(Store 작업 전 값, localStorage 원문, durable/fallback/unsafe, pending count, notify, `scheduleCloudSync` 실제 호출, Supabase, 성공 토스트 미표시/실패 UI, BottomNav/SideMenu/헤더 닫기, beforeunload, 기존 payments와 최신 fixedCount/palletCount)가 끝난 뒤에만 복구 단계로 오류를 해제한다.
+
+**A 테스트 실패 원인(실측)**: payments 거부가 아니라, 복구 단계에서 `#modalPalletCount`에 `setNativeInputValue`를 호출했는데 `PalletSection`이 `settings.fixedOn && fixedRouteClient?.palletOn`일 때만 렌더되어 입력이 없었다. jsdom의 HTMLInputElement setter가 null이 아닌 "유효하지 않은 인스턴스"로 TypeError를 냈다. 실패 UI·quota 로그까지는 도달했다.
+
+**수정**: A/B 모두 `seedPalletClient`로 고정노선+palletOn 거래처를 심고, 실패 단계에서 fixedCount와 palletCount를 함께 편집한다. 일지 헤더에 메뉴 버튼을 연결해 SideMenu 이동 방어를 실제 UI에서 누른다. `getCloudSyncScheduleCount()`로 sync 예약을 직접 센다. 복구는 `shouldFail=false` / spy restore 이후에만 `retryPendingDayWrites()`로 수행한다.
+
+**되돌려서 확인**: `isValidPayment`를 id 필수·amount 숫자 전용으로 임시 복원하니 테스트 A가 `pendingAfterFail?.fixedCount` `undefined !== 9`로 실제로 FAIL했다. 원복 후 통과.
+
+**상태(11차 정정)**: 10차는 A/B를 통과시켰지만 `npm test`가 `--test-force-exit` 없이는 프로세스가 안 끝났고, unsafe는 경고 Map만 있어 재진입 복구가 없었고, d9eadff 이후 프로덕션 JSDoc에 `object`가 남아 있었고, `syncQueue.js`에 테스트용 전역 카운터가 있었고, `isValidCurrencyAmount`가 빈 문자열·`,`·`.`·`원`만 있는 값을 `parseCurrencyValue`→0으로 통과시켰다. 아래 "Step 6 재감사 11차"에서 고친다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
+---
+
+## Step 6 재감사 11차 — 진행 중 (npm test 종료 + unsafe patch 복구 + object 타입 + sync 계측 제거 + 통화 검증)
+
+10차 보고 후 사용자가 다시 검토해 Step 6을 FAIL로 유지했다. 이 라운드는 사용자 최종 승인 전까지 `[x]`로 바꾸지 않는다. Step 7은 시작하지 않는다.
+
+**1. npm test 비종료** — 10차는 `--test-force-exit`로 가렸다. 실측 원인 두 가지: (a) `PendingWriteRetryBridge`의 5초 `setInterval`이 큐가 빈 뒤에도 핸들을 남김 → 큐/unsafe가 있을 때만 켜고 비면 즉시 끈다(`pendingRetryPulse.js`). (b) `durableWriteGuard.test.js`가 `pendingWorkDataWrites` → `app-store`를 끌어오면서 실제 `supabaseClient` realtime/auth 타이머가 루프를 붙잡음 → **다른 import보다 먼저** `stubSupabaseClient.js`를 올린다. App 테스트는 root를 추적해 `finally`/`afterEach`에서 unmount하고, 예약된 600ms `scheduleCloudSync`는 `flushCloudSync()`로 비운다. `--test-force-exit`/`process.exit`/`timer.unref`는 쓰지 않는다. 회귀: `pendingWriteRetryListeners.test.js` cleanup 후 `mock.timers.tick(30s)`에도 retry가 늘지 않음.
+
+**2. unsafe patch 복구** — `getUnsafeRegistrationPatch`/`listUnsafeRegistrations`/`promoteUnsafeRegistrations`. 같은 owner/date는 최신 값 승리. 재진입 시 `useDayDraft`가 store 위에 unsafe를 overlay. 계약이 맞으면 promote가 durable/fallback로 승격한 뒤에만 clear. confirm으로 나간 뒤 재진입 `<App/>` 테스트. owner A unsafe + owner B 큐 성공이 경고를 끄지 않음.
+
+**3. 금지 object** — 주석 단어가 아니라 JSDoc. `CallDetailForm.jsx` `onSave` → `CallDetailDraft`, `DayLogPage.jsx` `formDraft` → `CallDetailDraft`, `financeTaxInvoiceEntries.js`/`financeTaxInvoiceGroups.js`의 `supplierBiz`/`biz` → `SupplierBiz`, `ownerFinance.js` `settings` → `FinanceSettings`. 같은 라운드에서 `sessionGate.js`의 `session: object`도 `AppSession | null`로 바꿨다. `@typedef {object} Name` 형태의 named typedef와 주석 속 단어 `object`는 집계에서 분리한다.
+
+**4. 프로덕션 테스트 계측** — `getCloudSyncScheduleCount`/`cloudSyncScheduleCount` 삭제. `scheduleCloudSync` 횟수는 `pendingWorkDataWritesSyncSpy.test.js`가 **App/store 그래프보다 먼저** `mock.module`로 spy한다. `App.test.js`는 이미 실제 `syncQueue`를 붙잡은 뒤라 mock이 횟수를 못 센다 — 실패 단계는 `hasDirty`/Supabase 카운트, 성공 단계는 dirty 해소와 Supabase 증가로 실제 예약을 본다.
+
+**5. 통화 문자열** — 숫자 최소 1자리, `"1,000"`/`"1,000원"`/1000 허용. 빈값·공백·`,`·`.`·`원`·oops·음수·NaN·Infinity·객체 거부.
+
+**되돌려서 확인**: `isValidCurrencyAmount`를 `parseCurrencyValue`만 보는 느슨한 검증으로 되돌리면 `callDetailSchema.test.js`가 `''`에서 `true !== false`로 FAIL. `useDayDraft` overlay에서 `getUnsafeRegistrationPatch`를 빼면 테스트 C가 palletCount `'' !== '4'`로 FAIL. 둘 다 원복 후 통과.
+
+**검증(11차, `--test-force-exit` 없음)**:
+- `npm test` → 382 pass / 0 fail, `NPM_TEST_EXIT=0`, duration ~43s, 프로세스 스스로 종료. 테스트 로그에 `not wrapped in act` / `Unhandled` 없음. 실패 주입 테스트의 `일지 자동 저장 실패:` `console.error`는 호출-통과 spy가 횟수까지 Assert한다.
+- `npm run typecheck` → 0
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit --pretty false` → `error TS\d+:` **1023**(6차 기준 1052 이하). 경로에 `.test.`/`testSupport`가 있는 줄 **366**, 나머지 **657**. 10차가 보고한 1022/660/362와 총량은 비슷하나 테스트·프로덕션 분류가 갈린다(같은 grep). 활성 게이트는 typecheck 0이다.
+- `npm run build` → 0
+- `npm run lint` → 0 (기존 exhaustive-deps 경고 4개, 이번 라운드 파일 아님)
+- `git diff --check` (react-app, ubiquitous-parakeet) → 0
+- 200줄: `DayLogPage.jsx` 179, `useDayDraft.js` 155, `pendingWorkDataWrites.js` 183, `durableWriteGuard.js` 65, `CallDetailForm.jsx` 179, `financeTaxInvoiceGroups.js` 182
+- 금지 타입: 지정 5파일의 해당 필드 JSDoc은 도메인 타입. 주석 단어 `object`와 `@typedef {object} Name`은 별도. 남은 JSDoc은 기존 `@param {Object} props` 패턴과 `outboxReconcile.js`의 `Array<object>`(이번 라운드 미지정).
+- NUL 바이트: 프로덕션/테스트 소스 0건
+- commit/push/`[x]` 없음. Step 6 `[~]` 유지. Step 7 미착수.
+
+**상태(12차 정정)**: 11차는 npm test 종료·unsafe overlay·object 타입·sync 계측 제거·숫자 존재 여부 수준의 통화 검사를 손댔지만, 백그라운드 retry 성공 후에도 `hasPendingRef`/실패 UI가 그대로여서 이후 언마운트가 `commitNow`를 한 번 더 돌렸고, A/B는 언마운트 전에 구독을 끊어 그 중복을 놓쳤고, `isValidCurrencyAmount`는 `"1,00"`/`"1,000.50"` 같은 구문을 통과시켰고, 신규 테스트에 `any`와 strict 진단이 늘었다. 아래 "Step 6 재감사 12차"에서 고친다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
+---
+
+## Step 6 재감사 12차 — 진행 중 (retry 성공 계약 + unsafe callback 승격 + 통화 구문 + 테스트 타입)
+
+11차 보고 후 사용자가 다시 검토해 Step 6을 FAIL로 유지했다. 이 라운드는 사용자 최종 승인 전까지 `[x]`로 바꾸지 않는다. Step 7은 시작하지 않는다.
+
+**1. 재시도 성공 후 hasPendingRef/UI 미정리** — `registerPendingDayWrite`의 onSettled가 성공이어도 `hasPendingRef`가 true로 남아, 일지가 마운트된 채 retry가 끝난 뒤 화면을 나가면 언마운트 flush가 `commitNow`를 다시 실행했다. 성공 시 `hasPendingRef=false`, 마운트 중이면 `autoSaveStatus=saved`, `onCommitted` 1회. 언마운트 뒤에는 setState하지 않는다(`useMountedRef`).
+
+**2. 언마운트 중복 커밋을 A/B가 놓친 이유** — 복구 Assert 직후 `unsubscribe`/`errSpy.restore`를 하고 나서야 언마운트해서, 그 사이 늘어난 notify/Supabase를 보지 못했다. 12차는 구독을 언마운트 완료 후 최종 횟수까지 유지한 뒤 정리한다. 마운트 중 retry `<App/>` 테스트를 추가했다.
+
+**3. 통화 구문 검증 부족** — 숫자 한 자리만 보면 `"1.2.3"`/`"1,,000"`/`"1,00"`/`"1 0 0"`/`"1,000.50"`이 통과한다. 천 단위 쉼표 또는 쉼표 없는 정수(+ 선택 `원`) 정규식으로 막는다.
+
+**4. 신규 테스트 any 및 테스트 strict 진단 증가** — `callDetailSchema.test.js`의 `any`를 제거하고 `// @ts-check` 0 errors. `pendingWriteRetryListeners.test.js` rest/`Function` 진단을 구체 타입으로 제거.
+
+**되돌려서 확인**: `settlePendingDayWrite`에서 `hasPendingRef.current = false`를 빼면 마운트 중 retry 테스트가 페이지 이동 후 notify `2 !== 1`로 FAIL. 통화 정규식을 숫자 존재 여부로 되돌리면 `"1.2.3"`에서 `true !== false`로 FAIL. 둘 다 원복 후 통과.
+
+**검증(12차, `--test-force-exit` 없음)**:
+- `npm test` → 384 pass / 0 fail, exit 0. `not wrapped in act` / `Unhandled` 없음.
+- `npm run typecheck` → 0
+- strict-inventory `error TS\d+:` **1012** / `.test.`·`testSupport` **355**(직전 보고 362 이하) / 나머지 **657**
+- 이번 라운드 테스트 파일 strict: `callDetailSchema.test.js` 0, `pendingWriteRetryListeners.test.js` 0(기존 11건 제거), `durableWriteGuard.test.js` 0, `pendingWorkDataWrites.test.js` 0, `App.test.js` 59(신규 테스트로 순증가 0)
+- `npm run build` → 0
+- `npm run lint` → 0 (기존 exhaustive-deps 4개)
+- `git diff --check` → 0
+- 200줄: `useDayDraft.js` 200, `dayDraftLifecycle.js` 25, `durableWriteGuard.js` 89
+- NUL 0. commit/push/`[x]` 없음. Step 6 `[~]`. Step 7 미착수.
+
+**상태**: 사용자 최종 승인 전까지 Step 6은 `[~]`로 유지한다. `[x]`/완료/100% 표현은 쓰지 않는다.
+
+**상태(15차 정정, 12차 테스트)**: 12차가 추가한 「마운트 중 unsafe 승격·retry 성공」`<App/>` 테스트는 valid patch를 `markUnsafeRegistrationFailure()`로 직접 넣어 도달 불가능한 상태를 검증했다. 15차에서 그 허위 테스트를 삭제하고 invalid→사용자 수정→valid 경로로 교체했다. 삭제는 유효 테스트 축약이 아니다. 아래 "Step 6 재감사 15차"를 보라.
+
+**상태(13차 정정)**: 12차는 retry 성공 시 `hasPendingRef=false`와 `저장됨`을 무조건 적용했다. 그 결과 A가 quota로 큐에 남은 뒤 사용자가 B를 입력하고, B의 600ms debounce가 끝나기 전에 A retry가 성공하면, A 콜백이 pending을 내려 B의 언마운트 flush가 생략되고 Store에 A가 남는다. `pendingWorkDataWrites.js`는 주석·빈 줄 포함 204줄이었다. 아래 "Step 6 재감사 13차"에서 고친다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
+---
+
+## Step 6 재감사 13차 — 진행 중 (stale retry vs 최신 draft revision + pendingWorkDataWrites 줄 수)
+
+12차 보고 후 사용자가 다시 검토해 Step 6을 FAIL로 유지했다. 이 라운드는 사용자 최종 승인 전까지 `[x]`로 바꾸지 않는다. Step 7은 시작하지 않는다.
+
+**1. P0 — 과거 patch retry 성공이 최신 미저장 draft를 지움** — `settlePendingDayWrite()`가 성공이면 revision과 무관하게 `hasPendingRef=false`와 UI `saved`를 설정했다. 시나리오: 초기값 2 → A=8 quota 실패로 큐 등록 → 사용자가 B=9 입력 → 600ms 전에 A retry 성공 → 즉시 라우트 이동. A 콜백이 pending을 내려 B 언마운트 flush가 생략되면 Store/localStorage/재진입이 A=8로 남는다. **수정**: draft 변경마다 단조 증가 `draftRevRef`. 큐 등록 시 `attemptRev`를 캡처. `onSettled` 성공이어도 `attemptRev === draftRevRef.current`일 때만 pending을 내리고 `saved`로 바꾼다. 더 최신 draft가 있으면 pending을 유지해 debounce 또는 언마운트 flush가 B를 저장한다. 실제로 커밋된 A의 `onCommitted`는 revision과 무관하게 1회 호출한다. durable `registerPendingDayWrite`와 unsafe `markUnsafeRegistrationFailure`는 `queueFailedDayWrite`로 같은 콜백을 붙인다.
+
+**테스트**: `<App/>` 통합 — 실패 단계(Store/localStorage 2, pending 8, notify 0, Supabase 불변, 저장됨 없음)를 끝낸 뒤에만 quota를 푼다. 복구에서 B=9 입력 후 600ms를 기다리지 않고 retry → 즉시 뒤로가기. 최종 Store/localStorage/재진입 9, `pendingDayWriteCount()===0`. notify는 A 1회 + B flush 1회. sync/API는 복구 이후 증가하고 dirty가 해소된다. durable 경로와 unsafe 승격 경로를 같은 헬퍼로 검증한다. `dayDraftLifecycle.test.js`는 stale revision이 pending/UI를 유지하는지 단위 검증한다.
+
+**되돌려서 확인**: `settlePendingDayWrite`에서 `attemptRev !== draftRevRef.current` early return을 빼면 durable `<App/>` 테스트가 「더 최신 draft가 있으면 저장됨으로 바꾸면 안 된다」에서 `true !== false`로 FAIL한다. 그 상태면 언마운트 flush가 생략되어 최종값이 A=8로 남는다. 원복 후 통과.
+
+**2. `pendingWorkDataWrites.js` 204줄** — 의미 있는 주석/검증을 지우거나 문장을 한 줄로 압축하지 않고, owner/date 스캔·복합키·fallback 맵을 `pendingWorkDataWritesState.js`로 옮겼다. public API는 기존 파일에 남긴다.
+
+**검증(13차, `--test-force-exit` 없음)**:
+- `npm test` → 389 pass / 0 fail, exit 0, duration ~56s. `not wrapped in act` / `Unhandled` 없음.
+- `npm run typecheck` → 0
+- strict-inventory `error TS\d+:` **1015** / `.test.`·`testSupport` **358**(12차 보고 355에서 이번 라운드 `App.test.js` 신규 `.value` 진단 포함) / 나머지 **657**
+- 이번 라운드: `dayDraftLifecycle.test.js` 0, `App.test.js` 62(12차 59, 신규 테스트 querySelector `.value` +3)
+- `npm run build` → 0
+- `npm run lint` → 0 (기존 exhaustive-deps 4개)
+- `git diff --check` → 0 (LF/CRLF 경고만)
+- 200줄: `useDayDraft.js` 200, `dayDraftLifecycle.js` 45, `pendingWorkDataWrites.js` 159, `pendingWorkDataWritesState.js` 53
+- NUL 0. commit/push/`[x]` 없음. Step 6 `[~]`. Step 7 미착수.
+
+**상태**: 사용자 최종 승인 전까지 Step 6은 `[~]`로 유지한다. `[x]`/완료/100% 표현은 쓰지 않는다.
+
+**상태(14차 정정)**: 13차는 revision 계약과 줄 수 분리를 넣었지만, (1) 신규 `<App/>` 테스트 3곳이 `querySelector(...).value`라 TS2339가 나 strict-inventory가 12차 기준(1012 / 테스트 355)을 넘었고, (2) `movePendingToUnsafeKeepingCallback()`이 fallback/settledCallbacks/durable을 직접 조작해 프로덕션 UI에 없는 “유효 patch의 unsafe”를 만든 뒤 promote를 돌려 unsafe 승격을 주장했으며, (3) `errSpy.count() >= 1`과 Supabase 전체 호출 증가만 봐 실패 로그·원격 `fixed_count`를 정확히 증명하지 않았고, (4) `pendingWorkDataWritesState.js`를 줄 수 보고에서 빠뜨렸다. 아래 "Step 6 재감사 14차"에서 고친다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
+---
+
+## Step 6 재감사 14차 — 진행 중 (테스트 타입·unsafe 계약·정확한 원격 Assert)
+
+13차 보고 후 사용자가 다시 검토해 Step 6을 FAIL로 유지했다. 이 라운드는 사용자 최종 승인 전까지 `[x]`로 바꾸지 않는다. Step 7은 시작하지 않는다.
+
+**1. TS2339 3건** — `#modalFixedCountInput` value 접근을 `requireHtmlInput()`으로 `HTMLInputElement`로 좁힌 뒤에만 읽는다. 목표: strict-inventory를 12차 기준 전체 1012 / 테스트·지원 355 이하로 복원.
+
+**2. unsafe 승격 눈속임 제거** — 현재 `registerPendingDayWrite()` false는 dateKey/patch 검증 실패에서만 나오고, storage 실패는 fallback 저장 후 true다. invalid patch는 `promoteUnsafeRegistrations()`로도 승격될 수 없다. **stale retry의 unsafe 자동 승격은 N/A**로 정정한다. 대신 `<App/>`에서 oops payments + A=8 quota → unsafe(큐 없음) 실패 단계를 끝낸 뒤, 사용자가 콜상세 삭제(invalid 제거) + B=9로 고치고 valid 커밋이 unsafe를 해제하는 실제 UI 경로를 검증한다. 테스트가 내부 Map을 직접 조작하지 않는다.
+
+**3. console.error** — 실패 단계 정확히 1회. retry/이동/언마운트/재진입 후에도 1회 유지.
+
+**4. 원격 수렴** — `handlers.daily_logs.upsert` payload를 캡처한다. 해당 `work_date` upsert 1회, 최종 `fixed_count=9`.
+
+**5. 줄 수 보고** — `pendingWorkDataWritesState.js`를 변경 파일에 포함한다.
+
+**되돌려서 확인**: revision 비교를 빼면 durable `<App/>` 테스트가 「저장됨으로 바꾸면 안 된다」에서 `true !== false`로 FAIL. 원복 후 통과.
+
+**검증(14차, `--test-force-exit` 없음)**:
+- `npm test` → 389 pass / 0 fail, exit 0, duration ~49s. `not wrapped in act` / `Unhandled` 없음.
+- `npm run typecheck` → 0
+- strict-inventory `error TS\d+:` **1012** / `.test.`·`testSupport` **355** / 나머지 **657** (12차 기준 이하 복원). `App.test.js` 59(순증가 0), `dayDraftLifecycle.test.js` 0
+- `npm run build` → 0
+- `npm run lint` → 0 (기존 exhaustive-deps 4개)
+- `git diff --check` → 0 (LF/CRLF 경고만)
+- 200줄: `useDayDraft.js` 200, `dayDraftLifecycle.js` 45, `pendingWorkDataWrites.js` 159, **`pendingWorkDataWritesState.js` 56**
+- NUL 0. commit/push/`[x]` 없음. Step 6 `[~]`. Step 7 미착수.
+
+**상태**: 사용자 최종 승인 전까지 Step 6은 `[~]`로 유지한다. `[x]`/완료/100% 표현은 쓰지 않는다.
+
+**상태(15차 정정)**: 14차는 `requireHtmlInput`·원격 `fixed_count`·`movePendingToUnsafeKeepingCallback` 제거를 넣었지만, (1) `App.test.js`의 「재감사 12차 — 마운트 중 unsafe 승격·retry 성공」이 valid patch를 `markUnsafeRegistrationFailure()`로 직접 넣어 프로덕션에 없는 상태를 만든 뒤 승격을 검증했고, (2) 14차 `<App/>` unsafe 복구의 실패 단계가 Store/localStorage/notify/dirty/sync/Supabase/tombstone/pending/unsafe/`console.error`/성공 UI를 `shouldFail=true` 유지 하에 전부 직접 Assert하지 않았으며, notify를 실패 유발 전에 달지 않았고 sync 0회를 간접 추정만 했다. 아래 "Step 6 재감사 15차"에서 고친다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
+---
+
+## Step 6 재감사 15차 — 진행 중 (허위 promote 테스트 제거 + 실패 단계 직접 Assert + scheduleCloudSync spy)
+
+14차 보고 후 사용자가 다시 검토해 Step 6을 FAIL로 유지했다. 이 라운드는 사용자 최종 승인 전까지 `[x]`로 바꾸지 않는다. Step 7은 시작하지 않는다.
+
+**1. 12차 `<App/>` 「마운트 중 unsafe 승격·retry 성공」테스트가 왜 유효하지 않았는가** — 그 테스트는 valid patch를 `markUnsafeRegistrationFailure()`로 직접 넣었다. 프로덕션에서 `registerPendingDayWrite()`가 false를 내는 경우는 invalid dateKey/patch뿐이며, storage 실패는 fallback 저장 후 true다. 따라서 valid unsafe가 자동 승격되는 경로는 존재하지 않고, 14차가 N/A로 확정한 계약과 모순된다. **이 테스트를 삭제한 것은 유효한 테스트 축약이 아니라, 도달 불가능한 상태를 검증하던 허위 테스트 제거다.** 15차는 `durableWriteGuard.test.js`의 promote 단위 테스트를 API 배선용으로 남겼으나, 16차에서 그 promote API 자체와 해당 테스트를 제거했다.
+
+**2. 실제 `<App/>` 경로로 교체** — `재감사 15차 — invalid draft를 UI에서 고친 뒤 valid 등록이 unsafe를 해제하고 최종 9를 남긴다`. oops payments + A=8 quota. notify 구독은 실패를 내기 **전에** 설치. `shouldFail=true`를 유지한 채 실패 단계: Store `fixedCount=2`, workData localStorage 원문·값 불변, notify 0, dirty 불변, Supabase 0 증가, tombstone 불변, durable pending 0, unsafe A=8, `console.error` 정확히 1회, 성공 상태/성공 토스트 없음. 복구: invalid 콜상세 삭제 + B=9 → Store/localStorage=9, unsafe 제거, notify 정확히 1회, 해당 날짜 `daily_logs` upsert 1회·`fixed_count=9`, dirty 해제, 재진입 9.
+
+**3. `scheduleCloudSync` 0회는 간접 추정이 아니다** — `App.test.js`는 이미 실제 `syncQueue`를 붙잡은 뒤라 `mock.method`로 export를 재정의할 수 없다. `App.unsafeQuotaFailSyncSpy.test.js`가 `DayLogPage`/`app-store`보다 먼저 `mock.module('../lib/syncQueue.js')`를 올려, 양성 대조(정상 커밋 1회)와 oops+quota 실패(0회)를 직접 센다.
+
+**검증(15차, `--test-force-exit` 없음)**:
+- `npm test` → 390 pass / 0 fail, exit 0, duration ~57s. `not wrapped in act` / `Unhandled` 없음.
+- `npm run typecheck` → 0
+- strict-inventory `error TS\d+:` **1012** / `.test.`·`testSupport` **355** / 나머지 **657**. `App.test.js` 59(순증가 0), `App.unsafeQuotaFailSyncSpy.test.js` 0, `dayDraftLifecycle.test.js` 0
+- `npm run build` → 0
+- `npm run lint` → 0 (기존 exhaustive-deps 4개)
+- `git diff --check` → 0 (LF/CRLF 경고만)
+- 200줄: `useDayDraft.js` 200, `dayDraftLifecycle.js` 45, `pendingWorkDataWrites.js` 158, `pendingWorkDataWritesState.js` 56
+- NUL 0. commit/push/`[x]` 없음. Step 6 `[~]`. Step 7 미착수.
+
+**상태**: 사용자 최종 승인 전까지 Step 6은 `[~]`로 유지한다. `[x]`/완료/100% 표현은 쓰지 않는다.
+
+**상태(16차 정정)**: 15차는 허위 `<App/>` promote 테스트를 지우고 invalid→valid UI 경로와 spy 파일을 넣었지만, (1) spy 테스트가 0회 Assert 뒤 `shouldFail=false`로 바꾼 다음 unmount해서 실패 상태의 flush/sync를 보지 않았고, (2) `hasAnyUnsafeRegistration()`이 5초 retry interval을 켜 `promoteUnsafeRegistrations()`가 valid patch를 큐로 올리는 도달 불가능한 경로를 프로덕션에 남겼다. 아래 "Step 6 재감사 16차"에서 고친다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
+---
+
+## Step 6 재감사 16차 — 진행 중 (spy unmount 계약 + unsafe-only 타이머/promote 제거)
+
+15차 보고 후 사용자가 다시 검토해 Step 6을 FAIL로 유지했다. 이 라운드는 사용자 최종 승인 전까지 `[x]`로 바꾸지 않는다. Step 7은 시작하지 않는다.
+
+**1. spy cleanup** — `App.unsafeQuotaFailSyncSpy.test.js`는 디바운스 실패 0회 Assert 뒤에도 `shouldFail=true`를 유지한 채 `root.unmount()`한다. unmount 후에도 `scheduleCloudSync` 0회, Store/localStorage는 작업 전 값(fixedCount=2), invalid oops 편집은 커밋되지 않음. `console.error('일지 자동 저장 실패:', …)`는 debounce 1회 + unmount flush 1회 = 정확히 2회. 그 다음에만 unsafe clear·spy restore. cleanup에서 quota를 풀어 정상 저장/sync를 만들지 않는다.
+
+**2. unsafe는 자동 retry 대상이 아님** — `registerPendingDayWrite()` false는 invalid dateKey/patch뿐이고 저장 실패는 fallback 후 true다. `pendingWriteRetryListeners`의 interval 활성 조건에서 `hasAnyUnsafeRegistration()`을 뺐다. 5초 retry는 durable/fallback pending이 있을 때만. unsafe는 beforeunload/`confirmLeaveIfUnsafe` 방어와 재진입 overlay. 사용자가 draft를 고쳐 valid 커밋하면 `clearUnsafeRegistrationFailure`. `promoteUnsafeRegistrations()`와 onSettled를 unsafe Map에 싣던 API·도달 불가능한 promote 단위 테스트를 삭제했다. enum 재설계는 하지 않았다 — 프로덕션에 transient unsafe 생성 경로가 없기 때문이다.
+
+**되돌려서 확인**: `hasWork`/`arm`에 `hasAnyUnsafeRegistration()`을 다시 넣으면 16차 「unsafe-only면 5초 interval과 retry가 시작되지 않는다」가 `15 !== 3`(interval이 `hasPending` 검사를 더 돌림)으로 FAIL. 원복 후 통과.
+
+**검증(16차, `--test-force-exit` 없음)**:
+- `npm test` → 391 pass / 0 fail, exit 0, duration ~51s. `not wrapped in act` / `Unhandled` 없음. 실패 주입의 `일지 자동 저장 실패:`는 spy가 메시지·횟수를 Assert한다.
+- `npm run typecheck` → 0
+- strict-inventory `error TS\d+:` **1012** / `.test.`·`testSupport` **355** / 나머지 **657**. `App.test.js` 59, `App.unsafeQuotaFailSyncSpy.test.js` 0
+- `npm run build` → 0
+- `npm run lint` → 0 (기존 exhaustive-deps 4개; spy 파일의 신규 optional-chaining 경고는 제거)
+- `git diff --check` → 0 (LF/CRLF 경고만)
+- 200줄: `useDayDraft.js` 199, `dayDraftLifecycle.js` 45, `pendingWorkDataWrites.js` 158, `pendingWorkDataWritesState.js` 56, `pendingWriteRetryListeners.js` 57, `durableWriteGuard.js` 79
+- 금지 타입(손댄 프로덕션): `@ts-ignore`/`any`/`unknown`/`@param {object}` 0
+- NUL 0. commit/push/`[x]` 없음. Step 6 `[~]`. Step 7 미착수.
+
+**상태**: 사용자 최종 승인 전까지 Step 6은 `[~]`로 유지한다. `[x]`/완료/100% 표현은 쓰지 않는다.
+
+**상태(17차 정정)**: 16차는 spy unmount 계약과 unsafe-only 타이머/promote 제거는 맞았지만, `App.unsafeQuotaFailSyncSpy.test.js`가 console.error spy에 명시적 `unknown` 3건(calls 배열 first/second, rest args, assertSaveFailError 매개변수)을 썼다. 아래 "Step 6 재감사 17차"에서 고친다. Step 6은 `[~]`로 유지하고 Step 7은 착수하지 않는다.
+
+---
+
+## Step 6 재감사 17차 — spy console.error 타입: string + Error (최종 승인에 포함)
+
+16차는 기능 계약을 맞췄지만 타입 규칙 위반 1건이 남았다. 이 항목까지 반영한 뒤 사용자가 Step 6을 최종 승인했다. Step 7은 시작하지 않는다.
+
+**1. 명시적 unknown 3건 제거** — `DayLogSaveFailLog`는 `{ first: string, second: Error }`. `patchedConsoleError(first, second)`는 `string|Error`만 받고, `typeof first === 'string'`이며 `first === '일지 자동 저장 실패:'`이고 `second instanceof Error`일 때만 배열에 넣는다. 그 외 호출은 저장하지 않고 `original.apply(console, arguments)`로 그대로 넘긴다(전역 억제 없음). `assertSaveFailError`는 `DayLogSaveFailLog`만 받는다. `any`/`unknown`/`object`/`{}`/`*`/`@ts-ignore`/`@ts-expect-error`/이중 단언으로 바꾸지 않았다.
+
+**Revert-and-confirm-fail**: N/A. 이번 변경은 테스트 파일의 JSDoc 타입 정정이며 프로덕션 분기·런타임 계약을 바꾸지 않는다. 기능 회귀는 16차 spy 테스트(shouldFail unmount, schedule 0, Store/localStorage 불변, console.error 2회)가 그대로 담당한다.
+
+**검증(17차, `--test-force-exit` 없음)**:
+- `npm test` → 391 pass / 0 fail, exit 0, duration ~58s. `not wrapped in act` / `Unhandled` 없음.
+- `npm run typecheck` → 0
+- strict-inventory `error TS\d+:` **1012** / `.test.`·`testSupport` **355** / 나머지 **657**. `App.unsafeQuotaFailSyncSpy.test.js` 0
+- `npm run build` → 0
+- `npm run lint` → 0 (기존 exhaustive-deps 4개)
+- `git diff --check` → 0 (LF/CRLF 경고만)
+- 금지 타입 스캔(16·17차 변경 파일): 실제 JSDoc `@param/@type/@returns`의 `any`/`unknown`/`Function`/`object`/`{}`/`*`/`@ts-ignore`/`@ts-expect-error` **0건**. 주석 문자열(문서·설명에 적힌 단어 `unknown`)은 타입 선언이 아님. `pendingWriteRetryListeners.js`의 `@typedef {Object} EventTargetLike`는 11차부터 허용한 named Object typedef. `durableWriteGuard.js`의 `@param {{ preventDefault, returnValue? }}`와 spy의 `@typedef {{ first: string, second: Error }}`는 빈 `{}`가 아니라 필드가 있는 구체 모양.
+- NUL 0.
+
+**상태(최종 승인, 2026-08-29)**: 사용자가 Step 6을 최종 승인했다. 체크리스트는 `[x]`다. 위 과거 재감사 절의 `[~]` 문구는 당시 기록으로 남긴다. Step 7은 착수하지 않는다.
 
 ### [ ] Step 7 — 거래처 / 차량 (슬라이스 5)
 
@@ -1330,7 +1551,7 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 
 ~~다음 구현은 이 문서 Step 1부터, 코드를 고치지 않은 채 합의한 뒤 진행하면 기존 React 화면을 한 번에 박살 내지 않고 슬라이스할 수 있다.~~ **(낡음 — 아래 5-1절이 실제 진행 상황이다.)**
 
-## 5-1. 현재 결론 (Step 6 재감사 9차 검증 통과·사용자 최종 승인 대기 기준, 2026-08-28 — **최신 상태는 이 절을 보라. 위 0-1절은 Step 4 완료 시점의 과거 스냅샷이다**)
+## 5-1. 현재 결론 (Step 6 사용자 최종 승인, 2026-08-29 — **최신 상태는 이 절을 보라. 위 0-1절은 Step 4 완료 시점의 과거 스냅샷이다**)
 
 위 결론이 지목한 문제는 이제 대부분 해소됐다:
 
@@ -1340,4 +1561,4 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 - **메인 로그 단일 구조 + 콜 인덱스 + 비용 이중 저장** → 콜상세 `id`는 Step 6에서 영구화됐다(`backfillCallDetailIds`). 비용은 여전히 `expenses` 스토어가 정본이고(Step 6에서 그렇게 확정) day record와의 "이중 저장"은 의도적으로 유지 중이다(파일 상단 주석에 이유 기록). 서브 차량 로그 구조·payments/미수 키의 배열 인덱스 의존성은 Step 7/8 몫으로 여전히 남는다.
 - **`WorkLogPage.jsx`/`InlineExpandHost`** → **Step 6에서 완전히 삭제되고 `src/components/day-log/`로 교체됐다.** 두 파일 다 저장소에 더 이상 존재하지 않는다(`find`로 재확인).
 
-남은 진짜 결론: **상태 경계 문제는 스토어 껍데기(Step 1)와 hydrate/동기화 신뢰성(감사 보완 1~4차)에서 해소됐고, 화면이 그 스토어를 실제로 구독하는 지점도 Step 5~6에서 전부 깼다.** Step 6(일지 재작성)은 1차 구현 → 재감사 1차(10건) → 재감사 2차(7건) → 재감사 3차(6건) → 재감사 4차(5건) → 재감사 5차(3건) → 재감사 6차(3건) → 재감사 7차(3건) → 재감사 8차(4건) → 재감사 9차(EffectivePatch 숫자 계약 정수 미검증 P0 재발 + 콜상세 id/추가필드 스키마 부재 + registerPendingDayWrite 입력 미검증 + dateKey 검증이 실제 라우팅 미적용)를 거쳐 **모든 검증을 통과했다** — 하지만 매 라운드 "완료"로 보고한 것이 다음 라운드에서 새로운 결함으로 드러나는 패턴이 반복됐고(3차→4차: durable 중복 처리, 4차→5차: cleanup 부분 실패, 5차→6차: durable 읽기 실패 자체, 6차→7차: 읽기는 성공했지만 내부 값 검증 부재, 7차→8차: 내부 값 검증은 생겼지만 필드 존재만 확인, 8차→9차: 필드 존재는 확인했지만 값의 실제 계약(정수 범위·id·추가필드)까지는 미검증 + 검증이 durable 내부에만 갇혀 실제 UI 경로엔 미적용), 이번 라운드도 적용되는 사용자 작업 원칙에 따라 **검증 통과와 `[x]` 확정을 분리한다** — Step 6은 사용자 최종 승인 전까지 `[~]`로 유지하고, 승인 후에만 `[x]`로 바꾼다(위 "Step 6 재감사 9차" 절 참고). 실제 클라우드 삭제 흐름(빈 날 삭제→새로고침→hydrate)은 3차에서 이미 실제 로그인 브라우저로 검증했고 4~9차는 그 부분을 건드리지 않았다(위 각 절의 최종 검증 참고). 사용자 승인 후 다음 구현은 이 문서 **Step 7**부터 진행한다.
+남은 진짜 결론: **상태 경계 문제는 스토어 껍데기(Step 1)와 hydrate/동기화 신뢰성(감사 보완 1~4차)에서 해소됐고, 화면이 그 스토어를 실제로 구독하는 지점도 Step 5~6에서 전부 깼다.** Step 6은 1차 구현부터 재감사 17차까지를 거친 뒤 **2026-08-29 사용자 최종 승인으로 `[x]`가 됐다.** 검증 통과와 `[x]` 확정을 분리해 온 원칙은 지켰고, 이번이 그 승인이다. **Step 7은 아직 착수하지 않는다.** 실제 클라우드 삭제 흐름은 3차에서 로그인 브라우저로 검증했고 4~17차는 그 부분을 건드리지 않았다. 다음 구현은 승인 후에 Step 7(거래처/차량)부터다.
