@@ -1402,15 +1402,169 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - 금지 타입 스캔(16·17차 변경 파일): 실제 JSDoc `@param/@type/@returns`의 `any`/`unknown`/`Function`/`object`/`{}`/`*`/`@ts-ignore`/`@ts-expect-error` **0건**. 주석 문자열(문서·설명에 적힌 단어 `unknown`)은 타입 선언이 아님. `pendingWriteRetryListeners.js`의 `@typedef {Object} EventTargetLike`는 11차부터 허용한 named Object typedef. `durableWriteGuard.js`의 `@param {{ preventDefault, returnValue? }}`와 spy의 `@typedef {{ first: string, second: Error }}`는 빈 `{}`가 아니라 필드가 있는 구체 모양.
 - NUL 0.
 
-**상태(최종 승인, 2026-08-29)**: 사용자가 Step 6을 최종 승인했다. 체크리스트는 `[x]`다. 위 과거 재감사 절의 `[~]` 문구는 당시 기록으로 남긴다. Step 7은 착수하지 않는다.
+**상태(최종 승인, 2026-08-29)**: 사용자가 Step 6을 최종 승인했다. 체크리스트는 `[x]`다. 위 과거 재감사 절의 `[~]` 문구는 당시 기록으로 남긴다.
 
-### [ ] Step 7 — 거래처 / 차량 (슬라이스 5)
+### [~] Step 7 — 거래처 / 차량 (슬라이스 5)
 
-- `ClientManagementPage` → `ClientListPage` + `ClientFormModal` + `useClientReorder` (현재 `onDrop` 순서 로직은 `reorderClients`로 재사용).
-- 폼에 `fixedRouteLinked` **최대 1곳**, `fixedUnitPrice`, `palletOn`/`palletPrice`, `comm*`.
-- `CarForm*` 분리. 번호 변경 시 `workLogs` 키 이동 + 라우트 `logId`.
-- `upsertCar`/`upsertClient`의 supabaseId 스프레드를 액션에서 강제.
-- 완료: 드래그 후 새로고침 순서 유지. 차량 추가 직후 그날 운행.
+착수: 2026-08-29. 사용자 최종 승인 전까지 `[x]`·commit·push·Step 8 착수 금지.
+
+#### 구현 전 조사 (코드 대조)
+
+**바닐라 계약**
+- `client-management.js` `saveClient()`: 세금/결제/핀 + `commEnabled`/`commType`/`commValue` + `fixedRouteLinked`/`fixedUnitPrice` + `palletOn`/`palletPrice`. `fixedRouteLinked`가 true면 **같은 `setUserSettings` 안에서** 다른 거래처는 전부 `fixedRouteLinked=false`. 수정 시 `...previousClient`로 `id` 보존.
+- `car-management.js` `saveCarFromModal()`: `...previousCar`로 supabaseId 등 보존. 서브 번호 변경 시 `workData_${old}` → `workData_${new}`(새 키가 없을 때만), `activeLogId` 갱신. **삭제(`deleteCar`)**: 서브만 `workData_${번호}`를 지운다. **메인 차량은 공용 `workData` 키를 지우지 않고 보존**한다(메인 로그 전체를 지우는 사고를 막기 위함, `car-management.js` 593~598행).
+- `syncWorkData.js`(React): `readJson(KEYS.work)` + **메인 차량 `supabaseId`만** `daily_logs` upsert. 서브 로그 클라우드 동기화는 이 파일에 경로가 없다 → **Step 9 범위, Step 7은 로컬 N/A(코드 근거: `syncWorkData.js` 6~12행 `mainCar`만 사용)**.
+
+**현재 React 결함**
+- `ClientManagementPage.jsx` / `CarManagementPage.jsx`: 마운트 시 `loadClients`/`loadCars` → **페이지 `useState` 스냅샷**. Store 구독 없음. `CalendarPage`는 이미 `useOwnerClients`.
+- `ClientFormModal`/`upsertClient`의 `next`에 고정노선·파렛트·수수료·`scopedToVehicleNumber` 없음. 수정 스프레드로 supabaseId는 우연히 남지만 UI에서 1곳 제한을 걸 수 없음.
+- `reorderClients`는 핀/비핀 교차를 리스트 불변으로 거부하나, UI는 거부 토스트 없이 `persist`를 호출.
+- 추가/수정은 `saveClients`/`saveCars`(dirty journal+commitBatch). 삭제는 `request*Deletion`(readiness → outbox 먼저). 추가/수정은 hydration failed 가드가 없음.
+- `upsertCar`: 메인 1대는 있음. **번호 중복 없음.** 번호 변경 시 workLogs 키 이동 없음. 추가 직후 오늘 일지 `navigate` 없음. `/app/logs/:logId` 라우트 없음.
+- Store `workLogs[ownerKey]`는 `{ main }`만. persist `reactPracticeWorkData:${ownerKey}`는 메인 날짜맵. 서브는 로컬 키도 없음.
+
+**실패 주입 지점 (실제 경로)**
+- `commitBatch` → `writeAllOrNothing`(도메인+dirty journal). persist 성공 후 journal 실패는 이미 all-or-nothing.
+- 번호 변경: cars 키 + 서브 로그 키(신설) + 구 키 삭제 + journal을 **한 `writeAllOrNothing`**. 중간 `setItem` 실패 시 전부 롤백.
+- `commitWithOutboxAndFlush`: 도메인+outbox 원자 기록 후 flush. `{data:null,error}` / throw / epoch 변경은 기존 outbox 경로. 추가/수정은 dirty+`scheduleCloudSync` → `syncClients`/`syncVehicles` 재시도 수렴(부분 성공을 0회로 주장하지 않음).
+- hydrate: `mergeWorkDataFromRows`는 메인 날짜맵만. 서브 로컬 키는 hydrate가 덮지 않아야 함(별도 키). 거래처/차량 삭제·순서 변경 후 dirty면 서버 값이 로컬을 덮지 않는 기존 hydrate 규칙.
+
+**변경 파일 예상**
+- 도메인: `clients.js`, `clientTypes.js`, `cars.js`, `financeTypes.js`(CarLike 필드), 신규 `workLogKeys.js`
+- persist/store: `persist.js`, `atomicPersist.js`, `app-store.js`, `commitHelpers.js`, `owner-state.js`, `ownerDataHooks.js`, `batchWrites.js`(필요 시 extraWrites는 commitBatch options)
+- mutation: `outboxCommit.js`, 신규 `clientMutations.js`/`vehicleMutations.js`, `directMutationActions.js`(삭제 시 서브 로그 키)
+- 일지: `useDayDraft.js`, `DayLogPage.jsx`, `pendingWorkDataWrites.js`(서브는 `ownerKey::log::번호` durable, 메인 키 호환)
+- UI: `components/clients/*`, `components/cars/*`, 기존 페이지는 얇은 어댑터. `AppShell.jsx`, `MainPageRoute.jsx`, `lazyPages.js`
+- 테스트: `clients.test.js`, `cars.test.js`, `atomicPersist.test.js`, 신규 `App.clientsCars.test.js`
+
+#### 구현 결과 (자체 검증, 2026-08-29 — `[~]` 유지, 승인 전)
+
+- UI: `ClientListPage`/`CarListPage`가 Store 구독. 기존 `*ManagementPage.jsx`는 re-export 어댑터. 폼 draft만 로컬.
+- 고정노선: `upsertClient`가 같은 결과 배열에서 나머지 `fixedRouteLinked=false`.
+- 서브 일지: `storageKeyForLog` + `commitLogWorkData`. 번호 변경은 `planSubLogRename` + `writeAllOrNothing`(새 키 쓰기+옛 키 remove).
+- Step 9 N/A: `syncWorkData.js`가 `mainCar.supabaseId`만 `daily_logs`에 씀. `commitLogWorkData`는 `syncToCloud: false`.
+- revert-and-confirm-fail: `upsertClient`의 unique `map`(기존 고정노선 해제)을 빼면 `clients.test.js`가 `2 !== 1`로 실패함을 확인한 뒤 복원.
+- 브라우저 로그인 세션 수동 확인은 이 라운드에서 **미실시**(자격 세션 없음). jsdom 통합은 `App.clientsCars.test.js`.
+
+**게이트(재감사 FAIL 수정 후, 2026-08-29)**: `npm test` 427 pass / 0 fail. `typecheck` 통과. `typecheck:strict-inventory` 전체 925 / 테스트·지원 354 / 나머지 571(기준선 1012/355/657 대비 테스트·지원 **미증가**). `build` 통과. `lint` 기존 exhaustive-deps 4개. `git diff --check` LF/CRLF 경고만. NUL 0. 사용자 승인 전 commit/push/`[x]` 금지.
+
+#### 사용자 재감사 FAIL 수정 (2026-08-29, `[~]` 유지)
+
+사용자가 Step 7 자체 검증 후 재감사 **FAIL**을 돌려줬다. 승인 전 commit/push/`[x]`/Step 8은 하지 않는다.
+
+1. **서버 확정 ID**: `syncVehiclesClients.js`가 await 전 스냅샷을 `writeJson`으로 덮어쓰지 않는다. 응답마다 epoch 재검증, `mergeRemoteIdByLocalId`가 최신 Store의 불변 로컬 `id`에 `supabaseId`만 병합. 거래처는 insert 전 `(user_id, legacy_client_id)` 조회. 차량은 `raw.id`/`legacy_log_id`로 기존 행을 찾아 중복 insert를 막는다.
+2. **번호 변경·삭제 + pending**: `logPendingLifecycle.js`가 durable 읽기 실패면 변경/삭제를 거부. 번호 변경은 Effective Patch를 새 번호 durable 키로 이관, 삭제는 pending discard. `readLogWorkData`는 missing/value/getItem/parse/schema를 구분하고 실패를 `{}`로 바꾸지 않는다.
+3. **활성 라우트**: `withFromLogState`가 `/app/logs/OLD/day/DATE`에서 차량 관리로 갈 때 출처를 붙이고, 수정 성공 시 그 `dateKey`로 `/app/logs/NEW/...` replace. `/app/cars`에서 옛 로그 pathname을 검사하던 도달 불가 분기는 제거했다.
+4. **타입·줄 수**: 이번 라운드 수정·신규 프로덕션 첫 유효 줄 `// @ts-check`. `scopedToVehicleNumber`는 차량번호 문자열. `DayLogPage.jsx` 비용 섹션을 `DayLogExpenses.jsx`로 분리. `requestVehicleDeletion`은 `vehicleDeletion.js`로 분리.
+5. **테스트 진실성**: `initializeOwnerFromPersist`는 persist-only(원격 0회)로 명시. 서브 일지 새로고침은 root unmount→새 root. quota `console.error`는 첫 인자·Error.message·횟수를 Assert하고 원 로거는 통과. hydration failed UI는 모달 유지·성공 토스트 없음. `removeItem`/중간 쓰기 실패 롤백.
+
+**되돌려서 확인**: `/app/cars` pathname에서 `startsWith('/app/logs/OLD')`는 항상 거짓임을 테스트가 고정한다. fromLog 없이 그 검사만 두면 일지 출처 replace가 불가능하다.
+
+#### 사용자 재감사 FAIL 후속 (unsafe 큐 + 교차검증, 2026-08-29, `[~]` 유지)
+
+번호 변경·삭제가 durable/fallback/callback만 보고 **unsafe overlay를 빠뜨리던** 구멍을 막았다. `inspectLogPending`이 `unsafeItems`를 포함하고, 번호 변경은 `rekeyPendingMaps`가 새 pending owner로 overlay·callback·fallback을 옮기며, 삭제는 `clearPendingMapsForOwner`가 해당 로그만 지운다.
+
+교차검증에서 추가로: `initializeOwnerFromPersist`가 `mergeWorkLogs`로 옛 서브 로그를 메모리에 남기던 점을 `replaceWorkLogs`로 바꿨다. 서브 일지 읽기 실패면 초기화를 중단한다. 단위·`<App/>` UI·`scheduleCloudSync` spy로 notify/journal/API/sync 횟수와 다른 owner 격리를 Assert한다. **실로그인 브라우저 검증은 미실시.**
+
+#### 사용자 재감사 FAIL 후속 (데이터 무결성 1~8 + ConfirmModal/owner/tombstone, 2026-08-29, `[~]` 유지)
+
+1. ConfirmModal: `pendingDelete`를 readiness/outbox 성공 전에 null로 만들지 않음. 실패 시 모달 유지. `<App/>` 거래처·차량 삭제 테스트가 Store/LS/outbox/notify/API/성공 토스트를 직접 Assert.
+2. `initializeOwnerFromPersist` fail-open `readJsonKey` 제거. `readPersistDomain` 5상태. 도메인 하나라도 실패하면 Store/workLogs 불변, notify 0, 원문 덮어쓰기 금지.
+3. `readLogWorkData`가 `isValidCalendarDateKey` + DayRecord 중첩(정수/불리언/fixedRouteCounts/callDetails/payments) 검증. 번호 변경 불변 테스트.
+4. `blockedReasonForOwnerDataWrite({ ownerKey, userId, sessionEpoch })`. B ready + stale A UI/서비스 불변.
+5. `findExistingVehicle`이 tombstone 서버 id를 재사용하지 않음. `flushCloudSync`/스케줄은 outbox flush 후 일반 sync. 두 실행 순서 주입 테스트.
+6. 지정 6개 프로덕션 파일 `// @ts-check`.
+7. 메인 차량 삭제 시 바닐라는 `workData` 보존(위 조사 절 정정).
+
+#### 사용자 실브라우저 재감사 FAIL — 인라인 시트 및 UI 패리티 (2026-08-29, `[~]` 유지)
+
+- **사용자 실측 증상**: `/app/day/:date`에서 “콜 추가”·정비/주유/기타 추가를 눌러도 인라인 시트가 화면에 안 열림. 달력 년/월이 다크모드에서 흰색 네이티브 select. 햄버거/벨/휴무 뱃지/활성 셀/고정노선·일지 헤더가 바닐라와 다름.
+- **원인**: `main-calendar.css`가 `.call-detail-inline-host`/`.maint-fuel-inline-host`에 `max-height:0; opacity:0`을 걸고 열림 클래스를 `.is-open`으로 봄. `InlineSheet`는 `.is-visible`만 붙여 실제 브라우저에서 높이 0. `grid-template-rows: 1fr` + `min-height:0`만으로는 auto 부모에서 행이 0이 됨. 다크 토큰(`--off-badge-*`, `--icon-color` 등)이 `[data-theme="dark"]`에 없고 년/월이 네이티브 select.
+- **수정 파일**: `day-log.css`, `main-calendar.css`(죽은 max-height 호스트 규칙 삭제), `account-flow.css`(다크 뱃지/아이콘 토큰), `CalendarDateSelect.jsx`+`calendar-date-select.css`, `CalendarHeader.jsx`(바닐라 벨 path + listbox).
+- **테스트**: `App.test.js`가 open/`aria-hidden`/class 및 정비·주유·기타 전환 Assert. `inlineSheetCss.test.js`가 max-height:0 회귀 금지 및 `grid-template-rows: min-content`. `CalendarPage.test.js` listbox. `npm test` 448 pass / 0 fail (2026-08-29).
+- **실제 브라우저 검증 결과** (`npm run dev`, Chromium, 로그인 세션 `c47a1cca-…`, 폭 390):
+  - `http://localhost:5173/app/day/2026-08-29`: 콜 시트 열림, `#callLoadLoc` 높이 44·`visibility:visible`. 저장 후 owner workData에 `상차검증`.
+  - `http://localhost:5173/app/day/2026-08-16`: 정비 시트 열림·입력(`정비검증P0` / 12,345)·저장. 저장 버튼은 `scrollIntoView` 후 네비와 겹치지 않음(`overlap:false`). 목록·`reactPracticeExpenses`에 반영. `/app` 즉시 이탈 후 재진입·캐시 무시 재진입 후에도 목록·LS 유지. 콜 시트 열기→취소 후 폼·`is-visible` 해제.
+  - 정비/주유/기타 전환 및 콜↔비용 상호배제는 이전 세션에서 a11y 트리로 확인.
+- **라이트/다크 스크린샷**: 시각 패리티는 아래 연기 절. 기능 확인용 샷은 390 라이트 달력·콜 시트.
+- **검증하지 못한 항목**: 거래처·차량 추가·수정·번호변경·삭제·재로그인 hydrate·서버 중복/부활 부재. 주유·기타 **저장** 경로. 동기화(서버 round-trip) 후 유지. 브라우저 콘솔/React 경고 수집. 하드 새로고침은 `Page.reload`가 탭을 잃어 `navigate`로 동일 URL을 다시 연 것으로 대체했다.
+
+#### 사용자 승인 — 시각 패리티 연기 (2026-08-29, `[~]` 유지)
+
+사용자가 이관 완료 후 UI 보완 단계로 연기 승인했다. 미구현을 임의로 알려진 한계로 처리한 것이 아니다.
+
+**이번 Step 7에서 계속 막는 항목**: 글자·입력 겹침으로 값을 넣거나 읽을 수 없는 P0, `/app/day/:date` 콜·정비/주유/기타 인라인 시트가 실제 브라우저에서 안 열리는 결함, 입력·수정·삭제 데이터의 Store/localStorage/durable journal·tombstone·새로고침·재진입·동기화 유지, 열림 이후에도 입력·저장·닫기·상호배제가 불가능한 기능·접근성 결함, 색·레이아웃 때문에 텍스트·버튼·입력란이 안 보이거나 클릭할 수 없는 문제.
+
+**연기(사용자 승인)**: 폰트 굵기·세부 크기, 여백·간격·픽셀 단위 정렬, 기능에 영향 없는 아이콘 색·모양, 달력 select 커스텀 드롭다운 외형 및 표시 개수, 바닐라와의 순수한 시각적 패리티.
+
+**상태**: Step 7 `[~]`. commit/push/`[x]`/Step 8 금지.
+
+#### 사용자 재감사 FAIL — persist 스키마 런타임·initialize 불변·sync spy·시트 DOM (2026-08-30, `[~]` 유지)
+
+승인 전 commit/push/`[x]`/Step 8은 하지 않는다.
+
+1. **도메인 런타임 검증**: `matchesDomainSchema`를 cars/clients/settings/expenses/invoices/drivers/profile/workDataDeletedDates(+workData) 검증기로 교체. required·중첩·enum·유한 숫자·허용 키. `{}` 항목과 내부 extra/enum/NaN은 `kind:'schema'`. JSDoc 정본(`CarLike`/`ClientLike`/`FinanceSettings`/`ExpenseItem`/`InvoiceLike`/`DriverRecord`/`LocalProfile`/`DayRecordLike`)과 맞춤.
+2. **DayRecord**: 허용 키만. 횟수는 음이 아닌 정수, `fare`/`fixedFare`/`totalFare`·콜 운임은 `isValidCurrencyAmount`. 정본은 런타임 — `fixedCount`/`palletCount`/`count`는 `number`, 운임만 `number|string`(통화 금액). 빈 `{}` 하루 기록은 schema.
+3. **테스트**: `initializeOwnerFromPersist`에 cars `[{}]`와 workData `{date:{}}`를 넣고 Store/workLogs/cars·clients LS 원문/journal/outbox/tombstone/pending inspect(callback 포함)/unsafe/notify/scheduleCloudSync/Supabase를 실패 전후 동일하게 Assert. 차량 sync spy는 로컬 삭제(sync 1, API 0), 원격 성공(sync 0, delete 6), retryable(sync 0, delete 4), persist/remove 실패(sync 0, 메서드별 0).
+4. **InlineSheet**: `scrollIntoView`/`useLayoutEffect` 제거. CSS `grid-template-rows: min-content` + `scroll-margin-bottom`만. 소스에 직접 DOM 조작 없음 Assert. (메서드 가드는 호출을 남기지 않기로 해서 불필요.)
+5. **게이트**: `npm test` 456 pass / 0 fail. `typecheck` 0. `typecheck:strict-inventory` 전체 926 / 테스트·지원 **355** / 나머지 571(직전 기준 355 이하. 신규 테스트 진단을 stub `Record<StubMethod,number>`로 줄였고, 프로덕션 감소로 테스트 증가를 상쇄했다고 주장하지 않음). `build` 통과. `lint` 기존 exhaustive-deps 4. `git diff --check` LF/CRLF만. NUL 0. 금지 타입 선언 0. 이번 라운드 신규·수정 프로덕션 JS는 200줄 이하.
+6. **되돌려서 확인**: cars `hasOnlyKeys` 제거 → persist extra-key가 `'value' !== 'schema'`로 실패. `.call-detail-inline-host { max-height:0 }` 삽입 → inlineSheetCss 실패. 둘 다 복원 후 24/24 통과.
+7. **Chromium 390px**: `/app/day/2026-08-30`에서 콜(`상차스키마`/`하차스키마`/10,000)·정비(`정비스키마P0`/12,345)·주유(50,000)·기타(`기타스키마P0`/3,000) 저장 후 `location.reload()`. 화면 텍스트와 workData/expenses localStorage에 네 값이 모두 남음.
+
+**상태**: Step 7 `[~]`. commit/push/`[x]`/Step 8 금지.
+
+#### 사용자 재감사 FAIL — persist 검증기가 정상 레거시·hydrate 산출물을 거절 (2026-08-30, `[~]` 유지)
+
+승인 전 commit/push/`[x]`/Step 8은 하지 않는다.
+
+**FAIL (실측)**: 직전 라운드 런타임 검증기가 (1) persisted workData 콜에 durable과 같이 `id`를 강제해 id 없는 레거시 콜을 `kind:'schema'`로 거절하고, (2) `mergeCarsFromRows`가 `settlementMode:null`/`commType:null`을 만들어 CarLike 문자열 계약과 불일치하며, (3) hydrate·바닐라 `fuelItems`/`maintItems`/`miscItems`를 DayRecord extra-key로 거절했다. `initializeOwnerFromPersist`가 이 값들을 로드하지 못해 `useDayDraft`→`backfillCallDetailIds`에 도달하지 못했다.
+
+**수정**
+1. `callDetailSchema.js`: persisted용 `isPersistedCallDetail`(id 선택, 빈 `{}`·빈 id·extra key 거부)와 durable용 `isValidCallDetail`(비어 있지 않은 id 필수)를 분리. `persistDayRecord.js`의 콜 배열은 persisted 검증기만 쓴다.
+2. `hydrateMergeCars.js`: 최소 row에서 `settlementMode`는 비어 있지 않은 문자열 아니면 `'default'`, `commType`은 `'direct'`만 direct 그 외 `'percent'`. persist `isPersistedCar`는 null을 허용하지 않는다.
+3. DayRecord 허용 키에 세 임베드 배열을 두고 `persistDayRecordLegacy.js`가 알려진 레거시 키만 검증·보존. hydrate는 `pushLegacyEmbedded`로 같은 키만 넣는다. expenses로 조용히 이관하거나 중복 생성하지 않는다.
+4. `owner-state.schemaFail.test.js`: journal/outbox+tombstone/durable pending/fallback/callback/unsafe와 다른 owner·서브 로그를 비어 있지 않게 seed. cars `[{}]`와 workData `{date:{}}` 실패 전후 Store/workLogs/원문/journal/outbox/pending 계층/callback/unsafe/notify/`scheduleCloudSync`/Supabase 메서드별 횟수를 비교하고, workData 실패에서도 carsRaw/clientsRaw를 비교. callback은 실패 중 0회, 정상 `retryPendingDayWrites`에서 정확히 1회.
+
+**되돌려서 확인 (수정 후 통과)**
+- persist 콜을 `isValidCallDetail`로 되돌림 → `legacy-call`이 `'schema' !== 'value'`.
+- hydrate producer를 `settlementMode/commType: null`로 되돌림 → 문자열 기본값 Assert 실패, persist `kind`가 `'schema' !== 'value'`.
+- DayRecord에서 임베드 키·검증 제거 → `vanilla-exp`와 hydrate 왕복이 `'schema' !== 'value'`.
+- 빈 `{}` DayRecord·`fuelItems:[{}]` 허용으로 느슨하게 함 → `'value' !== 'schema'`.
+모두 복원 후 통과.
+
+**게이트**: `npm test` **461** pass / 0 fail. `typecheck` 0. `typecheck:strict-inventory` 전체 **925** / 테스트·지원 **354** / 나머지 571(직전 보고 355 이하). `build` 통과. `lint` 기존 exhaustive-deps 4. `git diff --check` LF/CRLF만. NUL 0. 이번 라운드 신규·수정 프로덕션 JS는 200줄 이하.
+
+**Chromium 390px**: `/app/day/2026-08-31`에서 콜(`상차스키마P0`/`하차스키마P0`/10,000)·정비(`정비스키마P0`/12,345)·주유(50,000)·기타(`기타스키마P0`/3,000) 저장 후 `location.reload()`. 화면 텍스트와 `reactPracticeWorkData`/`reactPracticeExpenses` localStorage에 네 값이 모두 남음. innerWidth 390.
+
+**상태**: Step 7 `[~]`. commit/push/`[x]`/Step 8 금지.
+
+#### 사용자 재감사 FAIL — producer 왕복·바닐라 검증 분할·레거시 콜 initialize·390px 저장 가림 (2026-08-30, `[~]` 유지)
+
+승인 전 commit/push/`[x]`/Step 8은 하지 않는다.
+
+**FAIL (지침)**: persist 검증기가 PersonalInfo/계산서 producer 전체 필드·바닐라 DayRecord(`off`/dailyDistance/insuranceFee/종류별 비용)와 어긋나고, enum에 `bogus`가 통과할 수 있으며, id 없는 레거시 콜 통합 테스트가 `commitWorkData`로 initialize를 우회했고, 390px에서 비용 시트 저장 버튼이 고정 nav와 겹쳐 hit-test가 NAV였다.
+
+**수정**
+1. `PROFILE_KEYS`/`LocalProfile`를 `emptyProfile`+PersonalInfoPage(`bizRepresentative`,`accountHolder`)와 맞춤. `INVOICE_KEYS`를 `saveDraft`/`changeStatus`/`buildTaxInvoiceEntry`/`persistInvoiceRecord` 산출(중첩 `supplierBiz`, `supplierKey`, purchase 금액 필드, flow/status/partyType enum)과 맞춤. `saveProfile`·draft/issued 저장 → Store wipe → `initializeOwnerFromPersist` 왕복: `kind:'value'`, cars/profile/invoices/`supabaseId` 복원, LS/journal/outbox/pending/unsafe 불변, sync/API 0, notify 1.
+2. 레거시 `'off'`는 `canonicalizeDayRecord` 후 검증. `dailyDistance`·`insuranceFee` 금액 검증. fuel/maint/misc 종류별 허용 키·필수 조합(fuel name-only, maint cost-only, misc id-only는 schema). hydrate extra key는 `pickLegacyEmbedded`로 버리지 않고 병합 전체 throw. schema 실패 initialize는 Store/workLogs/원문/journal/outbox/tombstone/durable/fallback/callback/unsafe/notify/sync/API 불변.
+3. 차량 `settlementMode` default/company/driver_direct/employee/none, `commType` percent/direct, `infoType` existing/new, 거래처 `paymentTerm`, 설정 settlement/invoice basis, 계산서 flow/status. `'bogus'` 회귀.
+4. `App.legacyCallInit.test.js`: LS에 id 없는 콜 seed, Store wipe 후 `initializeOwnerFromPersist`, 첫 mount persist/notify/schedule 1회, remount 0회.
+5. CSS만: `.work-log-page`를 `100dvh`+`overflow-y:auto` 스크롤포트로 두고 sticky action `bottom: 4.75rem+safe-area`, `scroll-padding-bottom`. 프로덕션 JS `scrollIntoView`/DOM/`max-height` 패널 트릭/`InlineExpandHost` 없음.
+
+**되돌려서 확인**: `isPersistedCallDetail`에 id 필수를 넣으면 `App.legacyCallInit.test.js`가 `typeof firstId` `'undefined' !== 'string'`으로 실패. 복원 후 통과.
+
+**게이트**: `npm test` **466** pass / 0 fail. `typecheck` 0. `typecheck:strict-inventory` 전체 **926** / 테스트·지원 **355** / 나머지 571(`error TS\d+:` 시작 줄만). `build` 통과. `lint` 기존 exhaustive-deps 4. `git diff --check` LF/CRLF만.
+
+**Chromium 390×844**: `/app/day/2026-08-30` 콜 시트 연 뒤 주유 시트, 마지막 입력(누적거리) 포커스. 저장 rect 692.57~739.71, nav 773.29~844.00, 비중첩. `elementFromPoint(저장 중앙)===저장`. innerWidth 390.
+
+**상태**: Step 7 `[~]`. commit/push/`[x]`/Step 8 금지.
+
+#### 슬라이스 완료 조건 (범위 이월 금지)
+
+- 거래처: Store 구독, 폼 draft만 로컬. 고정노선 계정당 1곳(같은 원자적 커밋). id/supabaseId 보존. 핀 교차 드래그 거부. 허용 드래그 persist·새로고침·hydrate 유지.
+- 차량: 모듈 ≤200줄. 메인 1대, 번호 중복 거부, 폼에 없는 필드·supabaseId 보존. 서브 번호 변경 시 로컬 로그 키 이동 all-or-nothing + 활성 `logId` 라우트 replace. 추가 직후 실제 차량번호로 오늘 일지 진입(임시 번호/인덱스 금지).
+- 서브 로그 **로컬** 저장·새로고침·번호 변경은 Step 7 완료. 서브 `daily_logs` 동기화는 `syncWorkData.js`가 메인만 쓰므로 Step 9 N/A.
+- 순수 함수만으로 UI 완료 주장 금지. React 핸들러→Store/localStorage/라우트 통합 테스트 + 핵심 회귀 revert-and-confirm-fail.
 
 ### [ ] Step 8 — 매출 / 미수 / 세금계산서 (슬라이스 6)
 
@@ -1551,14 +1705,14 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 
 ~~다음 구현은 이 문서 Step 1부터, 코드를 고치지 않은 채 합의한 뒤 진행하면 기존 React 화면을 한 번에 박살 내지 않고 슬라이스할 수 있다.~~ **(낡음 — 아래 5-1절이 실제 진행 상황이다.)**
 
-## 5-1. 현재 결론 (Step 6 사용자 최종 승인, 2026-08-29 — **최신 상태는 이 절을 보라. 위 0-1절은 Step 4 완료 시점의 과거 스냅샷이다**)
+## 5-1. 현재 결론 (Step 7 진행 중, 2026-08-29 — **최신 상태는 이 절을 보라. 위 0-1절은 Step 4 완료 시점의 과거 스냅샷이다**)
 
 위 결론이 지목한 문제는 이제 대부분 해소됐다:
 
 - **`App.jsx` 스위치** → Step 3에서 라우터 트리로 교체 완료. 옛 `App.jsx`는 삭제됐다.
 - **`cloudSync.js` 전역 `let`** → 완전히 없애지는 않았다(`cloudSession.js`에 `cloudUserId`/`cloudOwnerKey`/`sessionEpoch` 모듈 전역이 여전히 있다). 대신 그 전역이 만들던 실제 사고(hydrate 실패가 "완료"로 보이던 것, 부분 반영, dirty 유실, 로그아웃 후 stale hydrate 적용, 그리고 이번 3차에서 새로 막은 "빈 날 삭제가 클라우드에 전파 안 됨"·"durable 큐가 사실 durable이 아님")를 상태기계·durable journal·single-flight·atomicPersist·tombstone으로 하나씩 막았다 — "전역을 없앤다"가 아니라 "전역이 있어도 안전하게" 쪽으로 결론이 바뀌었다. `api/`로의 실제 폴더 분해는 여전히 안 했다(Step 9 즈음 판단).
-- **페이지 스냅샷** → **Step 5에서 해소되고 Step 6에서 마무리됐다.** `CalendarPage.jsx`/`MainPageRoute.jsx`(일지 입력)에 이어, Step 6 재감사 3차에서 `CalendarPage.jsx`의 `clients`도 `loadClients` 직접 호출 대신 `useOwnerClients`(store 구독)로 바꿨다 — `migration-plan.md` 1.3이 금지한 "페이지가 자기만의 스냅샷을 갖는" 패턴은 이제 이 앱의 어떤 화면에도 없다.
+- **페이지 스냅샷** → Step 5~6에서 달력/일지는 store 구독으로 바뀌었다. **거래처/차량 관리는 Step 7 착수 시점까지 `loadClients`/`loadCars` 로컬 `useState`가 남아 있었고, Step 7이 그 화면을 store 구독으로 바꾼다.**
 - **메인 로그 단일 구조 + 콜 인덱스 + 비용 이중 저장** → 콜상세 `id`는 Step 6에서 영구화됐다(`backfillCallDetailIds`). 비용은 여전히 `expenses` 스토어가 정본이고(Step 6에서 그렇게 확정) day record와의 "이중 저장"은 의도적으로 유지 중이다(파일 상단 주석에 이유 기록). 서브 차량 로그 구조·payments/미수 키의 배열 인덱스 의존성은 Step 7/8 몫으로 여전히 남는다.
 - **`WorkLogPage.jsx`/`InlineExpandHost`** → **Step 6에서 완전히 삭제되고 `src/components/day-log/`로 교체됐다.** 두 파일 다 저장소에 더 이상 존재하지 않는다(`find`로 재확인).
 
-남은 진짜 결론: **상태 경계 문제는 스토어 껍데기(Step 1)와 hydrate/동기화 신뢰성(감사 보완 1~4차)에서 해소됐고, 화면이 그 스토어를 실제로 구독하는 지점도 Step 5~6에서 전부 깼다.** Step 6은 1차 구현부터 재감사 17차까지를 거친 뒤 **2026-08-29 사용자 최종 승인으로 `[x]`가 됐다.** 검증 통과와 `[x]` 확정을 분리해 온 원칙은 지켰고, 이번이 그 승인이다. **Step 7은 아직 착수하지 않는다.** 실제 클라우드 삭제 흐름은 3차에서 로그인 브라우저로 검증했고 4~17차는 그 부분을 건드리지 않았다. 다음 구현은 승인 후에 Step 7(거래처/차량)부터다.
+남은 진짜 결론: Step 6은 2026-08-29 사용자 최종 승인으로 `[x]`다. **지금 진행 중인 구현은 Step 7(거래처/차량)이며 체크리스트는 `[~]`다.** 사용자 재감사 FAIL(서버 ID 덮어쓰기, pending 미이관, 도달 불가 라우트 검사, `readLogWorkData`의 `{}` 흡수)을 이 라운드에서 고쳤다. 사용자 승인 전 commit/push/`[x]`/Step 8은 하지 않는다.
