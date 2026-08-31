@@ -1,21 +1,51 @@
+# Agent handbook
+
+React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakeet`)에만 둔다.
+**매번 이 파일만 읽는다.** `docs/`는 아래 표에 해당할 때만 연다.
+루트에 보고 `.md`를 추가하지 마라. 푸시는 보리 지시 전 하지 마라.
+이 파일의 작업 원칙은 보리 승인 없이 축약·삭제하지 마라.
+
+## When to read what
+
+| File | When |
+|---|---|
+| `AGENTS.md` | Every session — working rules |
+| `docs/sot.md` | Domain source-of-truth work (구 `단일진실원.md`) |
+| `docs/audit.md` | Step checkboxes and re-audit log (구 `migration-audit-plan.md`) |
+| `docs/plan.md` | Target architecture (구 `migration-plan.md`) |
+| `docs/research.md` | Vanilla inventory (구 `migration-research.md`) |
+
+Conflict order: 보리 latest instruction → this file → `docs/audit.md` current Step → `docs/plan.md` → `docs/research.md`.
+
+Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진실원.md`. Use the table.
+
+## Current (2026-08-31)
+
+- Step 7 `[x]`. Step 8 only after 보리 start instruction.
+- SoT detail: `docs/sot.md`
+- Latest audit notes: `docs/audit.md` §5-7
+
+---
+
 # 작업 원칙 및 필수 준수사항 — 최적화 통합본
 
 > 이 문서는 모든 이전 작업 원칙을 대체한다.
 > Step 0부터 최종 완료까지 영구 적용한다.
 > 사용자의 최신 명시적 작업 지시가 이 문서보다 우선한다. 단, 이 문서 자체의 편집 권한은 아래 제한을 따른다.
-> 작업자(Cursor, Claude Code CLI 및 기타 구현 AI)는 이 문서를 수정·축약·삭제할 수 없다.
-> 감독관 역할의 OpenAI Codex(GPT)만 사용자의 명시적 승인을 받은 경우에 한해 이 문서를 수정·축약·삭제할 수 있다.
+> 작업자(Cursor, Claude Code CLI 및 기타 구현 AI)는 이 파일의 작업 원칙을 수정·축약·삭제할 수 없다. `docs/sot.md`·`docs/audit.md`에 사실을 이어 쓰는 것은 허용한다.
+> 감독관 역할의 OpenAI Codex(GPT)만 사용자의 명시적 승인을 받은 경우에 한해 작업 원칙을 수정·축약·삭제할 수 있다.
+> 2026-08-31 보리: 보고는 짧은 `AGENTS.md` + `docs/` 전문. 루트에 보고 md를 새로 만들지 마라.
 
 ## 0. 새 작업 시작 전 필수 절차
 
-작업을 시작하기 전에 다음 문서를 처음부터 끝까지 모두 읽어라.
+작업을 시작하기 전에 `AGENTS.md`(이 파일)를 읽어라. 아래 표에 해당하는 `docs/`만 추가로 읽어라. 4000줄 한 파일을 매번 다 읽지 마라.
 
-1. `migration-research.md`
-2. `migration-plan.md`
-3. `migration-audit-plan.md`
-4. `WORKING-RULES.md`
+1. `AGENTS.md` — 매번 (작업 원칙)
+2. `docs/sot.md` — 도메인 단일 진실원 작업 때
+3. `docs/audit.md` — Step 상태·재감사 기록 때
+4. `docs/plan.md` / `docs/research.md` — 이관 설계가 필요할 때
 
-문서 내용이 충돌하면 `사용자의 최신 명시적 지시` → `WORKING-RULES.md` → `migration-audit-plan.md`의 현재 Step → `migration-plan.md` → `migration-research.md` 순서로 적용하라.
+문서 내용이 충돌하면 `사용자의 최신 명시적 지시` → `AGENTS.md` → `docs/audit.md`의 현재 Step → `docs/plan.md` → `docs/research.md` 순서로 적용하라.
 문서를 읽은 뒤 현재 Step 상태, 두 저장소의 HEAD, `git status`, 기존 미커밋 변경 범위를 한국어로 먼저 보고하라.
 기존 미커밋 작업을 임의로 되돌리거나 덮어쓰지 마라.
 
@@ -67,7 +97,7 @@
 
 ## 1. 계획 상태 계약 및 작업 완료 판정
 
-- migration-audit-plan.md 상태 계약:
+- `docs/audit.md` 상태 계약:
   - [ ]: 미착수
   - [~]: 구현 중, 자체 검증 중, 사용자 재감사 대기, 보완 필요 (결함 발견 시 즉시 복귀)
   - [x]: 모든 검증 통과 후 사용자가 최종 승인한 상태 (자의적 확정 절대 금지)
@@ -268,5 +298,5 @@
 8. 브라우저 검증 내역: 실제 검증 항목 및 미검증 항목 구분
 9. 남은 알려진 한계
 10. Revert-and-confirm-fail 검증 결과
-11. 상태 확인: 승인 전 commit/push 미실행 확인, 미커밋 작업 트리 보존 확인, migration-audit-plan.md의 [~] 유지 확인
+11. 상태 확인: 승인 전 commit/push 미실행 확인, 미커밋 작업 트리 보존 확인, `docs/audit.md`의 [~] 유지 확인
 12. 상태 계약 준수 확인: 사용자 승인 전에는 Step 상태를 [~]로 유지했는지 확인. 사용자가 승인한 뒤에만 [x]로 변경하고 커밋할 수 있다.

@@ -1,6 +1,6 @@
 # ubiquitous-parakeet React 이관 계획
 
-기준 문서: `migration-research.md`. 이 계획은 바닐라 함수를 JSX로 옮기는 번역이 아니라, **같은 도메인 규칙·같은 저장소 계약**을 **선언형 UI + 명시적 스토어**로 다시 짜는 설계다.
+기준 문서: `docs/research.md` (구 `migration-research.md`). 이 계획은 바닐라 함수를 JSX로 옮기는 번역이 아니라, **같은 도메인 규칙·같은 저장소 계약**을 **선언형 UI + 명시적 스토어**로 다시 짜는 설계다.
 
 금지: `getElementById`, `innerHTML`, `classList`, `appendChild`로 모달 옮기기, `window.foo` + HTML `onclick`, `appState`와 `let` 이중 소스, 배열 인덱스를 식별자로 쓰기.
 
