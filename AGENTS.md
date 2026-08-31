@@ -1,23 +1,9 @@
 # Agent handbook
 
 React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakeet`)에만 둔다.
-**매번 이 파일만 읽는다.** `docs/`는 아래 표에 해당할 때만 연다.
+매번 `AGENTS.md`만 읽는다. `docs/`는 아래 0절 표에 해당할 때만 연다.
 루트에 보고 `.md`를 추가하지 마라. 푸시는 보리 지시 전 하지 마라.
 이 파일의 작업 원칙은 사용자(보리) 승인 없이 축약·삭제하지 마라.
-
-## When to read what
-
-| File | When |
-|---|---|
-| `AGENTS.md` | Every session — working rules |
-| `docs/sot.md` | Domain source-of-truth work (구 `단일진실원.md`) |
-| `docs/audit.md` | Step checkboxes and re-audit log (구 `migration-audit-plan.md`) |
-| `docs/plan.md` | Target architecture (구 `migration-plan.md`) |
-| `docs/research.md` | Vanilla inventory (구 `migration-research.md`) |
-
-Conflict order: 보리 latest instruction → this file → `docs/audit.md` current Step → `docs/plan.md` → `docs/research.md`.
-
-Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진실원.md`. Use the table.
 
 ## Current (2026-08-31)
 
@@ -36,18 +22,22 @@ Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진�
 > 사용자의 명시적 승인을 받은 경우에 한해 작업 원칙을 수정·축약·삭제할 수 있다.
 > 2026-08-31 보리: 보고는 짧은 `AGENTS.md` + `docs/` 전문. 루트에 보고 md를 새로 만들지 마라.
 
-## 0. 새 작업 시작 전 필수 절차
+## 0. 새 작업 시작 전 필수 절차 (When to read what & SoT)
 
 작업을 시작하기 전에 `AGENTS.md`(이 파일)를 읽어라. 아래 표에 해당하는 `docs/`만 추가로 읽어라. 4000줄 한 파일을 매번 다 읽지 마라.
 
-1. `AGENTS.md` — 매번 (작업 원칙)
-2. `docs/sot.md` — 도메인 단일 진실원 작업 때
-3. `docs/audit.md` — Step 상태·재감사 기록 때
-4. `docs/plan.md` / `docs/research.md` — 이관 설계가 필요할 때
+| File | When |
+|---|---|
+| `AGENTS.md` | 매 세션 필수 — 작업 원칙 및 통제 규격 |
+| `docs/sot.md` | 도메인 단일 진실원 작업 시 (구 `단일진실원.md`) |
+| `docs/audit.md` | Step 상태 확인 및 재감사 기록 시 (구 `migration-audit-plan.md`) |
+| `docs/plan.md` | 대상 아키텍처 및 이관 설계 확인 시 (구 `migration-plan.md`) |
+| `docs/research.md` | 바닐라 인벤토리 확인 시 (구 `migration-research.md`) |
 
-문서 내용이 충돌하면 `사용자의 최신 명시적 지시` → `AGENTS.md` → `docs/audit.md`의 현재 Step → `docs/plan.md` → `docs/research.md` 순서로 적용하라.
-문서를 읽은 뒤 현재 Step 상태, 두 저장소의 HEAD, `git status`, 기존 미커밋 변경 범위를 한국어로 먼저 보고하라.
-기존 미커밋 작업을 임의로 되돌리거나 덮어쓰지 마라.
+- 충돌 해결 우선순위 (Conflict Order):
+  `사용자의 최신 명시적 지시` → `AGENTS.md` → `docs/audit.md`의 현재 Step → `docs/plan.md` → `docs/research.md`
+- 시작 전 상태 보고:
+  문서를 읽은 뒤 현재 Step 상태, 두 저장소의 HEAD, `git status`, 기존 미커밋 변경 범위를 한국어로 먼저 보고하라. 기존 미커밋 작업을 임의로 되돌리거나 덮어쓰지 마라.
 
 ---
 
@@ -98,12 +88,12 @@ Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진�
 ## 1. 계획 상태 계약 및 작업 완료 판정
 
 - `docs/audit.md` 상태 계약:
-  - [ ]: 미착수
-  - [~]: 구현 중, 자체 검증 중, 사용자 재감사 대기, 보완 필요 (결함 발견 시 즉시 복귀)
-  - [x]: 모든 검증 통과 후 사용자가 최종 승인한 상태 (자의적 확정 절대 금지)
-- 완료 판정 금지 규칙 (알려진 한계 금지):
-  - 요구사항 중 미충족,미구현된 항목을 “알려진 한계”, “후속 Step 범위”, “의도적 제외”로 기록,문서화하며 작업을 완료 [x] 처리 금지.
-  -미충족 항목이나 예외 케이스가 단 1개라도 남아 있다면 [x] 표시, 완료 보고, git commit, 다음 Step 착수를 전면 금지하며, 반드시 미완료 상태 [~] 를 유지한 채 남아 있는 문제점을 투명하게 보고해야 한다. (범위 조정은 사전 사용자 승인 필수)
+  - `[ ]`: 미착수
+  - `[~]`: 구현 중, 자체 검증 중, 사용자 재감사 대기, 보완 필요 (결함 발견 시 즉시 복귀)
+  - `[x]`: 모든 검증 통과 후 사용자가 최종 승인한 상태 (자의적 확정 절대 금지)
+- 완료 판정 금지 규칙:
+  - 요구사항 중 미충족·미구현된 항목이나 예외 케이스가 단 1개라도 남아 있다면 `[x]` 표시, 완료 보고, git commit, 다음 Step 착수를 전면 금지하며, 반드시 미완료 상태 `[~]`를 유지한 채 남아 있는 문제점을 투명하게 보고해야 한다.
+  - 사용자가 사전에 서면으로 승인한 **"사용자 승인된 의도적 제외 항목(Explicit Out-of-Scope)"** 외의 모든 미구현/결함은 미완료 상태로 간주한다.
   - 방어 코드가 함수 내부에 존재한다는 사실만으로 완료 판정 금지 (실제 UI 전체 호출 경로 검증 필수).
 
 ---
@@ -127,19 +117,21 @@ Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진�
      - DDL/DML 실행 전, 스키마 상태(컬럼 데이터 타입, PK/FK 제약조건, 인덱스, 기존 RLS 정책)를 안전하게 조회하는 `SELECT` 쿼리를 작성하여 사용자에게 먼저 전달한다.
      - 사용자가 SQL Editor에서 조회한 결과 텍스트나 캡처를 회신할 때까지 마이그레이션 본 파일 실행 안내를 전면 차단한다.
   2. [2단계: 스키마 확정 및 멱등성(Idempotency) 검증]
-     - 사용자가 회신한 실제 DB 스키마 결과를 바탕으로 타입을 확정한다(추측/가정 기반 작성 금지).
+     - 사용자가 회신한 실제 DB 스키마 결과를 바탕으로 타입을 확정한다 (추측/가정 기반 작성 금지).
      - 모든 SQL 스크립트는 `IF EXISTS` / `IF NOT EXISTS`, 트랜잭션 블록(`BEGIN ... COMMIT;`)을 포함해 여러 번 실행해도 안전한 멱등성을 갖추어야 한다.
   3. [3단계: 수정 불필요한 단일 확정 실행문 제공]
      - 사용자가 복사해서 붙여넣기만 하면 되는 완전한 형태의 SQL 스크립트를 제공한다 (플레이스홀더, 사용자 수정 필요 주석 포함 금지).
   4. [4단계: 사후 검증(Post-check) 쿼리 제공]
      - 마이그레이션 실행 후 반영 여부를 즉시 검증할 수 있는 `SELECT` 검증 쿼리와 기대 출력값을 함께 제공한다.
 
----     
+---
 
 ## 3. 파일 크기 및 모듈 분리 규격 (200줄 제한)
 
 - 프로덕션 코드: 수정/생성된 모든 파일(컴포넌트, 훅, 스토어, 서비스, domain, 유틸 등)은 주석·빈 줄 포함 200줄 이하 엄수.
-- 레거시 파일 처리: 기존 200줄 초과 파일 수정 시, 변경 책임을 200줄 이하의 독립 모듈로 분리. (전체 분리가 범위를 크게 초과할 경우 사전 승인 요청)
+- 레거시 200줄 초과 파일 수정 선행 승인제:
+  - 기존 200줄 초과 파일을 수정해야 할 경우, 임의로 코드를 수정하거나 기계적으로 분할하지 마라.
+  - 코드 수정 착수 전 **'분리 설계안(책임 경계, 신규 모듈 구조, 의존성 흐름)'**을 작성하여 사용자에게 선행 보고하고 명시적 승인을 받은 후에만 작업을 진행하라.
 - 테스트 파일 예외: 실패 매트릭스/회귀 검증을 위해 200줄 제한 예외 인정. 단, 공통 fixture/mock/builder는 테스트 헬퍼로 분리.
 - 편법 금지: 다중 문장 한 줄 병합, 주석/검증/에러처리 임의 삭제, 무의미한 기계적 파일 분할 금지 (책임 및 도메인 경계 기준 분리).
 
@@ -169,8 +161,8 @@ Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진�
 
 ## 5. Atomic 로컬 트랜잭션 & 상태 보존
 
-> **0-1절과의 관계:** 아래에 적힌 durable / tombstone / fallback 등은 **이미 도입된
-> 계약의 검증 기준**이다. 감사 FAIL을 이유로 동일·유사 레이어를 **새로** 만들거나
+> 0-1절과의 관계: 아래에 적힌 durable / tombstone / fallback 등은 이미 도입된
+> 계약의 검증 기준이다. 감사 FAIL을 이유로 동일·유사 레이어를 새로 만들거나
 > 다른 도메인에 복제하려면 0-1절에 따라 사용자에게 먼저 묻고 승인을 받아야 한다.
 
 - 원자적 검증 대상 (단일 논리 단위):
@@ -266,17 +258,17 @@ Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진�
 - 기존 코드/테스트 보존: 유효한 코드/테스트 임의 삭제·축약 금지. 부실한 테스트는 실제 API 응답 형태({ data: null, error } 등)를 반영해 보강.
 - 테스트 격리: 실행 순서 및 이전 mock/스토리지 의존 금지. 개별 fixture 사용 및 종료 시 timer/listener/mock/storage 완벽 cleanup.
 - UI 및 상태 직접 검출력:
-  -테스트 작성 시 내부 private 변수나 Map을 직접 조작하지 말고 실제 UI 호출 경로를 통해 실행하며, 테스트 이름이 주장하는 Store/localStorage/journal/API/UI 상태를 Assert가 직접 검사해야 한다.
+  - 테스트 작성 시 내부 private 변수나 Map을 직접 조작하지 말고 실제 UI 호출 경로를 통해 실행하며, 테스트 이름이 주장하는 Store/localStorage/journal/API/UI 상태를 Assert가 직접 검사해야 한다.
   - 실제 UI 호출부 안전성을 순수 함수 테스트만으로 완료 주장하지 마라. React 이벤트 핸들러부터 최종 상태까지의 컴포넌트 또는 통합 테스트를 유지하라.
 - Revert-and-confirm-fail (테스트 진실성 검증): 
-  - 새로 작성한 테스트가 유효한지 증명하기 위해, 관련 버그 수정 코드를 임시로 되돌렸을 때 테스트가 실제로 FAIL하는지 확인한 로그를 보고서에 반드시 첨부하라.
+  - 새로 작성한 테스트가 유효한지 증명하기 위해, 관련 버그 수정 코드를 임시로 되돌렸을 때 테스트가 실제로 FAIL하는지 확인하고, 실제 CLI에서 실행된 테스트 FAIL 전체 원문 로그(종료 코드, 실패한 Assert 라인, 실행 시간 포함)를 마크다운 코드 블록으로 보고서에 반드시 첨부하라 (가상 시뮬레이션/임의 요약 작성 절대 금지).
 - Clean Run 필수 및 console spy 제약:
   - React act(...) 경고 0건, unhandled rejection 0건, 비동기 누출 0건, 미예상 console.error 0건, open timer/listener 0건.
   - 예상 console.error를 spy로 캡처할 때 React act 경고나 다른 예상하지 않은 오류까지 숨기면 안 된다. 예상 메시지만 정확히 Assert하고 나머지는 원래 console.error로 전달하거나 테스트를 실패시켜라 (전역 억제/문자열 필터링 금지).
 
 ---
 
-## 11. 커밋 전 Red-Team 교차검증 (14대 체크리스트)
+## 11. 커밋 전 Red-Team 교차검증 (15대 체크리스트)
 
 > 아래 질문에 대해 코드 위치와 테스트 이름을 명시하여 답할 수 있어야 한다.
 
@@ -291,37 +283,59 @@ Code comments may still say `WORKING-RULES.md` / `migration-*.md` / `단일진�
 9. 서버에만 남은 삭제 대상이 다음 hydrate 시 부활할 가능성이 있는가?
 10. stale durable 값이 최신 Store 값을 덮어쓸 가능성이 있는가?
 11. pending count가 owner/date 논리 키 기준으로 정확히 계산되는가?
-12. 현재 남아있는 알려진 한계 중 이번 요구사항을 위반하는 항목이 있는가?
+12. 현재 남아있는 "사용자 승인된 의도적 제외 항목(Explicit Out-of-Scope)" 외에 요구사항을 위반하는 미완료 결함이 없는가?
 13. 신규 테스트로 인해 strict-inventory 진단 수가 증가하지 않았는가?
 14. 모든 수정/생성 프로덕션 파일이 실제 typecheck 대상에 포함되어 있는가?
+15. **[DB 변경 작업 시에만 필수]** DB 스키마/마이그레이션 작업 시 읽기 전용 진단 쿼리를 통해 실제 타입을 확정하고 멱등한 실행문을 제공했는가? (Non-DB 작업 시 생략)
 
 ---
 
-## 12. 최종 한국어 보고 형식 (필수 포함 항목)
+## 12. 최종 한국어 보고 형식 (2-Phase Reporting System)
 
-1. 변경 파일 목록 및 실제 줄 수 (200줄 초과 여부 명시)
-2. 실행 명령 및 결과 (각 명령의 종료 코드와 실제 결과를 기록):
-   - npm test
-   - typecheck
-   - strict-inventory
-   - build
-   - lint
-   - git diff --check
+> 보고서 토큰 절단 방지와 실질적 검증을 위해, 작업 완료 보고는 반드시 아래 2단계로 나누어 대화형으로 진행한다.
+
+### [Phase 1: 실행 및 정적/동적 검증 결과 보고]
+작업 완료 직후 작업자는 1차로 아래 항목만 보고하고 대기한다.
+
+1. 변경 파일 목록 및 실제 줄 수 (200줄 초과 여부 및 레거시 사전 승인 여부 명시)
+2. 실행 명령 및 결과 (각 명령의 종료 코드와 실제 결과):
+   - `npm test`
+   - `typecheck`
+   - `strict-inventory`
+   - `build`
+   - `lint`
+   - `git diff --check`
    - 변경·신규 프로덕션 파일 200줄 검사
    - any/unknown/Function/@ts-ignore/@ts-expect-error 및 타입 우회 스캔
    - NUL 바이트 검사
    - 테스트 출력의 act 경고, unhandled rejection, 예상하지 않은 console.error 검사
-3. strict-inventory 지표: 전체 / 프로덕션 / 테스트·지원 진단 수치 및 기준선 대비 증감 (error TS\d+: 기준)
+   - [도구 실행 에러 방어]: 도구 실행 중 크래시, 메모리 오류, 명령어 부재 등이 발생할 경우 절대 통과로 간주하지 말고 `[CRASH]` 태그와 에러 로그를 보고하고 작업을 중단하라.
+3. strict-inventory 지표: 전체 / 프로덕션 / 테스트·지원 진단 수치 및 기준선 대비 증감 (`error TS\d+:` 기준)
 4. 실패 주입 매트릭스 실행 결과: 각 실패 지점별 Assert 결과
 5. 상태 검증 상세: Store, localStorage, journal, tombstone, durable queue 검증 결과
 6. 호출 횟수 검증: notify, sync 예약, API 실제 호출 횟수
 7. Cleanup 실패 방어 검증: 읽기/쓰기 실패 시 최신 patch 보존 여부
-8. 브라우저 검증 내역: 실제 검증 항목 및 미검증 항목 구분
-9. 남은 알려진 한계
-10. Revert-and-confirm-fail 검증 결과
-11. 상태 확인: 승인 전 commit/push 미실행 확인, 미커밋 작업 트리 보존 확인, `docs/audit.md`의 [~] 유지 확인
-12. 상태 계약 준수 확인: 사용자 승인 전에는 Step 상태를 [~]로 유지했는지 확인. 사용자가 승인한 뒤에만 [x]로 변경하고 커밋할 수 있다.
-13. **사용자(보리) `npm run dev` 실검증 가이드**: 작업 완료 보고 시, 사용자가 직접 로컬 서버를 띄워 육안으로 확인해야 할 구체적인 테스트 시나리오를 제공. 
+8. [DB 변경 작업 시에만 필수] DB 마이그레이션 검증 내역 (Non-DB 작업 시 생략):
+   - 1단계 사전 진단 SELECT 쿼리 및 사용자 회신 결과
+   - 2~3단계 확정된 멱등 SQL 스크립트
+   - 4단계 사후 검증 SELECT 결과
+9. Revert-and-confirm-fail 검증 결과: 버그 롤백 시 CLI에서 실행된 테스트 FAIL 전체 원문 로그를 마크다운 코드 블록으로 첨부
+10. 사용자 승인된 의도적 제외 항목 (Explicit Out-of-Scope) 목록 (없을 경우 "없음" 명시)
+11. 상태 확인: 승인 전 commit/push 미실행 확인, 미커밋 작업 트리 보존 확인, `docs/audit.md`의 `[~]` 유지 확인
+
+>Phase 1 보고 후 대기: 작업자는 Phase 1 보고서 하단에 아래 문구를 출력하고 응답을 멈춘다.
+> `"Phase 1 정적·동적 검증이 완료되었습니다. 사용자의 진행/확인 지시가 확인되면 Phase 2(Red-Team 교차검증 및 dev 실검증 가이드)를 이어서 보고하겠습니다."`
+
+---
+
+### [Phase 2: 심층 감사 및 dev 실검증 가이드]
+사용자가 "검증 진행", "진행", "확인", "계속", "좋아" 등 진행 승인 의사를 전달하면 작업자는 아래 심층 감사 내역을 최종 출력한다.
+단, 사용자의 메시지에 승인 키워드 외에 '추가 수정 지시'가 포함되어 있다면 Phase 2로 진입하지 말고 수정을 먼저 반영한 뒤 Phase 1을 다시 수행하라.
+
+1. Red-Team 15대 교차검증 상세 응답: 11절의 질문 전체에 대해 관련 코드 위치(파일명:줄번호)와 검증 테스트 함수명을 매핑하여 구체적 서술 (Non-DB 작업 시 15번 생략).
+2. 브라우저 검증 내역: 실제 브라우저/DOM 검증 항목 및 미검증 항목 명확히 구분 보고.
+3. **사용자(보리) `npm run dev` 실검증 가이드**:
    - 확인해야 할 정확한 화면 위치 (URL 경로 및 UI 컴포넌트)
    - 사용자가 직접 수행해야 할 조작 순서 (예: 특정 버튼 클릭 후 새로고침)
    - 정상 동작 시 기대되는 시각적 결과 (UI 변화, 토스트 메시지 노출 여부 등)
+4. 최종 승인 요청 및 커밋 메시지 제안 (사용자가 승인하여 `[x]` 처리 후 커밋할 한국어 커밋 메시지 초안).
