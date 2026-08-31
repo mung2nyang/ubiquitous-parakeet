@@ -1404,9 +1404,9 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 
 **상태(최종 승인, 2026-08-29)**: 사용자가 Step 6을 최종 승인했다. 체크리스트는 `[x]`다. 위 과거 재감사 절의 `[~]` 문구는 당시 기록으로 남긴다.
 
-### [~] Step 7 — 거래처 / 차량 (슬라이스 5)
+### [x] Step 7 — 거래처 / 차량 (슬라이스 5)
 
-착수: 2026-08-29. 사용자 최종 승인 전까지 `[x]`·commit·push·Step 8 착수 금지.
+착수: 2026-08-29. **사용자 최종 승인 2026-08-31.** 과거 재감사 절의 `[~]` 문구는 당시 기록으로 남긴다. Step 8은 이 승인 이후에만 착수.
 
 #### 구현 전 조사 (코드 대조)
 
@@ -1705,7 +1705,7 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 
 ~~다음 구현은 이 문서 Step 1부터, 코드를 고치지 않은 채 합의한 뒤 진행하면 기존 React 화면을 한 번에 박살 내지 않고 슬라이스할 수 있다.~~ **(낡음 — 아래 5-1절이 실제 진행 상황이다.)**
 
-## 5-1. 현재 결론 (Step 7 진행 중, 2026-08-29 — **최신 상태는 이 절을 보라. 위 0-1절은 Step 4 완료 시점의 과거 스냅샷이다**)
+## 5-1. 현재 결론 (Step 7 진행 중, 2026-08-29 — **최신 상태는 5-7절. 이 절은 당시 스냅샷. 위 0-1절은 Step 4 완료 시점의 과거 스냅샷이다**)
 
 위 결론이 지목한 문제는 이제 대부분 해소됐다:
 
@@ -1715,4 +1715,194 @@ node --test src/lib/finance.test.js src/lib/workData.test.js src/lib/practiceSet
 - **메인 로그 단일 구조 + 콜 인덱스 + 비용 이중 저장** → 콜상세 `id`는 Step 6에서 영구화됐다(`backfillCallDetailIds`). 비용은 여전히 `expenses` 스토어가 정본이고(Step 6에서 그렇게 확정) day record와의 "이중 저장"은 의도적으로 유지 중이다(파일 상단 주석에 이유 기록). 서브 차량 로그 구조·payments/미수 키의 배열 인덱스 의존성은 Step 7/8 몫으로 여전히 남는다.
 - **`WorkLogPage.jsx`/`InlineExpandHost`** → **Step 6에서 완전히 삭제되고 `src/components/day-log/`로 교체됐다.** 두 파일 다 저장소에 더 이상 존재하지 않는다(`find`로 재확인).
 
-남은 진짜 결론: Step 6은 2026-08-29 사용자 최종 승인으로 `[x]`다. **지금 진행 중인 구현은 Step 7(거래처/차량)이며 체크리스트는 `[~]`다.** 사용자 재감사 FAIL(서버 ID 덮어쓰기, pending 미이관, 도달 불가 라우트 검사, `readLogWorkData`의 `{}` 흡수)을 이 라운드에서 고쳤다. 사용자 승인 전 commit/push/`[x]`/Step 8은 하지 않는다.
+남은 진짜 결론(당시): Step 6은 2026-08-29 사용자 최종 승인으로 `[x]`였다. **당시 진행 중인 구현은 Step 7(거래처/차량)이며 체크리스트는 `[~]`였다.** 재감사 FAIL(서버 ID 덮어쓰기, pending 미이관, 도달 불가 라우트 검사, `readLogWorkData`의 `{}` 흡수)을 그 라운드에서 고쳤다. **최종 승인·`[x]`는 5-7절(2026-08-31).**
+
+## 5-2. Step 7 재감사 — hydrate producer 정규화 (2026-08-31)
+
+**계기**: `mergeCarsFromRows`/`mergeClientsFromRows`/`mergeDriversFromRows`(hydrate 병합)가
+Supabase `raw` JSONB 백업(동기화 시점 로컬 객체 전체)을 `...raw`/`...local`로 통째로
+스프레드했다. `raw`는 `lib/cloudStorage.js`의 `buildVehicleRow`/`buildClientRow`가
+`raw: car`/`raw: client`로 쓰는 값이라 persist 스키마(`store/persistDomainRecords.js`의
+CAR_KEYS/CLIENT_KEYS/DRIVER_KEYS + 필드별 타입/enum)와 다른 값이 하나만 섞여도
+`isPersistedCar`/`isPersistedClient`가 그 항목을 거부하고, 배열은 전부 아니면 전무
+(`hasOnlyKeys` + `Array.every`)라서 **hydrate 직후엔 persist가 되지만 다음
+새로고침(`initializeOwnerFromPersist`)에서 cars/clients 도메인 전체가 스키마 실패로
+사라질 수 있는 사고 시나리오**였다. 검증기 자체는 손대지 않고 producer(hydrate 병합
+함수)만 정본 스키마에 맞춰 정규화했다.
+
+**변경 파일(줄 수, 주석·빈 줄 포함)**:
+- [src/domain/financeTypes.js](../react-app/src/domain/financeTypes.js) 96줄 — `CarLike.personalInfo`에 바닐라 정본 필드 `phone`/`bank`/`account`/`accountHolder` 추가.
+- [src/store/persistDomainRecords.js](../react-app/src/store/persistDomainRecords.js) 134줄 — `PERSONAL_INFO_KEYS`에 위 4개 추가(기존 7개는 유지 — businessInfo와 혼동돼 있었지만 바닐라 `finance.js` 조회부가 실제로 쓰므로 하위호환상 남김), `isStringRecord`/`PERSONAL_INFO_KEYS`/`BUSINESS_INFO_KEYS` export(검증기 로직 자체는 변경 없음 — producer가 재사용).
+- [src/lib/hydrateMergeTypes.js](../react-app/src/lib/hydrateMergeTypes.js) 51줄 — `LocalCar`/`LocalClient`를 각 도메인 정본 타입(`CarLike`/`ClientLike`)에 직접 연결, `RawCarBackup`/`RawClientBackup`은 `Partial<...>`(raw JSONB는 "있을 수도 틀렸을 수도 있는" 값이라 전부 optional), `LocalDriver`는 `Partial<DriverRecord> & {driverName?}`.
+- [src/lib/hydrateMergeCars.js](../react-app/src/lib/hydrateMergeCars.js) 88줄(전면 재작성) — `...raw` 제거, CAR_KEYS 필드만 정본 타입으로 정규화. `settlementMode`/`commType`/`infoType`은 `store/persistDomainEnums.js`의 canonical enum에 없으면 각각 `'default'`/`'percent'`/`'existing'`로 정규화(검증기를 느슨하게 만드는 대신 producer가 스키마를 맞춘다). `personalInfo`/`businessInfo`는 중첩 객체라 필드 단위 기본값이 없다 — 사용자 승인(2026-08-31 질의응답)에 따라 `isStringRecord`(검증기와 동일 함수 재사용)로 통째로 유효성 검사해 유효할 때만 옮기고, 하나라도 정본 밖 키/타입이면 그 중첩 필드만 생략한다(차량의 나머지 필드는 정상 정규화 — hydrate 전체를 막지 않는다).
+- [src/lib/hydrateMergeClients.js](../react-app/src/lib/hydrateMergeClients.js) 68줄(신규) — `mergeCarsFromRows`와 같은 이유로 `hydrateMerge.js` 200줄 제한 때문에 분리. `...raw` 제거, CLIENT_KEYS 필드만 정규화. `commType`은 무효 시 `'percent'` 기본값, `paymentTerm`은 "값 없음"을 뜻하는 canonical enum 멤버가 없어 유효할 때만 키를 채우고 무효면 생략(빈 문자열 기본값은 그 자체가 스키마 위반이라 쓸 수 없다).
+- [src/lib/hydrateMerge.js](../react-app/src/lib/hydrateMerge.js) 119줄 — `mergeClientsFromRows`를 위 파일로 이관(재수출), `mergeDriversFromRows`의 `...local` 제거(DRIVER_KEYS 9개 필드만 명시적으로 채움) + `id: local.id || row.id`가 `row.id`(숫자 가능)를 그대로 쓰던 버그를 `String(row.id)`로 수정(`isPersistedDriver`는 `id`를 문자열로 요구).
+- [src/lib/hydrateMerge.test.js](../react-app/src/lib/hydrateMerge.test.js) 284줄 — `findMainCar` 기존 테스트 3개가 `CarLike`(number 필수)와 안 맞아 typecheck:strict-inventory 에러가 났던 것을 fixture에 `number` 추가 + `@type` 명시로 수정(신규 에러 아님 — 아래 실측 참고).
+- [src/store/owner-state.test.js](../react-app/src/store/owner-state.test.js) 320줄 — 아래 4개 필수 테스트 추가.
+
+**필수 테스트(실패 주입 먼저, "hydrate 산출물 → persist → fresh initialize 왕복" describe 블록)**:
+1. 최소 row `{id, number, type, raw:{}}` → persist → wipe → initialize, `supabaseId` 유지 — 기존 테스트("최소 차량 row는...")가 이미 커버(raw가 비어 있어 예전 `...raw` 코드에서도 통과했었다 — 이 라운드가 새로 잡은 버그는 raw가 채워진 경우라 아래 3개가 신규).
+2. 바닐라 `personalInfo`(phone/bank/account/accountHolder) raw → 왕복 후 필드 보존, `kind:'value'` — 신규 테스트, 통과.
+3. `raw.settlementMode:'bogus'` → producer가 `'default'`로 정규화, initialize 성공. 같은 테스트 후반부에서 검증기에 `'bogus'`를 **직접** 저장하면 여전히 `kind:'schema'`이고 Store/notify/Supabase 호출이 불변임을 확인(검증기는 느슨해지지 않았다) — 신규 테스트, 통과.
+4. client raw extra key(`extraFromVanilla`) → persist 가능한 거래처 1건, 그 extra key는 결과에 없음 — 신규 테스트, 통과.
+
+**감지력 증명(되돌려서 확인)**: `hydrateMergeCars.js`/`hydrateMerge.js`(mergeClientsFromRows 재수출 포함)를 옛 `...raw`/`...local` 코드로 되돌리자 테스트 2·4가 실패(`bogus`가 정규화 안 됨, extra key가 그대로 남음)했고, `persistDomainRecords.js`(PERSONAL_INFO_KEYS)까지 함께 되돌리자 테스트 1(2번 항목)도 `schema`로 실패했다. 3개 파일 모두 복원 후 재확인 — 전부 통과.
+
+**게이트 실측**:
+- `npm test`: **494 pass / 0 fail**(기존 491 + 신규 4 — 위 1번은 기존 테스트라 순증 3, 실제로는 findMainCar 관련 조정 없이 신규 4개 추가). 요구한 "491+ clean" 충족.
+- `npm run typecheck`(`tsc --noEmit`, 파일별 `// @ts-check` 대상): **0 에러**(변경 전후 동일).
+- `npm run typecheck:strict-inventory`(`checkJs:true`, 프로젝트 전체 — 요청한 "≤355" 대상): **변경 전 912건 → 변경 후 911건**(순감 1, `owner-state.test.js`의 기존 `LocalCar[]`/`CarLike[]` 불일치 1건을 이번 정규화로 우연히 해소, `hydrateMerge.test.js` findMainCar fixture 보정으로 신규 순증 0건 — `diff`로 직접 라인 단위 확인). **이 회차 신규 SoT 테스트(owner-state.test.js에 추가한 4개)는 strict-inventory 에러를 1건도 추가하지 않았다.**
+  **다만 912/911은 355 요구치를 크게 웃돈다 — 이 격차는 이번 작업 범위(hydrate producer 정규화) 밖의 광범위한 사전 존재 부채(주로 `supabaseClient.js`/`testSupport/*`/여러 `*.test.js`의 암묵적 `any`·엄격 null 체크 불일치)이고, 한 라운드에서 해소할 수 있는 규모가 아니다. 355로 되돌리는 작업은 이번에 완료하지 못했다 — 정직하게 FAIL로 남긴다.**
+- `npm run build`: 성공(vite build, 260 modules, 에러 0).
+- `npm run lint`(oxlint): 에러 0, 경고 3건(`AppShell.jsx`/`ReceivablesPage.jsx` — 이번 diff가 건드리지 않은 기존 파일, 미변경 확인).
+- `git diff --check`: 공백 오류 0(exit 0). NUL 바이트: 변경 파일 8개 전부 `grep -P '\x00'`로 0건 확인.
+- 변경/신규 프로덕션 파일(200줄 제한 대상) 6개 전부 134줄 이하 — 위반 없음. 테스트 파일 2개는 200줄 제한 면제 대상.
+- 금지 타입(`any`/`unknown`/`@ts-ignore`/`@ts-expect-error`/타입 단언): 변경 프로덕션 파일 전체 grep 결과 0건(주석 언급 3건은 실제 사용 아님).
+- act 경고/unhandled rejection/미예상 `console.error`: 대상 테스트(`owner-state.test.js`, `hydrateMerge.test.js`) 실행 로그에 0건.
+
+**회귀 확인**:
+- 바닐라 personalInfo hydrate 왕복 — 위 신규 테스트로 커버, 통과.
+- hydrate bogus enum 정규화 + persist는 여전히 bogus 거부 — 위 신규 테스트로 커버, 통과.
+- 스키마 실패 initialize 전 계층 불변 — 기존 `owner-state.schemaFail.test.js`(전체 스위트 포함, 494 pass에 포함) 그대로 통과, 이번 라운드가 손대지 않음.
+- 핵심 CSS / `hasOnlyKeys` revert-and-confirm-fail — `hasOnlyKeys` 자체는 변경하지 않았고, 위 "검증기에 bogus 직접 주입" 테스트가 `hasOnlyKeys`/enum 검증이 여전히 실패로 판정함을 되돌려서 확인했다. 핵심 CSS(`inlineSheetCss.test.js`)는 이번 diff와 무관 — 전체 스위트 통과에 포함, 별도 브라우저 확인은 하지 않음(CSS를 건드리지 않았다).
+- Chromium 390px 콜·정비·주유·기타 저장 + 하드 새로고침 — 로컬 dev 서버(`npm --prefix react-app run dev`)를 390×844(모바일 프리셋)로 열어 **비회원(게스트) 모드**로 `/app/day/2026-08-31`에서 **정비 추가 → 저장**을 실제로 수행: 토스트 "내역을 등록했습니다", `reactPracticeExpenses:guest`에 `{kind:'maint', name:'엔진오일', cost:30000, ...}`로 저장됨을 `localStorage` 직접 조회로 확인, 앱을 다시 진입(같은 탭에서 게스트 재시작 — 이 앱의 게스트 세션 플래그는 하드 리로드로 초기화되는 별개의 기존 동작이라 완전한 브라우저 `location.reload()` 대신 이 경로로 확인함)했을 때도 목록에 그대로 남아 있음을 확인. 콘솔 에러 0건. **콜/주유/기타는 이번 라운드에 개별로는 재확인하지 않았다** — 세 항목 모두 정비와 동일한 `expenses` persist 파이프라인(`isPersistedExpense`, 이번 diff가 건드리지 않음)을 공유하고, 시간상 정비 1건 확인으로 대표했다. 필요하면 사용자 요청 시 나머지도 확인 가능.
+
+**브라우저에서 직접 확인한 것 / 안 한 것**: 확인함 — 로그인 화면(390px, 콘솔 에러 0), 게스트 진입 → 홈 달력(2026-08) 렌더, `/app/day/2026-08-31` 진입, 정비 추가 시트 열기/입력/저장/목록 반영/재진입 후 유지. 확인 안 함 — 실제 Supabase 로그인 계정으로 hydrate가 실제로 서버 데이터를 받아와 이번 정규화를 타는 경로(이 세션엔 로그인 자격 증명이 없음 — 대신 위 494개 자동화 테스트 중 `hydrate.test.js`/`hydrateMerge.test.js`/`owner-state.persistRoundtrip.test.js`가 stub Supabase 응답으로 이 경로를 커버한다), 콜/주유/기타 개별 저장, 데스크톱 뷰포트.
+
+**상태**: Step 7 `[~]` 유지. `typecheck:strict-inventory`를 355 이하로 되돌리는 작업은 FAIL(912→911, 목표 미달 — 사전 존재 부채이며 이번 라운드 범위를 벗어나는 별도 작업량이 필요함을 실측으로 확인). commit/push/`[x]`/Step 8은 하지 않는다. `main`에 이미 올라간 Step 7/SoT 커밋은 되돌리지 않았고, 이번 수정은 전부 미커밋 워킹트리 변경으로만 남겨 둔다.
+
+## 5-3. Step 7 재감사 — hydrateMergeCars.js 불리언 기본값 FAIL (2026-08-31)
+
+**FAIL 지적**: 5-2절에서 `insuranceOn`/`logEnabled`/`driverLinkEnabled`/`shareRevenueWithOwner`/
+`archived` 5개를 전부 `boolOrFalse`(raw에 진짜 boolean이 없으면 `false`로 정규화)로 채웠다.
+이건 "값이 아예 없음"과 "명시적으로 false"를 구분하지 않는 잘못이었다 —
+특히 `shareRevenueWithOwner`는 바닐라 정본상 **"없음 = 공유(true)"**다
+(`car-management.js`의 `document.getElementById('newCarShareRevenueToggle')?.checked ?? true`,
+`domain/cars.js`의 `isVehicleRevenueSharedWithOwner`도 `car?.shareRevenueWithOwner !== false`로
+읽어 기본을 true로 취급한다). React 쪽 `upsertCar`(`domain/cars.js`)는 이 5개 필드를 아예
+쓰지 않으므로, 이 필드들이 없는 차량이 hydrate를 한 번만 왕복해도 `shareRevenueWithOwner:false`가
+영구히 박혀 "차주와 매출 공유 안 함"으로 뒤집히는 실제 데이터 사고였다.
+
+**수정**: [src/lib/hydrateMergeCars.js](../react-app/src/lib/hydrateMergeCars.js) 111줄 —
+`boolOrFalse`를 이 5개 필드에서 걷어내고, raw에 실제 `boolean`이 있을 때만 키를 채우고
+아니면 키 자체를 생략하는 `boolOrOmit`으로 교체했다(각 필드 소비 쪽의 기존 기본값
+관례가 그대로 적용되게 함 — producer가 임의로 `false`를 심지 않는다). `commEnabled`는
+바닐라도 기본이 실제로 `false`라 대상에서 제외, `boolOrFalse` 그대로 유지.
+
+**필수 테스트(실패 주입 먼저, `owner-state.test.js` "hydrate 산출물 → persist → fresh
+initialize 왕복" describe 블록에 3개 추가)**:
+1. `raw:{}` 최소 row → persist → wipe → initialize 후 `shareRevenueWithOwner` 키 없음
+   + `isVehicleRevenueSharedWithOwner() === true` + `kind:'value'` — 신규, 통과.
+2. `raw.shareRevenueWithOwner:false` → 정규화·왕복 후에도 `false` 유지 —
+   신규, 통과(이 케이스는 `boolOrFalse`/`boolOrOmit` 둘 다 통과해 감지력은 없지만,
+   "false를 true로 뒤집는" 반대 방향 실수를 막는 회귀 가드로 남겨 둔다).
+3. React `upsertCar`가 실제로 만드는 raw 모양(5개 불리언 필드 전부 없음)도
+   hydrate 왕복 후 `isVehicleRevenueSharedWithOwner() === true` 유지 — 신규, 통과.
+
+**감지력 증명(되돌려서 확인)**: `hydrateMergeCars.js`의 `boolOrOmit` 5줄을 `boolOrFalse`로
+되돌리자 테스트 1·3이 실제로 실패(`true !== false`, `false !== true`)했다. 복원 후 재확인 —
+16개 전부 통과.
+
+**게이트 실측(이번 라운드)**:
+- `npm test`: **497 pass / 0 fail**(직전 494 + 신규 3).
+- `npm run typecheck`: 0 에러.
+- `npm run typecheck:strict-inventory`: 클린 `main` 기준(스태시로 직접 재측정) **912건 → 911건(순감 1)**. 이번 라운드가 새로 추가한 에러는 0건이다 — 유일한 변동은 지난 라운드에 남겨 뒀던 `owner-state.test.js`의 `extraFromVanilla` 리터럴 초과 프로퍼티 에러 1건을, 그 raw fixture를 `JsonRecord` 타입 변수로 분리해 없앤 것뿐이다(런타임 동작 변경 없음 — TS의 "신선한 객체 리터럴" 초과 프로퍼티 검사를 피한 것). **"테스트 진단을 늘리지 마라(385 이하 유지)" 요구 확인**: 이번 라운드가 만진 파일(`hydrateMergeCars.js`, `owner-state.test.js`) 기준으로 diff를 line-by-line 대조한 결과 신규 진단 0건 — 테스트 파일(`*.test.js`) 전체 진단은 380건으로 385 이하다(참고: 이 380은 프로젝트 전체 911건 중 테스트 파일분이며, 355(5-2절 목표) 이하로 되돌리는 작업 자체는 여전히 FAIL 상태로 남아 있다 — 이번 라운드는 그 목표를 완료 조건에서 빼는 사용자 승인을 받지 않았으므로 Step 7을 `[x]`로 올리지 않는다).
+- `npm run build`: 성공(에러 0).
+- `npm run lint`: 에러 0, 경고 3건(미변경 파일, 직전 라운드와 동일).
+- `git diff --check`: 통과(exit 0). NUL: `hydrateMergeCars.js`/`owner-state.test.js` 0건.
+- `hydrateMergeCars.js` 111줄(200줄 제한 내). 금지 타입(`any`/`unknown`/`@ts-ignore`/`@ts-expect-error`/단언) 0건.
+
+**상태**: Step 7 `[~]` 유지. `typecheck:strict-inventory`를 355 이하로 되돌리는 작업은
+여전히 FAIL(911건, 목표 미달 — 5-2절과 동일한 사전 존재 부채, 이번 라운드도 그 목표를
+완료 조건에서 빼는 승인을 받지 않아 범위 밖으로 다루지 않았다). commit/push/`[x]`/Step 8은
+하지 않는다. 신규 durable/큐 없음(이번 라운드는 hydrate 병합 함수 하나만 수정).
+
+## 5-4. Step 7 재감사 — 일지 인라인 시트 취소/저장 sticky 제거 (2026-08-31)
+
+**원인**: `+ 운행 일지 추가` / `+ 정비·주유·기타 추가`로 인라인 시트를 열면 취소/저장이
+화면 위쪽에 붕 뜨고, 폼 바닥까지 스크롤해야 제자리에 붙었다. 5-1절 마지막 라운드(390px
+저장 가림 수정)에서 `.work-log-page .inline-sheet.is-visible .call-detail-form-actions` /
+`... .inline-expense-form .modal-btns`에 `position: sticky; bottom: calc(4.75rem + safe-area)`를
+걸었는데, sticky의 `bottom`은 "폼 바닥"이 아니라 스크롤 포트(`.work-log-page`, `100dvh` +
+`overflow-y:auto`) 하단 기준이라 시트가 열리는 순간 액션이 문서상 폼 끝에 있어도
+뷰포트 쪽에 먼저 부착됐다. `position: fixed`는 이미 한 번 롤백된 방식이라 금지.
+
+**수정**: `react-app/src/components/day-log/day-log.css` — 위 두 selector에서
+`position: sticky` / `bottom` / `z-index` / sticky용 `background` / sticky용 `padding`을
+제거하고 `margin-top: 10px`만 남겨 일반 문서 흐름(in-flow)으로 되돌렸다. DOM 순서·폼
+구조·시트 열림 그리드(`0fr` ↔ `min-content`)는 그대로다. 하단 네비 가림은 기존
+`.work-log-page`의 `padding-bottom` / `scroll-padding-bottom`과 `.input-box` / `.modal-btn`의
+`scroll-margin-bottom`이 계속 맡는다(유지). `scrollIntoView` / `useLayoutEffect` /
+`max-height` 호스트 트릭 / `InlineExpandHost` / 신규 큐 없음.
+
+**테스트**: `inlineSheetCss.test.js` — sticky를 요구하던 assert를 제거하고, "취소/저장
+액션 바 규칙에 `position: sticky` / `position: fixed`가 없다"는 회귀 잠금 테스트를 추가.
+`grid-template-rows: min-content`, `scrollIntoView` 부재, 호스트 `max-height: 0` 트릭 부재
+검사는 유지. `npm test` 498 pass / 0 fail.
+
+**브라우저 검증** (`npm run dev`, 게스트 모드, 390×844, `/app/day/2026-08-31`): 콜·정비·
+주유·기타 시트를 각각 연 직후 `getComputedStyle(액션 바)`가 `position: static` / `bottom: auto`
+/ `z-index: auto`. 시트를 열면 액션 바가 마지막 필드 바로 아래(문서 흐름)에 있고, 열린
+직후 스크롤 최상단에서 액션 바 top이 뷰포트(844) 아래에 위치해 위로 떠 보이지 않는다.
+스크롤을 0→끝으로 내리면 액션 바 뷰포트 위치가 스크롤량만큼 그대로 이동(뷰포트에
+고정 안 됨). 시트 상호배제 유지, 콘솔 에러 0.
+
+**상태**: Step 7 `[~]` 유지. commit/push/`[x]`/Step 8 없음.
+
+## 5-5. Step 7 재감사 — 홈 월간 정산 카드에 거래처 운임 수수료 행 (2026-08-31)
+
+**증상**: 거래처 수수료를 켜고 일지를 넣으면 일지 상세·매출에는 수수료가 보이는데
+메인 홈 "월간 운송료 정산" 카드에는 안 보였다.
+
+**원인**: 매출 화면은 `getOwnerMonthlyFinanceDetail`이 콜마다
+`getCallDetailCommissionAmount`(스냅샷 우선, 없으면 Store 거래처 `commEnabled`/
+`commType`/`commValue`)로 수수료를 계산한다. 홈 카드는 `monthWorkFareSummary`만 써서
+수수료를 아예 읽지 않았다. 홈 전용 수수료 식을 새로 짜면 SoT 위반이므로, 홈도 매출과
+같은 `getOwnerMonthlyFinanceDetail(...).income.commission.total` 한 값만 읽게 했다.
+
+**변경 파일** (표시 전용, 새 mutation/큐 없음):
+- `react-app/src/components/calendar/CalendarPage.jsx` (127줄) — `OwnerRevenueView`와
+  같은 패턴으로 `useOwnerCars`/`useOwnerProfile`/`useOwnerDrivers`/`useOwnerExpenses`/
+  `useOwnerWorkDataByLogId`를 구독하고 `buildFinanceSettings(ownerKey)`를 메모. `owner`
+  스코프·`monthKeyOf(year, month)`(매출과 같은 함수)로 `getOwnerMonthlyFinanceDetail`을
+  호출해 `income.commission.total`만 뽑아 카드에 넘긴다. `monthWorkFareSummary`로
+  수수료를 다시 계산하지 않는다.
+- `react-app/src/components/calendar/CalendarMonthSummary.jsx` — `commissionTotal` prop
+  추가. 값이 0보다 크면 "운임 수수료" 행(`-금액`, 매출 `OwnerMonthlyCards`와 같은
+  라벨)을 부가세 아래에 표시, 0이면 행 숨김. 합계는 `fareSummary.total - commissionTotal`
+  ("미적용" = 합계가 너무 큰 것이므로 합계에 반영). 공급가액 행은 차감 전 운임 그대로.
+  힌트에 "운임 수수료는 거래처(콜 저장 시점) 기준" 한 줄(수수료 있을 때만).
+- `react-app/src/components/calendar/CalendarPage.test.js` — 아래 2개 테스트 추가
+  (기존 `test` 스크립트 목록에 이미 포함된 파일).
+
+**테스트** (revert-and-confirm-fail 확인):
+- `홈 월간 정산 카드의 운임 수수료 = 매출 income.commission.total, 합계는 그만큼 차감` —
+  Store에 수수료 켠 거래처 + 그달 콜(운임 100,000, 10%)을 `commitClients`/`commitWorkData`로
+  넣고, 홈 카드의 "운임 수수료" 텍스트가 `-10,000 원`이고 매출
+  `getOwnerMonthlyFinanceDetail(..., 'owner', ...).income.commission.total`(=10,000)과
+  같은 값임을 assert. 합계 행(`.summary-row.total`)이 `monthWorkFareSummary.total - 10,000`
+  임을 assert. → `fareSummary.total - commission`을 `fareSummary.total`로 되돌리면 FAIL.
+- `수수료가 없으면 정산 카드에 운임 수수료 행이 없고 합계는 monthWorkFareSummary.total과 같다`
+  → `commission > 0` 가드를 `true`로 되돌리면 FAIL.
+
+**게이트**: `npm test` 500 pass / 0 fail. `npm run typecheck` 0. `typecheck:strict-inventory`
+911(5-3 기준선과 동일 — 신규 테스트가 진단 추가 0건). `npm run build` 성공. `npm run lint`
+에러 0 / 기존 경고 3. `git diff --check` LF/CRLF만. 신규·수정 프로덕션 JS 200줄 이하.
+
+**브라우저 검증** (`npm run dev`, 게스트, 390×844): 수수료 10% 거래처의 그달 콜(스냅샷
+없는 콜 + 스냅샷 있는 콜)을 Store에 넣고 홈 카드 "운임 수수료" = `-40,000 원`, 합계
+`444,000 원`. 같은 데이터로 매출 화면(월/차주) "운임 수수료" = `-40,000원`으로 일치.
+스냅샷 있는 콜(운임 100,000, 10%)은 일지 상세의 수수료 `- 10,000원`과 매출/홈에서 그
+콜의 기여분(10,000)이 일치 — 모순 없음. 스냅샷 없는 콜은 일지 헬퍼가 스냅샷만 보므로
+일지 상세엔 안 뜨지만, 홈은 매출과 같은 함수(거래처 fallback)를 쓰므로 매출과 일치.
+콘솔 에러 0.
+
+**상태(당시)**: Step 7 `[~]` — 아래 5-6·최종 승인 절 참고.
+
+## 5-6. 테스트·지원 strict-inventory 중간점검 (2026-08-31)
+
+Step 8 전 보리 지시. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). 전체 911→840, 프로덕션 527→526. 픽스처 JSDoc, `normalizeSettings` 반환 타입, `App.test.js` 기존 헬퍼 치환. Assert 약화 없음. 남은 314는 파일별 좁힘·프로덕션 타입 변경이 필요한 분(범위 밖).
+
+## 5-7. Step 7 사용자 최종 승인 (2026-08-31)
+
+보리가 홈 수수료 SoT·일지 in-flow·hydrate producer·테스트 중간점검을 포함해 Step 7을 승인했다. 체크리스트 `[x]`. 단일진실원 문서는 `handoff-2026-08-30.md` → `단일진실원.md`. Step 8은 별도 착수 지시 후.
