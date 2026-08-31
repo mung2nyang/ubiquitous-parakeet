@@ -1,7 +1,7 @@
 # 단일진실원 (SoT)
 
 > 이전 파일명: `handoff-2026-08-30.md`. 대상: `react-app` (구현) + `ubiquitous-parakeet` (원칙·계획).
-> 갱신일: 2026-08-31. 보리 Step 7 최종 승인 반영.
+> 갱신일: 2026-09-01. 보리 Step 7 최종 승인 + Fail-Fast 슬라이스 A(기사 초대 RPC) 반영.
 > 푸시는 별도 지시 전 하지 않는다. 신규 durable/fallback/unsafe/tombstone/큐 금지.
 
 이 문서는 **도메인 읽기=Store** 와 화면이 **같은 계산 함수**를 쓰는지 한곳에 둔다.
@@ -15,6 +15,7 @@
 - **권장 도메인 SoT 완료:** 거래처, 비용, 차량, 설정, 계산서/일지 맵, 프로필, 기사.
 - **정산 수수료 SoT (2026-08-31):** 홈 월간 정산 카드의 운임 수수료 = 매출 `getOwnerMonthlyFinanceDetail`.income.commission.total.
 - **Step 7 (거래처/차량 슬라이스): 사용자 최종 승인 `[x]`.** Step 8은 이 승인 이후에만.
+- **Fail-Fast 방향 (보리 승인, 2026-08-31):** 로그인 SoT = Supabase. 저장 실패는 큐가 아니라 지정 토스트 후 중단. 슬라이스 A(기사 초대 RPC) 구현·커밋. B~E는 미착수.
 
 ---
 
@@ -295,18 +296,68 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 
 권장 도메인 SoT와 홈 정산 수수료 SoT는 여기까지다. 신규 큐/overlay는 넣지 말 것.
 
-프로덕션 strict-inventory(약 526)는 Step 11 몫. 화면마다 `load*` 스냅샷이 다시 생기면 그 도메인만 4대 기준 보고 후 고친다.
+프로덕션 strict-inventory는 Step 11 몫. 화면마다 `load*` 스냅샷이 다시 생기면 그 도메인만 4대 기준 보고 후 고친다.
+
+로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast(슬라이스 B~E)는 아직이다. A만 기사 초대 생성/수정에 적용됐다.
 
 ## 6. 다음 세션 체크리스트
 
 1. `AGENTS.md` §0 + §0-1 읽기.
 2. Step 8(매출/미수/세금계산서)은 보리 착수 지시 후에만.
-3. 신규 큐/overlay 넣지 않기. 실패는 기존 토스트.
-4. **푸시하지 말 것**(별도 지시 전).
+3. 슬라이스 B는 `docs/slice-b.md`. 보리 시작 지시 전에 코드 쓰지 마라.
+4. 신규 큐/overlay 넣지 않기. 로그인 저장 실패 토스트: `저장에 실패했습니다. 네트워크 상태를 확인해 주세요.`
+5. **푸시하지 말 것**(별도 지시 전).
+6. **게스트 기사·차량 초대를 고치지 마라** (아래 8절).
 
 ---
 
-## 7. 주요 경로 (react-app)
+## 8. 사용자 승인된 의도적 제외 (Explicit Out-of-Scope)
+
+- **게스트는 기사 초대·차량(기사 할당) 초대를 쓰지 않는다.** 제품 기능이 아니다. `DriverConnectionPage`에 게스트 `saveDrivers`가 남아 있어도 **버그가 아니며 지금 수리하지 않는다.** 게스트 초대 UI를 검증·숨김·연동 테스트로 건드리지 마라. 숨기려면 보리의 별도 지시가 필요하다.
+- 게스트 JSON 백업/불러오기: 추후. 슬라이스 A·B에서 손대지 않음.
+- 슬라이스 C~E, Step 8: 미착수.
+- 기존 일지 durable/fallback/unsafe/tombstone, 차량·거래처 outbox: 걷어내지 않음(해당 슬라이스까지). `outboxFlush`의 기간 겹침은 **예전 upsert 큐 잔여 op**용으로 남을 수 있다.
+
+---
+
+## 9. Fail-Fast 목표 (보리 승인 2026-08-31)와 슬라이스 A (2026-09-01 커밋)
+
+### 9-1. 목표 구조
+
+| 구분 | 로그인 사용자 | 게스트 |
+|---|---|---|
+| 업무 데이터 정본 | **Supabase만** | localStorage + (추후) JSON 백업. **기사·차량 초대는 없음** |
+| 메모리 Store | 서버(또는 게스트 체험 LS)를 읽어 화면이 구독 | 동일(체험 데이터만) |
+| localStorage에 남을 것 (E 이후) | 테마, ‘오늘 하루 보지 않기’, 인증 세션 | 위 + 체험 데이터(초대 제외) |
+| 저장 실패 | 큐·저널·unsafe 우회 없음. 지정 토스트 후 **즉시 중단** | 서버 호출 없음 |
+
+A~D는 중간 상태다. E가 끝나야 로그인 업무 미러가 LS에서 빠진다.
+
+### 9-2. 슬라이스 A — 기사 초대 생성/수정 (구현·커밋)
+
+4대 기준:
+
+1. 화면은 `useOwnerDrivers` 유지.
+2. 목록은 Store. 서버 행은 RPC/update 성공 후에만 Store.
+3. 로그인 초대 쓰기 창구는 `requestDriverInviteSave`만. 구현은 직접 RPC/`driver_links` update. 로그인 경로에서 `saveDrivers` 우회 없음.
+4. 같은 `driver.id` = `p_idempotency_key`. 실패 시 화면은 저장 전 값, 재시도 큐 없음.
+
+한 일:
+
+- 신규 `react-app/src/lib/driverLinkRpc.js` — `upsertDriverLinkViaRpc` (`upsert_driver_link_idempotent`), `updateDriverLinkFields`, `driverLinkRowNeedsUpdate`.
+- `requestDriverInviteSave.js` — `commitWithOutboxAndFlush` 제거. readiness → 차량 `supabaseId` 없으면 Fail-Fast 토스트 → 세션 캡처 → 기존 `supabaseId`면 update 1회, 없으면 RPC 1회(`p_idempotency_key: driver.id`) → RPC no-op인데 필드가 바뀌었으면 update 1회 → `commitDrivers(..., { syncToCloud: false })`.
+- 실패 토스트 고정: `저장에 실패했습니다. 네트워크 상태를 확인해 주세요.`
+- 기간 겹침 서버/도메인 차단 제거. 남은 규칙: **같은 차량번호 1명** (`upsertDriver`, 메시지 `이미 다른 기사에게 할당된 차량입니다.`).
+- 차량·기간 없는 초안은 `commitLocalOnly`(클라우드 시도 안 함).
+- DB: `0001_driver_links_idempotency_key.sql` — `idempotency_key`, unique `(owner_id, idempotency_key)`, RPC `vehicle_id uuid`(라이브 SELECT 확정). 라이브 적용·사후 검증 완료.
+- 테스트: `directMutationActions.test.js` 슬라이스 A 스위트, `fakeSupabaseClient` `rpc()`. 달력 `App.test.js` store 구독 테스트는 `/app?y=2026&m=7`(8월, URL `m` 0-based)로 고정 — 오늘 달이 바뀌어도 8월 셀을 찾는다.
+- 신규 durable/큐 없음. 상태변경·삭제는 여전히 outbox(슬라이스 B).
+
+상태: 구현 커밋. 슬라이스 A `[x]`는 보리 로그인 브라우저 확인 후. Step 7 `[x]`와 별개.
+
+---
+
+## 10. 주요 경로 (react-app)
 
 - 거래처 쓰기: `src/lib/clientMutations.js`
 - hydrate: `src/lib/hydrate.js`, `src/lib/hydrateMergeWork.js`
@@ -316,7 +367,9 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 - 동기화: `src/lib/syncWorkData.js`
 - Store 구독: `src/store/ownerDataHooks.js` (`useOwnerClients`, `useOwnerExpenses`, `useOwnerCars`, `useOwnerSettings`, `useOwnerInvoices`, `useOwnerProfile`, `useOwnerDrivers`, `useOwnerWorkData` / `useOwnerWorkDataByLogId`, `readOwner*`)
 - 프로필 쓰기: `src/lib/profile.js` `saveProfile` → `commitProfile`
-- 기사 쓰기: `src/lib/drivers.js` `saveDrivers` / `requestDriver*` (신규 큐 없음)
+- 기사 초대(로그인, 슬라이스 A): `src/lib/requestDriverInviteSave.js` → `src/lib/driverLinkRpc.js` (`upsert_driver_link_idempotent`). outbox 없음.
+- 기사 상태/삭제: 아직 `commitWithOutboxAndFlush` (슬라이스 B 대상, `docs/slice-b.md`)
+- 기사 쓰기 배럴: `src/lib/drivers.js` `saveDrivers` (게스트 로컬 잔존 — **초대 제품 기능 아님**, §8 Out-of-Scope)
 - 비용 쓰기 창구: `src/lib/expenses.js` `saveExpenses` → `commitExpenses` (신규 `requestExpense*` 없음)
 - 차량 쓰기 창구: `src/lib/vehicleMutations.js` `requestVehicleSave` (신규 `requestCar*` 없음)
 - 설정 쓰기 창구: `src/lib/practiceSettings.js` `savePracticeSettings` → `commitSettings` (신규 `requestSettings*` 없음)

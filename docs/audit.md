@@ -1906,3 +1906,19 @@ Step 8 전 보리 지시. `error TS\d+:` 테스트·지원 **384 → 314**(캡 3
 ## 5-7. Step 7 사용자 최종 승인 (2026-08-31)
 
 보리가 홈 수수료 SoT·일지 in-flow·hydrate producer·테스트 중간점검을 포함해 Step 7을 승인했다. 체크리스트 `[x]`. SoT는 `docs/sot.md` (구 `handoff-2026-08-30.md` / `단일진실원.md`). Step 8은 별도 착수 지시 후.
+
+## 5-8. Fail-Fast 슬라이스 A — 기사 초대 RPC (2026-09-01)
+
+보리 승인 방향: 로그인 업무 정본 = Supabase. mutation outbox / durable / fallback / unsafe / 배경 재시도는 부채. 실패는 토스트 `저장에 실패했습니다. 네트워크 상태를 확인해 주세요.` 후 중단.
+
+**슬라이스 A 범위:** 로그인 사용자의 기사 초대 **생성/수정**(차량·기간이 있어 서버에 올리는 경우)만. 상태/삭제·차량·거래처·일지·로그인 LS 미러 제거는 B~E.
+
+**DB (§2-1, 감독관):** 라이브 `driver_links.id`/`owner_id`/`vehicle_id`는 **uuid**. `idempotency_key text` + unique `(owner_id, idempotency_key) WHERE NOT NULL` + `upsert_driver_link_idempotent(..., p_vehicle_id uuid, ...)`. invoker, EXECUTE `authenticated`. 사후 검증 통과. 파일: `react-app/supabase/migrations/0001_driver_links_idempotency_key.sql`.
+
+**프론트:** `requestDriverInviteSave`가 outbox를 타지 않음. `driverLinkRpc.js` RPC 1회(+필요 시 기존 행 update 1회). 멱등 키 = 로컬 `driver.id`. 기간 겹침 조회 제거. 차량번호 1기사 = `domain/drivers.js` `upsertDriver`.
+
+**게스트:** 기사·차량 초대는 **제품 기능이 아님**(Explicit Out-of-Scope). 코드에 `!cloud` → `saveDrivers`가 남아 있어도 슬라이스 A·B에서 수리·검증하지 않음. `docs/sot.md` §8, `docs/slice-b.md`.
+
+**달력 회귀:** `App.test.js` 「store 구독」이 `/app`(오늘 달)만 열어 9월에 8월 `5회` 셀을 못 찾던 실패. 기능 결함 아님. `/app?y=2026&m=7`로 고정.
+
+**상태:** 구현 커밋. 슬라이스 A 체크 `[~]`(보리 로그인 실검증 전 `[x]` 금지). 슬라이스 B는 지시서만 (`docs/slice-b.md`). Step 8 미착수. 푸시 없음.

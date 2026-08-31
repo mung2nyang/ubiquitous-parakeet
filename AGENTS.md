@@ -5,11 +5,13 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 루트에 보고 `.md`를 추가하지 마라. 푸시는 보리 지시 전 하지 마라.
 이 파일의 작업 원칙은 사용자(보리) 승인 없이 축약·삭제하지 마라.
 
-## Current (2026-08-31)
+## Current (2026-09-01)
 
 - Step 7 `[x]`. Step 8 only after 보리 start instruction.
-- SoT detail: `docs/sot.md`
-- Latest audit notes: `docs/audit.md` §5-7
+- Fail-Fast 슬라이스 A: 구현·커밋됨 (로그인 기사 초대 RPC). `[x]`는 보리 브라우저 확인 후.
+- 슬라이스 B 지시: `docs/slice-b.md`. 보리 시작 지시 전에 코드 쓰지 마라.
+- 게스트는 기사 초대·차량(기사) 초대를 **쓰지 않는다**. 버그로 고치지 마라. SoT Explicit Out-of-Scope.
+- SoT: `docs/sot.md`. Audit: `docs/audit.md` §5-8.
 
 ---
 
@@ -33,6 +35,7 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 | `docs/audit.md` | Step 상태 확인 및 재감사 기록 시 (구 `migration-audit-plan.md`) |
 | `docs/plan.md` | 대상 아키텍처 및 이관 설계 확인 시 (구 `migration-plan.md`) |
 | `docs/research.md` | 바닐라 인벤토리 확인 시 (구 `migration-research.md`) |
+| `docs/slice-b.md` | Fail-Fast 슬라이스 B(기사 상태/삭제) 착수 시 |
 
 - 충돌 해결 우선순위 (Conflict Order):
   `사용자의 최신 명시적 지시` → `AGENTS.md` → `docs/audit.md`의 현재 Step → `docs/plan.md` → `docs/research.md`
