@@ -1921,4 +1921,14 @@ Step 8 전 보리 지시. `error TS\d+:` 테스트·지원 **384 → 314**(캡 3
 
 **달력 회귀:** `App.test.js` 「store 구독」이 `/app`(오늘 달)만 열어 9월에 8월 `5회` 셀을 못 찾던 실패. 기능 결함 아님. `/app?y=2026&m=7`로 고정.
 
-**상태:** 구현 커밋. 슬라이스 A 체크 `[~]`(보리 로그인 실검증 전 `[x]` 금지). 슬라이스 B는 지시서만 (`docs/slice-b.md`). Step 8 미착수. 푸시 없음.
+**상태:** 슬라이스 A 구현 커밋. 슬라이스 B는 5-9절 `[x]`. Step 8 미착수. 푸시 없음.
+
+## 5-9. Fail-Fast 슬라이스 B — 기사 상태/삭제 + hydrate 빈 목록 (2026-09-01)
+
+로그인 상태변경·삭제: `commitWithOutboxAndFlush` 제거. `driver_links` update/delete 직접 1회. 실패 토스트 A와 동일. 신규 큐/tombstone 없음.
+
+보리 실검증 FAIL: 삭제 성공 후 새로고침 ~0.6초에 목록 원복.
+
+보완: `mergeDriversFromRows`는 `linkRows` 배열(빈 배열 포함)이 정본. `deleteDriverLinkOnSupabase`는 `.select('id')` 후 0행이면 throw.
+
+보리 재실검증: 육안 오류 없음. 체크 `[x]`. 게스트 연동은 Out-of-Scope. 커밋은 별도 지시.

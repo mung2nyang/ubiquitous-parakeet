@@ -298,13 +298,13 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 
 프로덕션 strict-inventory는 Step 11 몫. 화면마다 `load*` 스냅샷이 다시 생기면 그 도메인만 4대 기준 보고 후 고친다.
 
-로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast(슬라이스 B~E)는 아직이다. A만 기사 초대 생성/수정에 적용됐다.
+로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast는 A(초대)·B(상태/삭제)까지. C~E는 미착수.
 
 ## 6. 다음 세션 체크리스트
 
 1. `AGENTS.md` §0 + §0-1 읽기.
 2. Step 8(매출/미수/세금계산서)은 보리 착수 지시 후에만.
-3. 슬라이스 B는 `docs/slice-b.md`. 보리 시작 지시 전에 코드 쓰지 마라.
+3. 슬라이스 C는 `docs/slice-c.md`. 보리 작업자 지시 = 착수.
 4. 신규 큐/overlay 넣지 않기. 로그인 저장 실패 토스트: `저장에 실패했습니다. 네트워크 상태를 확인해 주세요.`
 5. **푸시하지 말 것**(별도 지시 전).
 6. **게스트 기사·차량 초대를 고치지 마라** (아래 8절).
@@ -351,7 +351,7 @@ A~D는 중간 상태다. E가 끝나야 로그인 업무 미러가 LS에서 빠�
 - 차량·기간 없는 초안은 `commitLocalOnly`(클라우드 시도 안 함).
 - DB: `0001_driver_links_idempotency_key.sql` — `idempotency_key`, unique `(owner_id, idempotency_key)`, RPC `vehicle_id uuid`(라이브 SELECT 확정). 라이브 적용·사후 검증 완료.
 - 테스트: `directMutationActions.test.js` 슬라이스 A 스위트, `fakeSupabaseClient` `rpc()`. 달력 `App.test.js` store 구독 테스트는 `/app?y=2026&m=7`(8월, URL `m` 0-based)로 고정 — 오늘 달이 바뀌어도 8월 셀을 찾는다.
-- 신규 durable/큐 없음. 상태변경·삭제는 여전히 outbox(슬라이스 B).
+- 신규 durable/큐 없음. 상태변경·삭제는 슬라이스 B(직접 update/delete, 2026-09-01 `[x]`).
 
 상태: 구현 커밋. 슬라이스 A `[x]`는 보리 로그인 브라우저 확인 후. Step 7 `[x]`와 별개.
 
@@ -368,7 +368,7 @@ A~D는 중간 상태다. E가 끝나야 로그인 업무 미러가 LS에서 빠�
 - Store 구독: `src/store/ownerDataHooks.js` (`useOwnerClients`, `useOwnerExpenses`, `useOwnerCars`, `useOwnerSettings`, `useOwnerInvoices`, `useOwnerProfile`, `useOwnerDrivers`, `useOwnerWorkData` / `useOwnerWorkDataByLogId`, `readOwner*`)
 - 프로필 쓰기: `src/lib/profile.js` `saveProfile` → `commitProfile`
 - 기사 초대(로그인, 슬라이스 A): `src/lib/requestDriverInviteSave.js` → `src/lib/driverLinkRpc.js` (`upsert_driver_link_idempotent`). outbox 없음.
-- 기사 상태/삭제: 아직 `commitWithOutboxAndFlush` (슬라이스 B 대상, `docs/slice-b.md`)
+- 기사 상태/삭제(로그인, 슬라이스 B `[x]`): `requestDriverStatusChange` / `requestDriverDeletion` → `driver_links` update·delete 1회. outbox 없음. hydrate `mergeDriversFromRows`: 서버 배열(빈 배열 포함)이 정본.
 - 기사 쓰기 배럴: `src/lib/drivers.js` `saveDrivers` (게스트 로컬 잔존 — **초대 제품 기능 아님**, §8 Out-of-Scope)
 - 비용 쓰기 창구: `src/lib/expenses.js` `saveExpenses` → `commitExpenses` (신규 `requestExpense*` 없음)
 - 차량 쓰기 창구: `src/lib/vehicleMutations.js` `requestVehicleSave` (신규 `requestCar*` 없음)
