@@ -10,6 +10,7 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 - Step 7 `[x]`. Step 8 only after 보리 start instruction.
 - Fail-Fast 슬라이스 A: 구현·커밋됨 (로그인 기사 초대 RPC). `[x]`는 보리 브라우저 확인 후.
 - 슬라이스 B 지시: `docs/slice-b.md`. 보리 시작 지시 전에 코드 쓰지 마라.
+- 비즈니스 규칙 전수 목록(보리 판별용): `docs/business_rules_audit.md`. 코드 수정 없음.
 - 게스트는 기사 초대·차량(기사) 초대를 **쓰지 않는다**. 버그로 고치지 마라. SoT Explicit Out-of-Scope.
 - SoT: `docs/sot.md`. Audit: `docs/audit.md` §5-8.
 
@@ -36,6 +37,7 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 | `docs/plan.md` | 대상 아키텍처 및 이관 설계 확인 시 (구 `migration-plan.md`) |
 | `docs/research.md` | 바닐라 인벤토리 확인 시 (구 `migration-research.md`) |
 | `docs/slice-b.md` | Fail-Fast 슬라이스 B(기사 상태/삭제) 착수 시 |
+| `docs/business_rules_audit.md` | 업무 제약 쳐내기·판별 시 |
 
 - 충돌 해결 우선순위 (Conflict Order):
   `사용자의 최신 명시적 지시` → `AGENTS.md` → `docs/audit.md`의 현재 Step → `docs/plan.md` → `docs/research.md`
