@@ -1932,3 +1932,15 @@ Step 8 전 보리 지시. `error TS\d+:` 테스트·지원 **384 → 314**(캡 3
 보완: `mergeDriversFromRows`는 `linkRows` 배열(빈 배열 포함)이 정본. `deleteDriverLinkOnSupabase`는 `.select('id')` 후 0행이면 throw.
 
 보리 재실검증: 육안 오류 없음. 체크 `[x]`. 게스트 연동은 Out-of-Scope. 커밋은 별도 지시.
+
+## 5-10. Fail-Fast 슬라이스 C — 차량·거래처 삭제 + hydrate 빈 목록 (2026-09-01)
+
+로그인 삭제: `requestVehicleDeletion` / `requestClientDeletion`에서 outbox/tombstone 제거. 서버 본체 delete 1회 성공 후에만 Store(`commitBatch` / `commitClients`, `syncToCloud: false`). 실패 토스트 A·B와 동일. 신규 큐 없음. 저장 API(`requestVehicleSave` 등)는 범위 밖.
+
+hydrate: `mergeCarsFromRows` / `mergeClientsFromRows`는 `rows`가 배열이면(빈 배열 포함) 서버 정본. 조회 실패(배열 아님)만 로컬 fallback. `supabaseId` 없는 미동기화 로컬은 빈 서버에도 덧붙음(삭제된 동기화 행 원복 아님).
+
+본체 delete 0행: `.select('id')` 후 `Array.isArray(data) && data.length === 0`이면 throw. 기사 B보다 느슨(`null`은 레거시 outbox 드레인용). 실 Supabase `delete().select()`는 배열이라 프로덕션 0행은 throw.
+
+보리 실검증: 삭제 후 새로고침·마지막 항목 전부 삭제·네트워크 차단 Fail-Fast·pending 토스트 없음. 체크 `[x]`. 구현 커밋 `react-app` `0050ee4`. 푸시 없음.
+
+슬라이스 D 지시서: `docs/slice-d.md`. 착수는 보리 작업자 지시 후.

@@ -298,13 +298,13 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 
 프로덕션 strict-inventory는 Step 11 몫. 화면마다 `load*` 스냅샷이 다시 생기면 그 도메인만 4대 기준 보고 후 고친다.
 
-로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast는 A(초대)·B(상태/삭제)까지. C~E는 미착수.
+로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast는 A(초대)·B(기사 상태/삭제)·C(차량·거래처 삭제)까지 `[x]`. D(일지 durable)·E(로그인 LS 미러)는 미착수.
 
 ## 6. 다음 세션 체크리스트
 
 1. `AGENTS.md` §0 + §0-1 읽기.
 2. Step 8(매출/미수/세금계산서)은 보리 착수 지시 후에만.
-3. 슬라이스 C는 `docs/slice-c.md`. 보리 작업자 지시 = 착수.
+3. 슬라이스 D는 `docs/slice-d.md`. 보리 작업자 지시 = 착수. C는 `[x]`.
 4. 신규 큐/overlay 넣지 않기. 로그인 저장 실패 토스트: `저장에 실패했습니다. 네트워크 상태를 확인해 주세요.`
 5. **푸시하지 말 것**(별도 지시 전).
 6. **게스트 기사·차량 초대를 고치지 마라** (아래 8절).
@@ -314,9 +314,9 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 ## 8. 사용자 승인된 의도적 제외 (Explicit Out-of-Scope)
 
 - **게스트는 기사 초대·차량(기사 할당) 초대를 쓰지 않는다.** 제품 기능이 아니다. `DriverConnectionPage`에 게스트 `saveDrivers`가 남아 있어도 **버그가 아니며 지금 수리하지 않는다.** 게스트 초대 UI를 검증·숨김·연동 테스트로 건드리지 마라. 숨기려면 보리의 별도 지시가 필요하다.
-- 게스트 JSON 백업/불러오기: 추후. 슬라이스 A·B에서 손대지 않음.
-- 슬라이스 C~E, Step 8: 미착수.
-- 기존 일지 durable/fallback/unsafe/tombstone, 차량·거래처 outbox: 걷어내지 않음(해당 슬라이스까지). `outboxFlush`의 기간 겹침은 **예전 upsert 큐 잔여 op**용으로 남을 수 있다.
+- 게스트 JSON 백업/불러오기: 추후. 슬라이스 A·B·C에서 손대지 않음.
+- 슬라이스 D(지시만, 미착수)·E, Step 8: D는 `docs/slice-d.md`.
+- `requestVehicleSave` / `requestClientSave` outbox는 C 범위 밖(E에 가깝다). 일지 durable은 D에서 로그인 경로만 걷어낸다. `outboxFlush`의 기간 겹침·옛 vehicle/client delete op는 **예전 큐 잔여**용으로 남을 수 있다.
 
 ---
 
@@ -369,6 +369,7 @@ A~D는 중간 상태다. E가 끝나야 로그인 업무 미러가 LS에서 빠�
 - 프로필 쓰기: `src/lib/profile.js` `saveProfile` → `commitProfile`
 - 기사 초대(로그인, 슬라이스 A): `src/lib/requestDriverInviteSave.js` → `src/lib/driverLinkRpc.js` (`upsert_driver_link_idempotent`). outbox 없음.
 - 기사 상태/삭제(로그인, 슬라이스 B `[x]`): `requestDriverStatusChange` / `requestDriverDeletion` → `driver_links` update·delete 1회. outbox 없음. hydrate `mergeDriversFromRows`: 서버 배열(빈 배열 포함)이 정본.
+- 차량·거래처 삭제(로그인, 슬라이스 C `[x]`): `requestVehicleDeletion` / `requestClientDeletion` → 본체 delete 1회 후 Store. outbox/tombstone 없음. hydrate `mergeCarsFromRows` / `mergeClientsFromRows`: 서버 배열(빈 배열 포함)이 정본. `supabaseId` 없는 로컬만 빈 서버에서도 남을 수 있음.
 - 기사 쓰기 배럴: `src/lib/drivers.js` `saveDrivers` (게스트 로컬 잔존 — **초대 제품 기능 아님**, §8 Out-of-Scope)
 - 비용 쓰기 창구: `src/lib/expenses.js` `saveExpenses` → `commitExpenses` (신규 `requestExpense*` 없음)
 - 차량 쓰기 창구: `src/lib/vehicleMutations.js` `requestVehicleSave` (신규 `requestCar*` 없음)
