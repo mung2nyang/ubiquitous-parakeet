@@ -298,13 +298,13 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 
 프로덕션 strict-inventory는 Step 11 몫. 화면마다 `load*` 스냅샷이 다시 생기면 그 도메인만 4대 기준 보고 후 고친다.
 
-로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast는 A~D `[x]`. E(로그인 LS 미러)는 미착수.
+로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast는 A~D `[x]`. E(로그인 LS 미러 + 남은 저장 Fail-Fast)는 `docs/slice-e.md` 착수.
 
 ## 6. 다음 세션 체크리스트
 
 1. `AGENTS.md` §0 + §0-1 읽기.
 2. Step 8(매출/미수/세금계산서)은 보리 착수 지시 후에만.
-3. 슬라이스 E는 보리 착수 지시 후에만 (로그인 LS 미러). D는 `[x]`.
+3. 슬라이스 E는 `docs/slice-e.md`. 보리 작업자 지시 = 착수. D는 `[x]`.
 4. 신규 큐/overlay 넣지 않기. 로그인 저장 실패 토스트: `저장에 실패했습니다. 네트워크 상태를 확인해 주세요.`
 5. **푸시하지 말 것**(별도 지시 전).
 6. **게스트 기사·차량 초대를 고치지 마라** (아래 8절).
@@ -315,8 +315,8 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 
 - **게스트는 기사 초대·차량(기사 할당) 초대를 쓰지 않는다.** 제품 기능이 아니다. `DriverConnectionPage`에 게스트 `saveDrivers`가 남아 있어도 **버그가 아니며 지금 수리하지 않는다.** 게스트 초대 UI를 검증·숨김·연동 테스트로 건드리지 마라. 숨기려면 보리의 별도 지시가 필요하다.
 - 게스트 JSON 백업/불러오기: 추후. 슬라이스 A~D에서 손대지 않음.
-- 슬라이스 E, Step 8: 미착수.
-- `requestVehicleSave` / `requestClientSave` outbox는 E에 가깝다. 게스트·미동기화 메인 일지의 durable 큐 파일은 남을 수 있다(로그인 동기화 메인은 D에서 안 탐). `outboxFlush`의 기간 겹침·옛 vehicle/client delete op는 **예전 큐 잔여**용으로 남을 수 있다.
+- Step 8: 미착수. E는 `docs/slice-e.md`.
+- `requestVehicleSave` / `requestClientSave` 및 비용·설정·계산서·프로필의 로그인 LS+`syncAll`은 E 범위. `outboxFlush`의 기간 겹침·옛 delete op는 **예전 큐 잔여**용으로 남을 수 있다.
 
 ---
 

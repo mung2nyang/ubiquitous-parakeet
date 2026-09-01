@@ -1950,3 +1950,5 @@ hydrate: `mergeCarsFromRows` / `mergeClientsFromRows`는 `rows`가 배열이면(
 hydrate: `mergeWorkDataFromRows`는 `dailyRows`가 배열이면(빈 배열 포함) 서버 날짜 맵이 정본. `hydrate.js`는 `dailyRes.data`를 `|| []`로 위장하지 않음. 옛 `workData` dirty만 `clearDirtyDomain`으로 지움.
 
 보리 실검증: 저장 후 새로고침 유지, 빈 날 삭제 후 원복 없음, 오프라인 Fail-Fast·자동재시도 없음. 체크 `[x]`. 구현 커밋 `react-app` `f33699c`. 푸시 없음.
+
+슬라이스 E 지시서: `docs/slice-e.md`. 착수는 보리 작업자 지시(2026-09-01).

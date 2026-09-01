@@ -12,7 +12,8 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 - Fail-Fast 슬라이스 B `[x]`: 로그인 기사 상태/삭제 직접 1회 + hydrate 빈 `driver_links`는 빈 목록. 보리 실검증(삭제 후 새로고침 원복 없음).
 - Fail-Fast 슬라이스 C `[x]`: 로그인 차량·거래처 삭제 직접 1회 + hydrate 빈 vehicles/clients는 서버 정본. 보리 실검증(삭제 후 새로고침 원복 없음). 커밋 `react-app` `0050ee4`.
 - Fail-Fast 슬라이스 D `[x]`: 로그인 메인 일지 그 날짜 daily_logs 직접 1회 + hydrate 빈 daily_logs는 서버 정본. 보리 실검증(저장·빈 날 삭제 후 새로고침 원복 없음, 오프라인 Fail-Fast). 커밋 `react-app` `f33699c`.
-- 슬라이스 E는 보리 시작 지시 후 (로그인 LS 미러).
+- 슬라이스 E 지시: `docs/slice-e.md`. 보리 작업자 지시 전달 = 착수 (로그인 업무 LS 미러 제거 + 남은 저장 Fail-Fast).
+- Step 8는 보리 시작 지시 후.
 - 비즈니스 규칙 전수 목록(보리 판별용): `docs/business_rules_audit.md`.
 - 게스트는 기사 초대·차량(기사) 초대를 **쓰지 않는다**. 버그로 고치지 마라. SoT Explicit Out-of-Scope.
 - SoT: `docs/sot.md`. Audit: `docs/audit.md` §5-8~5-11.
@@ -42,6 +43,7 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 | `docs/slice-b.md` | Fail-Fast 슬라이스 B(기사 상태/삭제) 참고 시 |
 | `docs/slice-c.md` | Fail-Fast 슬라이스 C(차량·거래처 삭제) 참고 시 |
 | `docs/slice-d.md` | Fail-Fast 슬라이스 D(로그인 일지) 참고 시 |
+| `docs/slice-e.md` | Fail-Fast 슬라이스 E(로그인 LS 미러) 착수 시 |
 | `docs/business_rules_audit.md` | 업무 제약 쳐내기·판별 시 |
 
 - 충돌 해결 우선순위 (Conflict Order):
