@@ -114,3 +114,5 @@ HEAD·미커밋 확인. `supabase/.temp/` 섞지 마라.
 - 프로덕션 200줄. `// @ts-check`. any/unknown/@ts-ignore 금지
 - Phase 1 보고 후 대기. `[x]`·커밋·푸시는 보리
 - 보리 실검증: 로그인 → 일지 저장 → 새로고침·hydrate 후에도 값 유지. 빈 날로 지운 뒤 새로고침해도 안 살아남. 네트워크 차단 시 Fail-Fast 토스트, 새로고침 후 서버(저장 전) 값. pending/자동재시도로 조용히 올라가지 않음
+
+상태 (2026-09-01): 구현 완료(옵션 A, `commitNow`는 클라우드 저장을 fire-and-forget). 보리 실검증 이상 없음. 감독관 `[x]`. 커밋 `react-app` `f33699c`.
