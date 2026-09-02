@@ -1640,6 +1640,30 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 
 **상태**: 계획 승인. 구현 착수 가능. 커밋/`[x]`는 보리.
 
+#### 8-C — 구현 완료, JSX 크래시 발견·수정 (2026-09-02)
+
+`components/receivables/` 분할 완료 확인(기기 직접 조회): `ReceivablesPage.jsx`(라우트 셸), `ReceivablesListPage.jsx`, `ReceivablesDetailPage.jsx`, `ReceivableItemCard.jsx`, `useReceivablesData.js`, `useReceivablesActions.js`, `useConfirm.jsx`, `receivablesPaths.js` — 8개 파일 전부 존재, 200줄 제한 내.
+
+**typecheck 신규 오류 ~35건**: 8-C 분할로 `receivables/*`에서 implicit any / Object 타입 prop 등 신규 노출. 8-D 회귀 스모크 범위 밖으로 판단, 수정 보류 — 사용자 미결정, 여전히 open.
+
+**크래시 발견**: 사용자 `npm run dev` 실검증 중 미수금 화면 진입 시 `[plugin:vite:oxc] PARSE_ERROR — useConfirm.js:25 Unexpected JSX expression` 크래시 보고. 원인: `useConfirm.js`가 JSX(`<ConfirmModal>`)를 반환하는데 확장자가 `.js` — Vite/oxc 파서가 JSX로 인식 못함(이 저장소의 다른 화면 파일은 전부 `.jsx` 관례, `useConfirm.js`만 예외였던 게 원인).
+
+**수정**: `useConfirm.js` → `useConfirm.jsx` git mv(내용 diff 0, 감시관 직접 대조 확인), `ReceivablesListPage.jsx`/`ReceivablesDetailPage.jsx` import 경로만 수정(각 1줄, 파일 크기 증가분 1바이트로 교차 확인). `react-app/src/` 전체 mtime 재조회 — 이 3파일 외 변경 0건. 커밋 `react-app` `8f9ac84`(2026-09-02). 푸시 없음.
+
+#### npm run build 네이티브 크래시 조사·해결 (2026-09-02)
+
+위 크래시 수정 검증 중 `npm run build`가 `273 modules transformed` 직후 간헐적으로 네이티브 크래시(exit -1073740791 = Windows STATUS_STACK_BUFFER_OVERRUN)로 종료됨을 발견. JS 예외 아님(스택트레이스 없음), rename과 무관(코드 미변경 상태에서도 재현). 원인: `vite@^8.2.0`이 내부적으로 성숙한 Rollup 대신 신생 Rolldown 번들러(`@rolldown/binding-win32-x64-msvc`)를 기본 탑재 — 미성숙 도구의 네이티브 버그로 판단.
+
+**결정(사용자 승인, 2026-09-02)**: 배포 계획(수개월 내)을 고려해 지금 안정화가 낫다고 감시관이 권고, 사용자 승인. `vite` `^8.2.0` → `^7.3.6`(Rollup 기반 안정 버전), `@vitejs/plugin-react` peer 충돌로 `^6.0.4` → `^5.2.0` 최소 조정. `package.json`/`package-lock.json` 외 변경 0건(감시관이 `react-app/src/` 전체 mtime 재조회로 확인, `vite.config.js`도 mtime 불변 확인). `package-lock.json` 실제 설치본(`vite 7.3.6`, `@vitejs/plugin-react 5.2.0`) 직접 열어 대조 완료.
+
+검증: `npm run dev` 정상, `npm test` 559 pass, `npm run typecheck` 기존과 동일(신규 없음, 8-C의 ~35건 그대로 잔존), `npm run build` 연속 5회 전부 exit 0·크래시 0회(다운그레이드 전 3회 연속 크래시와 대비). 커밋 `react-app` `f38ff5e`(2026-09-02). 푸시 없음.
+
+### 8-D — 사용자 브라우저 실검증 [PASS] (2026-09-02)
+
+사용자 실검증: 미수금 화면 정상 진입 확인("브라우저 테스트는 정상이엇어"). 위 크래시 수정 후 재확인.
+
+**상태**: 8-C 구현 + 크래시 수정 + build 안정화 전부 완료. 커밋 2건(`8f9ac84`, `f38ff5e`) 미푸시 — 사용자 최종 검토 후 직접 push. typecheck ~35건(receivables/*) + 기존 4건(CallDetailList/DayLogPage)은 여전히 미결정 상태로 open. Step 8 `[x]` 확정은 사용자 최종 승인 후.
+
 ### [ ] Step 9 — 기사 연동 (슬라이스 7)
 
 - `DriverConnectionPage` 분할. 상세 라우트. `saveDriverInviteToCloud` 계약 유지.
