@@ -1573,6 +1573,33 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - 미수 키를 `detailId`로.
 - 완료: 부분입금 후 일지 수금 토글과 동일 원장(`payments`).
 
+#### Step 8 착수 계획 — 8-A~8-D 분할 (보리 착수 지시 2026-09-02, 감시관 검증 후 승인)
+
+착수 전 현재 상태 실측(감시관, 기기 직접 확인): `RevenuePage.jsx` 29줄(이미 분할 완료), `ReceivablesPage.jsx` 247줄(200줄 초과), `TaxInvoicePage.jsx` 187줄. `window.confirm`은 저장소 전체에서 `ReceivablesPage.jsx:85`(입금 취소) 1곳뿐. `domain/financeReceivables.js`는 `detailIndex`(배열 인덱스) 기반 키 — `detailId` 아님(922행 기존 기록과 일치). 매출·세금계산서는 이미 Store 구독 완료(sot.md §4-5), 미수는 목록·상세는 구독이나 쓰기 경로가 `saveWorkData` 직접 호출로 슬라이스 D(`commitMainDayLogToCloud`)와 창구가 다름 — 이번 착수 계획의 핵심 갭.
+
+읽기(파생 화면)는 Fail-Fast 슬라이스 대상이 아니다 — 기존 `domain/finance*.js` 재사용, 신규 서버 호출 없음. 쓰기(미수 수금)만 슬라이스 D/E와 동일 계약(서버 1회 성공 후 Store, 실패는 토스트만, 신규 큐/overlay 금지)을 적용한다.
+
+- **8-A — `detailId` 키 마이그레이션**: `domain/financeReceivables.js`·`domain/payments.js`·`domain/receivables.js`의 조회·패치를 `detailIndex`에서 `detailId`로 전환. 프로덕션 UI 변경 없이 도메인·단위 테스트만으로 가능. `lib/notifications.js`의 overdue id가 인덱스 의존이면 동반 정합.
+- **8-B — 미수 쓰기 창구 통일**: 미수 화면의 수금/부분입금/취소를 일지 쪽과 같은 서버-1회-후-Store 창구(`commitMainDayLogToCloud` 또는 동등 API)로 정렬. 게스트는 기존 `saveWorkData`/`commitLogWorkData` 그대로 유지(로그인 경로만 대상). 일지↔미수 교차 반영 통합 테스트 추가.
+- **8-C — `ReceivablesPage` 라우트 분리 + `useConfirm`**: 상세 화면을 `/app/receivables/:client/:month`로 분리(딥링크·뒤로가기 계약), `window.confirm` 1곳을 기존 `ConfirmModal.jsx` 패턴(`useConfirm` 훅)으로 교체, 200줄 이하로 분할.
+- **8-D — 매출·계산서 회귀 스모크 + 보리 브라우저 실검증**: `RevenuePage`/`TaxInvoicePage`는 기존 계약 유지 확인 위주(재작성 아님). 완료 조건(1574행)인 "부분입금 후 일지 수금 토글과 동일 원장" 시나리오를 보리가 `npm run dev`로 최종 확인.
+
+건드리지 않음: 슬라이스 A~E 완료 경로 본체(`commitMainDayLogToCloud`, `requestVehicle*`, `saveInvoices` 서버 1회 계약), Step 9·10 범위, 게스트 기사/차량 초대(Explicit Out-of-Scope). 신규 durable/fallback/retry-queue 금지(§0-1 A).
+
+서브슬라이스마다 §12 Phase 1 보고 → 보리(감시관 경유) 승인 → 커밋. 푸시는 보리 본인만. 자체 `[x]` 선언 금지 — 8-A~D 전부 완료 후에도 Step 8 `[x]`는 보리 최종 승인 후에만.
+
+**상태(2026-09-02)**: 8-A 착수 지시됨.
+
+#### 8-A — detailId 키 마이그레이션: 작업자 Phase 1 보고, 감시관 검증 완료 (2026-09-02)
+
+변경 파일(감시관 실측 줄수, 작업자 보고와 대체로 일치·±1~6줄 오차는 보고 시점 차이로 판단): `domain/callDetailIds.js` 62줄(신규 — `resolveCallDetailId`/`findCallDetailIndex`/`dedupeCallDetailsById`), `domain/payments.js` 103줄, `domain/financeReceivables.js` 93줄, `domain/receivables.js` 71줄, `lib/ownerFinance.js` 103줄, `lib/notifications.js` 62줄, `components/ReceivablesPage.jsx` 247줄(200줄 초과 — 8-C 분할 예정, 레거시 그대로), `components/day-log/DayLogPage.jsx` 174줄, `domain/finance.fixtures.js` 188줄, `domain/callDetailIds.test.js` 60줄(신규), `domain/receivables-invoices.test.js` 141줄, `domain/workData.test.js` 273줄, `domain/calendarBadges.test.js` 90줄, `package.json`(`callDetailIds.test.js` 스위트 등록 확인).
+
+**감시관 직접 대조**: `financeReceivables.js` 37/49/50/58행에서 `detailIndex` 완전히 제거되고 `detailId` 필드로 교체됨을 코드로 직접 확인. `receivables.js`의 `receivableItemKey`가 `${logId}|${dateKey}|${detailId}` 형식임을 `callDetailIds.test.js` 44~47행과 대조해 확인. Revert-and-confirm-fail 테스트(49~59행)는 실제로 배열 앞 항목을 삭제한 뒤 `detailId`로 `addPartialPayment`가 같은 건에 적용되는지를 검증 — 인덱스 기준이었다면 실패했을 시나리오로 설계·확인됨. `components/day-log/CallDetailList.jsx`는 이번 라운드에 mtime 변경 없음(Phase 2 시점 그대로) — `npm run typecheck`가 보고한 JSDoc 오류 4건이 8-A와 무관한 기존 잔존이라는 작업자 주장과 일치.
+
+`.git/refs/heads/main`(react-app) — 8-A 커밋 `404af0c`(2026-09-02). 푸시 없음.
+
+**검증 결과**: Phase 1(정적·동적) 승인. 보리 승인 후 구현 커밋 `react-app` `404af0c`. 푸시 없음. 8-B 착수는 별도 지시 후.
+
 ### [ ] Step 9 — 기사 연동 (슬라이스 7)
 
 - `DriverConnectionPage` 분할. 상세 라우트. `saveDriverInviteToCloud` 계약 유지.
