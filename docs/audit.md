@@ -1600,6 +1600,34 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 
 **검증 결과**: Phase 1(정적·동적) 승인. 보리 승인 후 구현 커밋 `react-app` `404af0c`. 푸시 없음. 8-B 착수는 별도 지시 후.
 
+문서 커밋 `ubiquitous-parakeet` `89e4997`(작업자, 이 절 기록) → `dfee7541`(보리 직접, AGENTS.md §2 저장소 간 동기화 규칙 신설 등 작업원칙 갱신).
+
+#### 8-B — 미수 쓰기 창구 통일: 작업자 착수 전 §0-1 C 보고, 감시관 검증 완료 (2026-09-02)
+
+코드 변경 없이 경로 대조만 수행(감시관 확인: `ReceivablesPage.jsx`·`ownerFinance.js`·`dayLogCloudCommit.js` mtime이 8-A 라운드 이후 불변 — 실제로 구현 착수 안 함).
+
+**감시관 직접 대조**: 작업자가 인용한 3개 코드 스니펫(`ReceivablesPage.jsx` 48~63행 `persist`/`applyPatch`, `ownerFinance.js` 32~34행 `persistWorkDataByLogId`, `dayLogCloudCommit.js` 86~119행 `commitMainDayLogToCloud` 전체)을 기기에서 직접 읽어 전부 그대로 일치함을 확인. 현재 미수 쓰기는 `saveWorkData`로 세션 epoch 가드·서버 왕복 없이 즉시 Store에 반영되고, 일지 로그인 메인 경로(`commitMainDayLogToCloud`)는 `shouldCommitDayLogToCloud` 게이트·`assertCloudWriteReady`·`captureSession`+`assertSessionStillCurrent`(세션 epoch 가드)·서버 성공 후에만 `commitWorkData(..., { syncToCloud: false })`를 호출하는 구조임을 코드로 확인 — 두 창구가 실제로 다르다는 보고가 정확함.
+
+**승인 사항**: ① 단건(수금/부분입금/취소)은 `commitMainDayLogToCloud` 직접 재사용 — 승인. ② 월별 일괄(`payGroup`)은 `dayLogCloudCommit.js` 내부에 `commitMainDayLogMapToCloud` 루프 헬퍼로 추출 — 기존 함수 본체 재사용이라 신규 durable/큐 레이어가 아님, 승인. ③ 서브 차량 미수는 이번 8-B에서 `commitLogWorkData` 분기만 추가하고, `readOwnerWorkDataByLogId`가 `{ main }`만 노출하는 한계는 8-B 범위 밖 별도 슬라이스로 유보 — 승인.
+
+**감시관 추가 조건(구현 전 설계에 반영 요망)**: `commitMainDayLogMapToCloud`가 여러 `dateKey`를 순차 서버 커밋하는 구조라, 예를 들어 3건 중 2건 서버 upsert 성공 후 3번째에서 실패하면 서버에는 2건이 이미 반영됐는데 Store/UI는 "실패, 변경 없음" 토스트만 보고 전부 미반영 상태로 남는 불일치가 생길 수 있다. 제출된 시나리오 G는 "3건 모두 성공" 케이스만 다루고 이 부분 케이스가 없다 — 8-B 구현·테스트에 "일부 성공 후 실패" 시나리오를 반드시 추가하고, 그 경우 Store 반영 범위(전체 롤백 유지 vs 부분 반영)와 토스트 문구를 설계에 명시할 것.
+
+**상태**: 계획 승인. 구현 착수 가능(위 추가 조건 포함). 커밋/`[x]`는 보리.
+
+#### 8-B — `commitMainDayLogMapToCloud` 부분 실패 설계, 감시관 승인 (2026-09-02)
+
+감시관이 지적한 "일괄 커밋 중간 실패 시 서버·Store 어긋남" 조건에 대한 작업자 설계, 검토 후 승인.
+
+**결정**: 전부 롤백(Store 0건 유지)은 채택하지 않음 — 서버에 이미 쓴 건을 되돌리는 compensating delete/undo는 그 자체로 새 복구 레이어이므로 §0-1 A 위반. 대신 **서버에 실제로 성공한 dateKey만 Store에 부분 반영**(`previousMain` 기준 성공분만 병합 후 `commitWorkData` 1회) — Store가 항상 서버 실제 상태를 뒤따르는 기존 원칙과 일치하는 더 단순한 선택. 순회는 첫 실패에서 중단(`break`), 미시도 날짜는 실패로 간주 — 사용자가 남은 항목에서 수동 재시도(자동 재시도 큐 없음, 기존 Fail-Fast와 동일).
+
+**반환 계약**: `{ cloud, ok, partial, appliedDateKeys, failedDateKeys, toast }`. `partial: true ⟺ appliedDateKeys.length>0 && failedDateKeys.length>0`. 단건 `commitMainDayLogToCloud` 시그니처·실패 시 Store 미변경 동작은 변경 없음(thin wrapper 유지).
+
+**신규 토스트**: "일부만 저장되었습니다. (성공 N건, 실패 M건) 화면에 남은 항목을 다시 시도해 주세요." — 기존 `SAVE_FAIL_TOAST`/`SESSION_CHANGED_TOAST` 2종은 그대로 두고 이 1종만 추가. "저장 실패"로 뭉뚱그려 서버에 이미 일부 반영된 사실을 숨기지 않는다는 의도 — 타당함.
+
+**테스트 계약**: 시나리오 G를 G-1(전부 성공, 기존)~G-4(2건 성공 후 세션 무효화)로 확장, 특히 G-2(부분 성공 후 실패 — Store 2건만 반영, 1건 미수 유지, partial 토스트, 전체완료 문구 미호출)가 감시관이 요구한 케이스를 정확히 커버함.
+
+**감시관 판단**: 서버 compensating rollback 없음·재시도 큐 없음·자동 재시도 없음 모두 재확인됨 — §0-1 A 저촉 없음. 부분 반영 방향이 전부 롤백보다 오히려 기존 아키텍처(Store가 서버를 뒤따름)와 더 일치함. **승인. 구현 착수 지시함.**
+
 ### [ ] Step 9 — 기사 연동 (슬라이스 7)
 
 - `DriverConnectionPage` 분할. 상세 라우트. `saveDriverInviteToCloud` 계약 유지.
