@@ -13,7 +13,7 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 - Fail-Fast 슬라이스 C `[x]`: 로그인 차량·거래처 삭제 직접 1회 + hydrate 빈 vehicles/clients는 서버 정본. 사용자 실검증(삭제 후 새로고침 원복 없음). 커밋 `react-app` `0050ee4`.
 - Fail-Fast 슬라이스 D `[x]`: 로그인 메인 일지 그 날짜 daily_logs 직접 1회 + hydrate 빈 daily_logs는 서버 정본. 사용자 실검증(저장·빈 날 삭제 후 새로고침 원복 없음, 오프라인 Fail-Fast). 커밋 `react-app` `f33699c`.
 - 슬라이스 E `[x]`: 로그인 업무 LS 미러 제거 + 저장은 서버 성공 후 Store. Phase 1(mock.module 인프라)·Phase 2(설정 초기화/콜상세 카드/게스트 세션 3건 수정) 전부 사용자 브라우저 실검증 PASS(2026-09-02). react-app 커밋 `fbe91d5`.
-- Step 8 8-A~C 구현 완료, `useConfirm.jsx` JSX 크래시 수정(커밋 `8f9ac84`) + vite 8→7.3.6 다운그레이드로 build 크래시 해결(커밋 `f38ff5e`), 8-D 사용자 브라우저 실검증 PASS(2026-09-02). 커밋 2건 미푸시. typecheck 신규 ~35건(receivables/*)은 미결정 open. Step 8 `[x]`는 사용자 최종 승인 후. 상세: `docs/audit.md` Step 8 8-C/8-D절.
+- Step 8 `[x]`: 8-A~D 전부 완료(구현·JSX 크래시 수정 `8f9ac84`·vite 다운그레이드 `f38ff5e`·사용자 브라우저 실검증 PASS), 사용자 승인·push 완료(2026-09-02). typecheck ~35건(receivables/*)+기존 4건은 Explicit Out-of-Scope로 Step 8에서 제외, Step 9 착수 전 별도 정리 예정. 상세: `docs/audit.md` Step 8 8-C/8-D절.
 - 비즈니스 규칙 전수 목록(사용자 판별용): `docs/business_rules_audit.md`.
 - 게스트는 기사 초대·차량(기사) 초대를 **쓰지 않는다**. 버그로 고치지 마라. SoT Explicit Out-of-Scope.
 - SoT: `docs/sot.md`. Audit: `docs/audit.md` §5-8~5-11.

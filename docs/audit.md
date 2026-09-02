@@ -1566,7 +1566,7 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 - 서브 로그 **로컬** 저장·새로고침·번호 변경은 Step 7 완료. 서브 `daily_logs` 동기화는 `syncWorkData.js`가 메인만 쓰므로 Step 9 N/A.
 - 순수 함수만으로 UI 완료 주장 금지. React 핸들러→Store/localStorage/라우트 통합 테스트 + 핵심 회귀 revert-and-confirm-fail.
 
-### [ ] Step 8 — 매출 / 미수 / 세금계산서 (슬라이스 6)
+### [x] Step 8 — 매출 / 미수 / 세금계산서 (슬라이스 6)
 
 - `RevenuePage` 분할. `loadWorkDataByLogId`를 스토어 `workLogs`로 교체.
 - `ReceivablesPage` 상세 → `/app/receivables/:client/:month`. `window.confirm` → `useConfirm`.
@@ -1662,7 +1662,9 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 
 사용자 실검증: 미수금 화면 정상 진입 확인("브라우저 테스트는 정상이엇어"). 위 크래시 수정 후 재확인.
 
-**상태**: 8-C 구현 + 크래시 수정 + build 안정화 전부 완료. 커밋 2건(`8f9ac84`, `f38ff5e`) 미푸시 — 사용자 최종 검토 후 직접 push. typecheck ~35건(receivables/*) + 기존 4건(CallDetailList/DayLogPage)은 여전히 미결정 상태로 open. Step 8 `[x]` 확정은 사용자 최종 승인 후.
+**상태**: 8-C 구현 + 크래시 수정 + build 안정화 전부 완료. 사용자 최종 승인, 커밋 2건(`8f9ac84`, `f38ff5e`) 사용자 직접 push 완료 확인(2026-09-02). Step 8 `[x]` 확정.
+
+typecheck ~35건(receivables/*) + 기존 4건(CallDetailList/DayLogPage)은 Step 8 범위에서 의도적으로 제외(사용자 승인 Explicit Out-of-Scope) — Step 9 착수 전 별도 정리 작업으로 처리 예정(사용자 결정, 2026-09-02).
 
 ### [ ] Step 9 — 기사 연동 (슬라이스 7)
 
