@@ -1628,6 +1628,18 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 
 **감시관 판단**: 서버 compensating rollback 없음·재시도 큐 없음·자동 재시도 없음 모두 재확인됨 — §0-1 A 저촉 없음. 부분 반영 방향이 전부 롤백보다 오히려 기존 아키텍처(Store가 서버를 뒤따름)와 더 일치함. **승인. 구현 착수 지시함.**
 
+`.git/refs/heads/main`(react-app) — 8-B 커밋 `f658e48`(2026-09-02, 5 files +476/−30). 문서 커밋 `ubiquitous-parakeet` `5a46715`(작업자, 이 절 기록) — react-app·ubiquitous-parakeet 둘 다 보리 본인이 직접 push 완료(`refs/remotes/origin/main` 갱신 확인).
+
+#### 8-C — 라우트 분리·`useConfirm`·200줄 분할: 작업자 착수 전 §0-1 C 보고, 감시관 검증 완료 (2026-09-02)
+
+코드 변경 없음 확인(`ReceivablesPage.jsx`·`AppShellRoutes.jsx` mtime 8-B 이후 불변). 인용 코드 2곳(`ReceivablesPage.jsx` 45~46행 `detailItems`/`detailTotal`, `AppShellRoutes.jsx` 65행 단일 `receivables` 라우트) 기기에서 직접 대조 — 보고와 정확히 일치.
+
+**승인 사항**: ① URL 형식 오류만 `/app/receivables`로 리다이렉트, 형식은 맞으나 데이터 0건은 기존 empty state 유지 — 승인. ② 목록↔상세 라우트 분리로 tab이 기본값(`monthly`)으로 리셋되는 것은 이번 라운드에서 허용(원 스펙에 tab 보존 요구 없음, URL화는 후속 슬라이스로 유보) — 승인. UX적으로 사소한 회귀이니 보리가 실제 써보고 거슬리면 바로 알려달라고 안내함. ③ `useConfirm`은 신규 Context 없이 컴포넌트 로컬 훅 + 기존 `ConfirmModal.jsx` 재사용(plan.md의 장기 Promise Context는 8-C 범위 아님) — §0-1 A 취지(불필요한 신규 아키텍처 금지)와 일치, 승인.
+
+**파일 분할 계획**(8개, 각 ~20~100줄 예상 — `ReceivablesPage.jsx`(라우트 셸) / `ReceivablesListPage.jsx` / `ReceivablesDetailPage.jsx` / `ReceivableItemCard.jsx` / `useReceivablesData.js` / `useReceivablesActions.js` / `useConfirm.js` / `receivablesPaths.js`) 및 "건드리지 않음"(8-A/B 쓰기 창구·`detailId` 키·`commitMainDayLogToCloud`/`Map` — import·재배치만, 로직 변경 없음) 확인·타당함.
+
+**상태**: 계획 승인. 구현 착수 가능. 커밋/`[x]`는 보리.
+
 ### [ ] Step 9 — 기사 연동 (슬라이스 7)
 
 - `DriverConnectionPage` 분할. 상세 라우트. `saveDriverInviteToCloud` 계약 유지.
