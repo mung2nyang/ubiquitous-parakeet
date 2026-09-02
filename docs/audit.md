@@ -1952,3 +1952,93 @@ hydrate: `mergeWorkDataFromRows`는 `dailyRows`가 배열이면(빈 배열 포�
 보리 실검증: 저장 후 새로고침 유지, 빈 날 삭제 후 원복 없음, 오프라인 Fail-Fast·자동재시도 없음. 체크 `[x]`. 구현 커밋 `react-app` `f33699c`. 푸시 없음.
 
 슬라이스 E 지시서: `docs/slice-e.md`. 착수는 보리 작업자 지시(2026-09-01).
+
+## 5-12. Fail-Fast 슬라이스 E — 로그인 업무 LS 미러 제거 + 서버 성공 후 Store (2026-09-01)
+
+구현 `[x]`. 보리 실검증(2026-09-02) PASS.
+
+로그인 저장 순서: readiness → 원격 1회 → `assertSessionStillCurrent` → Store. 낙관적 Store+롤백 없음. `ownerSaveQueue`는 owner별 직렬화만(`Promise<void>` 체인, unknown 없음). 신규 durable/outbox op 없음. `syncQueue`는 mutation outbox만. `syncAll`/dirty 재업로드 없음.
+
+hydrate: `collectPracticeSnapshot` 업무 밑바탕 제거. theme만 settings LS에서 읽기 성공할 때만. 프로필·설정을 스냅샷에 넣어 Store 반영. `replaceOwnerState(..., { persist: false })`로 기존 LS 키를 덮지 않음.
+
+로그인 persist: `CLOUD_MEMORY_ONLY_DOMAINS`는 LS·dirty 생략. settings는 theme만 LS.
+
+테스트 이관(2026-09-01): `App.test.js`의 로그인 하네스 기반 durable/quota 통합 테스트 12건을 게스트 전용 `App.guestDurable.test.js`로 이관했다. 12건 모두 `test`로 활성화(skip 해제), 삭제 0건. `App.test.js`에서는 해당 skip 블록·전용 헬퍼(`forceDurableWriteBroken` 등)만 제거하고 `:645` 재감사 5차 테스트 등 비이관 활성 테스트는 그대로 둔다.
+
+### Phase 1 감사 [PASS] — AGENTS.md §12 1차 보고 (2026-09-01, 보리 승인 확정)
+
+**감사 판정:** `[PASS]`. 구현 상태는 Phase 2·보리 `npm run dev` 실검증 전까지 **`[~]` 유지** — `[x]`·커밋 금지(§1 self-declared `[x]` 금지).
+
+**본 라운드 범위:** Node v24 `mock.module` `exports:` → `namedExports:` 테스트 인프라 수정 18파일(프로덕션 0). Slice E 게스트 테스트 이관·슬라이스 E 프로덕션 변경분은 선행 라운드; 이번 Phase 1 PASS는 **테스트 mock 형식 수정 + 전체 스위트 green** 근거.
+
+#### 1. 변경 파일 (mock 라운드)
+
+| 구분 | 파일 | 줄 수(대략) | 200줄 초과 |
+|------|------|----------:|:---:|
+| 테스트 | `App.test.js` | 1025 | 예(레거시) |
+| 테스트 | `App.guestDurable.test.js` | 1181 | 예(테스트 예외) |
+| 테스트 | `App.clientsCars.test.js` | ~698 | 예(레거시) |
+| 지원 | `stubSupabaseClient.js` | 79 | — |
+| lib 테스트 8 | `hydrate`, `cloudMemorySave`, `directMutationActions`, `syncQueue`, `outboxFlush`, `syncDeletedWorkDates`, `vehicleTombstoneReregister`, `dayLogCloudCommit` | 각 ~40–200 | — |
+| app/store 테스트 7 | `pendingWriteRetryListeners`, `App.legacyCallInit`, `App.unsafeQuotaFailSyncSpy`, `pendingWorkDataWritesSyncSpy`, `vehicleMutations.syncSpy`, `owner-state.persistRoundtrip`, `owner-state.schemaFail` | 각 ~100–200 | — |
+| 기타 | `package.json`, `docs/audit.md` §5-12 | — | — |
+
+mock 변경은 **키 이름만**(`exports:` → `namedExports:`). assertion·핸들러·프로덕션 로직 **0건**.
+
+#### 2. 실행 명령·결과 (근거 로그 파일명)
+
+| 명령 | 종료 코드 | 결과 | 로그 파일 |
+|------|:--------:|------|-----------|
+| `node --experimental-test-module-mocks --test src/app/App.test.js` | 0 | **14 pass / 0 fail** (`:645` 재감사 5차 포함) | `react-app/App.test-standalone-output-utf8.txt` |
+| `node --experimental-test-module-mocks --test` (7파일 묶음) | 0 | **30 pass / 0 fail** | `react-app/remaining-7-mock-fix-output.txt` |
+| `npm test` | 0 | **529 pass / 0 fail / skip 0** | `react-app/npm-test-full-output-after-mock-fix.txt` |
+| `npm run typecheck` | 0 | 0 errors | `react-app/phase2-typecheck-output.txt` |
+
+`npm-test-full-output-after-mock-fix.txt` 요약 원문:
+```
+ℹ tests 529
+ℹ suites 116
+ℹ pass 529
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35642.5277
+```
+
+`App.test-standalone-output-utf8.txt` 요약 원문:
+```
+ℹ tests 14
+ℹ pass 14
+ℹ fail 0
+```
+
+격리 재실행(`--test-isolation=process`, App.test + App.guestDurable): guest **12/12 pass**, App.test는 mock 수정 **전** 파일 로드 실패 — `react-app/test-isolation-process-App-guest-output-utf8.txt`.
+
+#### 3–7. (mock 라운드) strict-inventory·실패 주입·Store/LS·호출 횟수·cleanup
+
+mock 형식 변경만 해당 — Slice E 프로덕션 계약 검증은 기존 통합 테스트(`cloudMemorySave.test.js`, `vehicleMutations.test.js`, `App.clientsCars.test.js`, `App.guestDurable.test.js`, `App.test.js` 슬라이스 D 등)가 `npm test` 529 pass로 커버. 신규 durable/fallback/retry 레이어 **0**.
+
+#### 8. DB
+
+해당 없음(Non-DB).
+
+#### 9. Revert-and-confirm-fail
+
+mock 수정 전: `App.test.js` 단독 **파일 로드 실패**(`supabase` named export 없음) — `react-app/App.test-standalone-output.txt`. 수정 후: 위 14 pass 로그.
+
+#### 10. Explicit Out-of-Scope
+
+- ~~`scripts/guest-durable-header.js` mock `exports:` 잔존~~ → **A항 완료**(아래 한 줄).
+
+Phase 2 A항(2026-09-01): `scripts/guest-durable-header.js` 19–27행 `mock.module` `exports:` → `namedExports:` 교체 완료(mock 값 무변경). 로드 검증: `react-app/guest-durable-header-load-output.txt` — `node --check` exit 0, 동일 mock 블록으로 `supabase`/`syncVehiclesClients` import OK(SyntaxError 없음). `[~]`·commit/push는 보리 별도 지시 전까지 금지.
+- Slice E `[x]`·커밋·푸시 — 보리 승인 전 금지.
+- `:645` 재감사 5차 테스트 본문 수정 — 범위 밖(이번 mock 라운드에서 미변경, 14 pass로 실행 확인).
+
+#### 11. 상태 확인
+
+commit/push **미실행**. 작업 트리 미커밋 유지. `docs/audit.md` 슬라이스 E **`[~]` 유지**.
+
+### Phase 2 보리 브라우저 실검증 [PASS] (2026-09-02)
+
+보리 실검증: (1) 로그인 새로고침 후 설정(단가·콜상세 등)이 서버 hydrate 값 유지·theme만 LS 반영, (2) 콜상세 OFF+기존 callDetails 있을 때 카드 표시·추가 버튼 없음, (3) 비회원 시작 후 새로고침해도 `/auth` 리다이렉트 없이 앱 유지. 체크 `[x]`. 구현 커밋 `react-app` `fbe91d5`. 푸시 없음.

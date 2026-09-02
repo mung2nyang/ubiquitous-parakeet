@@ -12,7 +12,7 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 - Fail-Fast 슬라이스 B `[x]`: 로그인 기사 상태/삭제 직접 1회 + hydrate 빈 `driver_links`는 빈 목록. 보리 실검증(삭제 후 새로고침 원복 없음).
 - Fail-Fast 슬라이스 C `[x]`: 로그인 차량·거래처 삭제 직접 1회 + hydrate 빈 vehicles/clients는 서버 정본. 보리 실검증(삭제 후 새로고침 원복 없음). 커밋 `react-app` `0050ee4`.
 - Fail-Fast 슬라이스 D `[x]`: 로그인 메인 일지 그 날짜 daily_logs 직접 1회 + hydrate 빈 daily_logs는 서버 정본. 보리 실검증(저장·빈 날 삭제 후 새로고침 원복 없음, 오프라인 Fail-Fast). 커밋 `react-app` `f33699c`.
-- 슬라이스 E 지시: `docs/slice-e.md`. 보리 작업자 지시 전달 = 착수 (로그인 업무 LS 미러 제거 + 남은 저장 Fail-Fast).
+- 슬라이스 E `[x]`: 로그인 업무 LS 미러 제거 + 저장은 서버 성공 후 Store. Phase 1(mock.module 인프라)·Phase 2(설정 초기화/콜상세 카드/게스트 세션 3건 수정) 전부 보리 브라우저 실검증 PASS(2026-09-02). react-app 커밋 `fbe91d5`.
 - Step 8는 보리 시작 지시 후.
 - 비즈니스 규칙 전수 목록(보리 판별용): `docs/business_rules_audit.md`.
 - 게스트는 기사 초대·차량(기사) 초대를 **쓰지 않는다**. 버그로 고치지 마라. SoT Explicit Out-of-Scope.
