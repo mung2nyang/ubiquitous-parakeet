@@ -1666,6 +1666,18 @@ Step 0~4 완료 후 사용자가 지시한 7개 항목. Step 5는 이 보완이 
 
 typecheck ~35건(receivables/*) + 기존 4건(CallDetailList/DayLogPage)은 Step 8 범위에서 의도적으로 제외(사용자 승인 Explicit Out-of-Scope) — Step 9 착수 전 별도 정리 작업으로 처리 예정(사용자 결정, 2026-09-02).
 
+#### Step 9 착수 전 정리 — typecheck 52건 해소 (2026-09-02)
+
+조사 결과 실제로는 52건(8-C 신규 48 + 기존 4)이었다. 파일별: `useReceivablesActions.js` 19, `ReceivableItemCard.jsx` 22, `ReceivablesDetailPage.jsx` 5, `ReceivablesListPage.jsx` 2 (이상 8-C, implicit any + item prop이 `Object`로 뭉뚱그려진 것), `CallDetailList.jsx` 3 + `DayLogPage.jsx` 1 (기존, `canAdd`/`onAdd` prop이 실제로 쓰이는데 JSDoc 타입 선언에 없던 계약 불일치).
+
+**수정**: `domain/financeReceivables.js`에 `ReceivableItemLike` typedef 신규 선언(`getReceivableItems`가 실제로 만드는 필드와 감시관이 직접 대조해 정확히 일치 확인) — receivables 컴포넌트·훅 전체가 이를 import해 재사용, 중복 선언 없음. `CallDetailList.jsx`는 `canAdd`(boolean, 기본 true)·`onAdd`(함수) JSDoc만 보강. any/unknown/Object 회피 없음(§4 준수). `DayLogPage.jsx`는 타입 불일치가 자동 해소되어 수정 없음.
+
+**감시관 검증**: `react-app/src/` 전체 mtime 재조회 — 변경 파일은 지시한 6개뿐. `financeReceivables.js`의 `ReceivableItemLike` 필드와 `getReceivableItems` 실제 반환 객체를 라인 단위로 대조, 완전 일치 확인. 나머지 5개 파일 전부 새 typedef를 import해 재사용하는지 직접 확인(신규 타입 중복 선언 0건). 로직 변경 흔적 없음.
+
+검증: `npm run typecheck` 0 errors, `npm test` 559 pass 유지, `npm run build` exit 0. 커밋 `react-app` `7ed3339`(2026-09-02). 푸시 없음(직전 `8f9ac84`/`f38ff5e`는 사용자 push 완료, 이 커밋은 미푸시로 origin 대비 +1).
+
+**상태**: Step 9 착수 전 정리 완료. Step 9 착수는 사용자 지시 후.
+
 ### [ ] Step 9 — 기사 연동 (슬라이스 7)
 
 - `DriverConnectionPage` 분할. 상세 라우트. `saveDriverInviteToCloud` 계약 유지.
