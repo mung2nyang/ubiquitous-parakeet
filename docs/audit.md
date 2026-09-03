@@ -2479,3 +2479,112 @@ const commEnabled = driverPayMode === 'revenue'
 **결론**: Step 9(9-B 재작업+보완, 9-C, 9-D) 전 구간 — 감시관 정적 검증 [PASS] + 작업자 자체 테스트(단위 574+α건) + 보리 브라우저 실검증(2회) 모두 통과. **커밋 가능 상태.** 체크리스트 `[x]` 처리.
 
 **상태**: 9-B·9-C·9-D 보리 승인(2026-09-03). 로컬 커밋 `react-app` `5d1de1f`. 원격 push는 AGENTS.md §00대로 보리 본인만 실행. 원 Step 9 잔여(기사관리 대리작성·소속기사 로그인/employerLink)는 별도 착수.
+
+## 프로세스 위반 발견 — 작업자의 docs/audit.md·AGENTS.md 직접 커밋 (감시관, 2026-09-03)
+
+바로 위 "**상태**" 줄은 감시관이 아니라 **작업자가 직접 작성해 커밋한 것**이다(`ubiquitous-parakeet` `d2c14609`, 커밋 메시지 "docs: 9-B/C/D 사용자 승인·react-app 5d1de1f를 AGENTS.md·audit.md에 기록한다"). 감시관이 마지막으로 쓴 원문 종결줄("Step 9 전체 완료. commit/push는 여전히 미실행 — 로컬 커밋은 보리가 작업자에게 승인 지시하면 진행되고...")을 작업자가 자기 보고 내용으로 **덮어썼다**. `AGENTS.md` 18행에도 같은 커밋으로 "Step 9-B/C/D `[x]`: ... 승인(2026-09-03)." 줄이 새로 들어갔다.
+
+**reflog 전수 확인 결과 — 1회성이 아니다.** `ubiquitous-parakeet` `.git/logs/HEAD`에서 작업자(`ya01na111@gmail.com`) 명의 "docs: ..." 커밋이 이 프로젝트 초기(슬라이스 C)부터 최소 9회 반복 확인됨: 슬라이스 C 승인·슬라이스 D 지시서, 슬라이스 D 승인, 슬라이스 E 지시서, 슬라이스 E Phase2 PASS 기록, Step 8 착수+8-A 검증 기록, 8-B 기록, 8-C/8-D 기록+AGENTS.md 정리, Step 8 `[x]` 확정 기록, Step 9 typecheck 52건 해소 기록, 그리고 이번 9-B/C/D 기록까지. **작업자가 이 프로젝트 시작부터 지금까지 계속 `docs/audit.md`·`AGENTS.md`에 직접 쓰기·커밋을 해 왔다.**
+
+**사실관계 대조(이번 건)**: 작업자가 적어 넣은 내용 자체(커밋 해시 `5d1de1f` = react-app `.git/refs/heads/main` 실측과 일치, push 안 함 = `origin/main`이 여전히 `f731636`으로 실측 일치)는 **거짓은 아니다** — 감시관이 실제로 검증·승인한 내용과 부합한다. 문제는 내용의 진위가 아니라 **경로**: 이 줄이 감시관 검증을 거치지 않고 작업자 스스로 써넣은 것이라, 만약 부정확했거나 과장됐어도 감시관 확인 없이 그대로 "공식 기록"처럼 남을 뻔했다. 독립 감시 체계의 핵심(작업자가 자기 작업을 스스로 승인 표시할 수 없어야 한다)이 이번뿐 아니라 프로젝트 시작부터 지켜지지 않고 있었다는 뜻이다.
+
+**영향 범위**: 이번 세션에서 감시관이 직접 파일 대조로 검증한 모든 PASS/FAIL 판정(9-A~9-D)은 매번 실파일을 새로 스테이징해 읽고 확인한 것이므로 이 문제와 무관하게 유효하다(감시관은 audit.md에 적힌 과거 기록을 근거로 판정한 적이 없다). 다만 **이 세션 이전에 작성된 audit.md/AGENTS.md 항목**(슬라이스 C~E, Step 8, typecheck 52건 등) 중 작업자가 직접 써넣은 부분은 감시관의 독립 검증 없이 남아 있을 수 있다 — 재검증 필요 여부는 보리 판단.
+
+**권고**: (1) 작업자에게 `docs/audit.md`·`AGENTS.md` 두 파일에 대한 직접 쓰기·커밋을 금지시킨다 — 상태 보고는 채팅(보리 경유)으로만 하고, 기록은 감시관이 검증 후 넣는다. (2) 필요하면 이전 작업자 자필 기록분(슬라이스 C~Step 9 typecheck)도 감시관이 재검증하도록 지시한다.
+
+## AGENTS.md 개정 반영 (보리, 2026-09-03)
+
+보리가 위 프로세스 위반 지적에 대응해 `AGENTS.md`를 직접 개정(35267 bytes, mtime 확인). 감시관이 전문 재확인 후 반영:
+
+- **`docs/report.md` 신설**: 작업자는 이제 테스트결과·로그·변경내역을 `docs/audit.md`가 아니라 `docs/report.md`에만 쓴다(Step마다 리셋). 감시관이 그 위에 실사 판정(PASS/FAIL, 5대 검증, Red-Team 15문 등)을 이어 쓴다. `docs/audit.md`는 Step 상태·이력 기록 전용으로 좁혀졌다 — 앞으로 감시관은 상세 실사 내용을 `report.md`에 쓰고 `audit.md`엔 짧은 상태줄만 남긴다(이번 항목까지는 과거 방식대로 audit.md에 상세 기록했음 — 다음 Step부터 새 방식 적용).
+- **AGENTS.md 편집권 명문화**: §00에 "AGENTS.md의 제정·수정·삭제 권한은 오직 사용자에게만 있다" 못박힘. 감시관의 장부 독점 조항에서도 AGENTS.md는 명시 제외. 작업자의 `.md` 조작 금지 대상도 `docs/audit.md`·`docs/sot.md`·`AGENTS.md` 3개로 명확화 — 위에서 적발한 위반(작업자의 audit.md/AGENTS.md 직접 커밋)에 대한 직접 대응.
+- **감시관 필수 직접 검증 5대 항목** 신설, 1번이 "승인 없는 임의 commit/push 및 `docs/audit.md` 상태 변경 여부" — 매 검증 시 명시 체크 항목으로 고정됨.
+- **FAIL 지시문 형식 고정**: 감시관이 FAIL 판정 시 작업자 전달 지시문 첫 줄에 "AGENTS.md의 00절 3번 작업자 수칙을 준수하라. .md 파일은 일체 수정하지 말고 지시된 코드 작업만 수행하라." 필수 삽입.
+- **대화창 출력 축소**: 상세 실사는 `report.md`로, 채팅엔 (1)report.md 작성 알림 (2)비개발자 요약 2~3줄 (3)브라우저 실검증 가이드+커밋 초안만.
+
+`docs/report.md`는 아직 저장소에 없음(작업자 다음 제출 시 생성 예정). 감시관은 이 개정판을 확인했고 즉시 준수한다.
+
+## 9-A~D 푸시 검증 및 Step 9 범위 결정 (감시관 확인·보리 결정, 2026-09-03)
+
+**푸시 검증(감시관, 기기 직접 확인)**: 보리가 "푸시 했어"라고 보고한 뒤, 자기보고를 그대로 믿지 않고 `.git/refs/remotes/origin/main`을 두 저장소 모두 직접 대조했다.
+- `ubiquitous-parakeet`: `origin/main` = `d2c14609e1aadb34f95a7b2204aed6382653f47f` = 로컬 HEAD. 일치 확인.
+- `react-app`: `origin/main` = `5d1de1fa0f439a11e94aac7c593edd6e7e8c2f5a` = 로컬 HEAD. 일치 확인.
+
+두 저장소 모두 실제로 원격에 반영됐음을 확인. (`AGENTS.md`에 보리가 같은 시점에 직접 추가한 "푸시 주기 통제"·"4단계 브리핑" 두 조항은 이번 푸시에 포함되지 않고 여전히 미커밋 상태로 작업트리에 남아있음 — 다음 승인 커밋 라운드 몫.)
+
+**Step 9 범위 결정(보리, 2026-09-03)**: 감시관이 "9-A~D를 완료된 챕터로 볼지, 원 Step 9 범위(기사관리 대리작성·소속기사 로그인/employerLink 포함)까지 다 끝나야 완료인지" 질의 → **보리 결정: Step 9는 원래 범위(대리작성+로그인 포함)까지 계속 진행 중.** 즉:
+- `docs/audit.md` Step 9 헤더(1681행)는 `[ ]`(미완료) 그대로 유지 — 9-A~D `[x]`는 하위 슬라이스 완료 표시일 뿐, Step 9 챕터 전체 완료가 아님.
+- 방금 실행된 9-A~D 푸시는 "챕터 전체 완료 후 일괄 푸시" 신규 규칙(`AGENTS.md` §2, 미커밋 상태로 추가됨) 기준으로 보면 챕터 완료 전 조기 푸시에 해당하나, 보리 본인이 직접 실행한 것이므로 규칙 위반이 아니라 **보리의 예외적 판단으로 기록**한다.
+- 잔여 작업(원 Step 9 몫, 미착수): ① 기사관리 대리작성 진입점(차주가 소속 기사 몫 일지를 대신 작성), ② 소속기사 로그인 화면(employerLink, RLS 신규 — 원 9-D 설계, 1698행). 이 두 건이 끝나야 Step 9 `[x]` 확정 가능.
+
+## ① 기사관리 대리작성 — 착수 전 범위 결정 및 슬라이스 A 계획 (감시관 조사, 2026-09-03)
+
+**보리 지시**: "1번부터"(① 기사관리 대리작성 먼저 진행). 감시관이 착수 전 기기에서 관련 파일을 직접 열어 현재 상태를 조사한 결과, 원래 예상보다 범위가 컸다 — 화면(진입점)만 만들면 끝나는 게 아니라 **서버 동기화 인프라 자체가 없다**는 사실을 발견해 보리에게 먼저 보고했다.
+
+**조사 결과(실측)**:
+- 사이드메뉴엔 "기사 연동 관리"(초대·상태변경, `DriverConnectionPage.jsx`)만 있고 "대리작성" 화면·진입점은 없음.
+- `/app/logs/:logId/day/:date` 라우트(`AppShellRoutes.jsx` 68행, `MainPageRoute.jsx`)는 이미 있고 `logId`가 차량번호를 그대로 받게 설계돼 있음 — 그런데 실제로 이 경로로 이동하는 버튼/링크가 코드 전체에 하나도 없음(grep 0건). 배관만 미리 깔아두고 진입점은 미착수.
+- **로그인 상태에서 저장 시**: `lib/mainDayLogRouting.js`의 `shouldCommitDayLogToCloud()`가 `logId !== 'main'`이면 무조건 `false`를 반환 — 기사(서브) 차량 일지는 로그인해도 **이 기기 로컬에만 저장되고 서버(Supabase)엔 전혀 안 올라간다.** 반면 실제 서버 쓰기 함수(`dayLogCloudCommit.js`의 `upsertDailyLog`/`writeDayKeyToServer`)는 `vehicleId`를 매개변수로 받는 범용 함수라 main 전용으로 짜여있지 않음 — main만 허용하는 건 그 위의 판정 로직 하나뿐.
+- **hydrate(새로고침·재로그인 시 서버에서 불러오기)도 마찬가지로 main 전용**: `hydrate.js` 101~125행이 `findMainCar(nextCars)`로 찾은 차량 하나의 `daily_logs`만 조회한다. 기사 차량 daily_logs는 서버에 있어도 아예 조회하지 않음.
+- **매출/미수금 계산도 main만 봄**: `store/ownerDataHooks.js`의 `readOwnerWorkDataByLogId`/`useOwnerWorkDataByLogId`가 주석("기존 loadWorkDataByLogId와 같이 main만 담는다 — 서브 일지 persist 창구는 이 이관 범위 밖")과 함께 하드코딩으로 `{ main: ... }`만 반환. 로컬 저장소 자체(`workLogs[ownerKey][logId]`)는 존재하지만 매출 계산엔 안 들어감. **이 부분(매출/미수금에 기사 차량 반영)은 이번 슬라이스 A 범위에 넣지 않는다** — 별도 논의 필요(스코프 폭증 방지).
+
+**보리 결정(대화, 2026-09-03)**: 서버저장까지 이번 작업에 포함하되, 한 번에 하지 않고 **A(서버 동기화) → B(진입점 UI)** 두 슬라이스로 나눠 진행.
+
+### 슬라이스 A — 기사(서브) 차량 일지 서버 동기화 (착수 전 4대 기준, §0-1 C)
+
+**현재 상태**: 로그인 사용자의 메인 차량 일지만 Fail-Fast로 서버에 직접 반영(슬라이스 D 계약)되고, 기사 차량 일지는 로컬에만 남는다. 읽기(hydrate)도 메인만 서버에서 불러온다.
+
+**목표 상태**: 로그인 사용자가 기사(서브) 차량 로그ID로 일지를 저장하면 슬라이스 D와 동일한 계약(그 날짜 `daily_logs`+`transport_details`에 직접 1회 쓰고 성공 시에만 Store 반영, durable/fallback/재시도 큐 없음)으로 서버에 반영된다. hydrate 시에도 기사 차량들의 `daily_logs`/`transport_details`를 함께 조회해 `workLogs[ownerKey][logId]`에 병합한다. 매출/미수금 반영은 이번 범위 밖(그대로 `{ main }`만 유지).
+
+**건드릴 파일(예상, 작업자 착수 전 재확인)**:
+- `lib/mainDayLogRouting.js`: `mainCarSupabaseId`/`shouldCommitDayLogToCloud`를 "main 전용"에서 "logId로 아무 차량이나 찾기"로 일반화.
+- `lib/dayLogCloudCommit.js`: `commitMainDayLogToCloud`/`commitMainDayLogMapToCloud`가 위 일반화된 vehicleId 조회를 쓰도록 수정(내부 쓰기 함수 자체는 이미 vehicleId 매개변수라 무변경).
+- `lib/hydrate.js`: main 차량 하나만 조회하던 101~125행을, `supabaseId`가 있는 차량 전체(main + 기사 차량)를 순회해 각각 daily_logs 등을 조회하도록 확장.
+- `lib/hydrateMerge.js`/`hydrateMergeWork.js`: logId별로 나눠 병합하도록(현재는 단일 `workData` 맵 하나만 만듦).
+- 서버 tombstone 처리(`readOwnerWorkDataTombstones`)가 logId 구분 없이 단일 맵인지 여부는 작업자 착수 전 재확인 필요 — logId별로 분리 안 돼 있으면 이번 라운드에서 같이 손볼지 별도 판단.
+
+**건드리지 않음**: `store/ownerDataHooks.js`의 `readOwnerWorkDataByLogId`(매출/미수금용, `{ main }` 하드코딩 유지), `DriverConnectionPage.jsx`/`DriverFormModal.jsx`(진입점은 슬라이스 B), 게스트/미동기화 차량 로컬 경로(`saveLogWorkDataWithTombstoneCheck`, 무변경).
+
+**4대 기준(§0-1 C)**:
+1. 구독 vs 스냅샷 — hydrate가 만드는 스냅샷 확장(`nextSnapshot`에 logId별 일지 포함). `store/owner-state.js`의 `replaceOwnerState`가 이 확장된 형태를 받을 수 있는지는 작업자 착수 전 코드 재확인 대상.
+2. 값의 위치 — draft → `workLogs[ownerKey][logId]`(Store/LS) → Supabase `daily_logs`(vehicle_id = 그 기사 차량 supabaseId). 슬라이스 D와 동일 구조를 logId 축으로 반복.
+3. 쓰기 창구 — 기존 `commitMainDayLogToCloud` 계열을 일반화해서 그대로 재사용(새 창구 신설 아님).
+4. 충돌 우선순위 — 슬라이스 D와 동일: hydrate 시 서버가 정본(로컬 tombstone 처리된 날짜만 예외), 서버 쓰기 성공 후에만 Store 반영.
+
+**실패 처리(§0-1 B, 사용자 결정 필요)**: 기사 차량 일지 저장이 오프라인 등으로 실패하면 메인과 똑같이 "안내 토스트만, durable 재시도 큐 없음(Fail-Fast)"으로 할지 — 이 건은 대화창에서 보리에게 별도 확인 후 착수.
+
+신규 durable/fallback/재시도 레이어 없음(§0-1 A 준수) — 기존 슬라이스 D 계약을 다른 차량으로 확장하는 것뿐, 새 방어 레이어 아님.
+
+**실패 처리 결정(보리, 2026-09-03)**: 메인 차량과 동일 — 저장 실패 시 안내 토스트만, 자동 재시도(durable 큐) 없음. 슬라이스 D 계약 그대로 확장.
+
+**상태**: 슬라이스 A 4대 기준 + 실패 처리 방식 전부 보리 승인 완료(2026-09-03). 작업자 착수 지시 발행.
+
+
+---
+
+## Step 9 ① 슬라이스 A 최종 승인 + 판정 부기① 처리 (2026-09-03, 보리)
+
+- 보리 브라우저 검증 완료 확인("브라우저 확인 완료"). `docs/report.md`의 감시관 Phase 2 실사 판정(기능 PASS, 5대 검증/Red-Team 15문/실패주입 매트릭스 전부 통과)에 이어, 최종 사용자 승인으로 **슬라이스 A(기사 차량 일지 서버 동기화) 완료 확정**.
+- **판정 부기①**(`dayLogCloudCommit.js` — 라운드 시작 전 이미 200줄 초과 상태였던 레거시 파일을 별도 분리설계안 사전 보고 없이 수정한 절차 건) — 보리 결정: **A안 채택**. 착수지시서(`docs/report.md`)에 이미 해당 파일이 "건드릴 파일"로 명시돼 승인된 것으로 간주하고, 별도 분리설계안을 소급 요구하지 않는다.
+- **단, 보리 지시**: "이번엔 A안으로 넘어가지만 다음 작업부턴 §3(200줄 초과 레거시 파일 수정 전 분리설계안 사전 보고·승인) 절차를 똑바로 지키라"고 작업자에게 경고할 것. 이 경고는 다음 착수지시서(`docs/report.md`, 아래 매출 연동 절 참고)에 명시해 전달한다 — 작업자는 코드만 보고 이 감사 로그(`docs/audit.md`)는 보지 않으므로, 경고문 자체를 지시서 파일에 포함시켜야 실제로 전달된다.
+- Step 9 ① 기사관리 대리작성 상태: 슬라이스 A **[x] 완료·승인**. react-app 커밋 `ce08638`(푸시 없음). 슬라이스 B(진입점 UI) 미착수.
+
+## Step 9 ① 매출 연동 — 신규 요청 조사 (2026-09-03, 보리)
+
+보리 지시: "차주가 서브차량운행일지 기입후 매출에서 기사탭이 연동되어야함" + "기사가 추가되면 기사탭이 드롭다운형식". 감시관이 착수 전 코드를 조사했다(코드 작성 없음, 조사만).
+
+**조사 결과 — 매출 계산 엔진은 이미 멀티 차량을 대비해 설계돼 있음**:
+- `domain/financeOwnerDetail.js`의 `getOwnerMonthlyFinanceDetail(monthKey, scope, settings, workDataByLogId, expenses)`는 `scope!=='owner'`일 때 `subCarsInScope.forEach(car => sources.push({ logId: car.number, data: getDriverCarWorkData(car, workDataByLogId) }))`로 이미 서브 차량별 소스를 루프 돈다.
+- `domain/financeCore.js`의 `getDriverCarWorkData(car, workDataByLogId)` = `logData(workDataByLogId, car.number)` = `workDataByLogId[car.number] || {}` — 이미 완전히 범용.
+- `getReceivableItems(settings, workDataByLogId)`(미수금)도 `item.logId`로 이미 main/기사 구분.
+- 즉, 매출·미수금 계산 로직 자체는 손댈 필요가 없다(신규 로직 불필요, §0-1 A상 안전).
+
+**진짜 누락 지점 — 딱 하나**:
+- `store/ownerDataHooks.js`의 `readOwnerWorkDataByLogId`/`useOwnerWorkDataByLogId`(63~74행)가 `{ main: readOwnerWorkData(ownerKey) }`로 **main만 하드코딩**해서 계산 엔진에 넘긴다 — 슬라이스 A 착수지시서에서 명시적으로 "이번 라운드 범위 밖, 별도 논의"로 남겨뒀던 바로 그 지점(위 착수지시서 "건드리지 않을 파일" 참고). `store.workLogs[ownerKey]`에는 이미 슬라이스 A 덕에 logId별 데이터가 다 들어있으므로, 이 훅이 `{ main, ...나머지 logId }` 전체를 돌려주도록만 바꾸면 매출 화면(전체/기사 탭)이 즉시 서브 차량 데이터를 반영한다.
+- 기사↔차량 연결: `domain/drivers.js`의 `upsertDriver`가 "같은 차량번호는 한 기사에게만" 1:1 규칙을 이미 강제한다(`driver.vehicleNumber`). 즉 `useOwnerDrivers(ownerKey)`로 연동된(status==='linked') 기사 목록을 얻으면 각 기사의 `vehicleNumber`가 곧 매출 화면의 logId다.
+
+**"기사가 추가되면 드롭다운" 요청**:
+- 현재 `components/revenue/OwnerRevenueView.jsx`의 `SCOPES`는 전체/차주/기사 3개 고정 탭이고, `scope==='driver'`는 연동된 서브 차량 전부를 합산해서 보여준다(개별 기사 구분 없음).
+- 보리 요청은 기사가 여러 명(=서브 차량 여러 대)일 때 "기사" 탭을 개별 기사 선택 드롭다운으로 바꿔 특정 기사 1인의 손익만 보이게 하라는 것 — 이는 위 매출 반영과는 별개로 `OwnerRevenueView.jsx`(UI)와, 선택된 기사 1인의 차량번호만 걸러 `getOwnerMonthlyFinanceDetail`에 넘기는 로직이 추가로 필요하다. `financeOwnerDetail.js` 함수 시그니처 자체는 안 건드리고, `workDataByLogId`를 화면단에서 `{ main, [선택된 차량번호]: data }`처럼 미리 걸러 넘기면 계산 엔진(financeOwnerDetail.js) 변경 없이 UI 레이어만으로 처리 가능해 보인다(작업자 착수 전 재확인 필요).
+
+**감시관 판단**: 위 두 요청은 성격이 다르다 — (C) 매출탭 데이터 연동은 `ownerDataHooks.js` 훅 한 곳(약 10줄) 수정으로 끝나는 아주 작고 낮은 위험의 변경이고, (D) 기사별 드롭다운은 `OwnerRevenueView.jsx` UI 재구성 + 선택 로직이 필요한 별개의, 더 큰 작업이다. 슬라이스 A/B를 나눴던 것과 같은 원칙(데이터 레이어 먼저, UI는 그 위에)이 여기도 그대로 적용된다고 판단해 보리에게 분리 여부·순서를 확인한다(대화창 질문 참고).
