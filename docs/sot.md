@@ -298,13 +298,13 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 
 프로덕션 strict-inventory는 Step 11 몫. 화면마다 `load*` 스냅샷이 다시 생기면 그 도메인만 4대 기준 보고 후 고친다.
 
-로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast는 A~D `[x]`. E(로그인 LS 미러 + 남은 저장 Fail-Fast)는 `docs/slice-e.md` 착수.
+로그인 업무 데이터의 정본을 Supabase만으로 옮기는 Fail-Fast는 A~D `[x]`. E(로그인 LS 미러 + 남은 저장은 서버 성공 후 Store)는 `docs/slice-e.md`, 구현 `[~]`(보리 실검증·`[x]` 전).
 
 ## 6. 다음 세션 체크리스트
 
 1. `AGENTS.md` §0 + §0-1 읽기.
 2. Step 8(매출/미수/세금계산서)은 보리 착수 지시 후에만.
-3. 슬라이스 E는 `docs/slice-e.md`. 보리 작업자 지시 = 착수. D는 `[x]`.
+3. 슬라이스 E는 `docs/slice-e.md`. 구현 `[~]`. `[x]`는 보리 브라우저 확인 후. D는 `[x]`.
 4. 신규 큐/overlay 넣지 않기. 로그인 저장 실패 토스트: `저장에 실패했습니다. 네트워크 상태를 확인해 주세요.`
 5. **푸시하지 말 것**(별도 지시 전).
 6. **게스트 기사·차량 초대를 고치지 마라** (아래 8절).
@@ -366,16 +366,16 @@ A~D는 중간 상태다. E가 끝나야 로그인 업무 미러가 LS에서 빠�
 - 콜상세 id: `src/domain/callDetailIds.js`
 - 동기화: `src/lib/syncWorkData.js`
 - Store 구독: `src/store/ownerDataHooks.js` (`useOwnerClients`, `useOwnerExpenses`, `useOwnerCars`, `useOwnerSettings`, `useOwnerInvoices`, `useOwnerProfile`, `useOwnerDrivers`, `useOwnerWorkData` / `useOwnerWorkDataByLogId`, `readOwner*`)
-- 프로필 쓰기: `src/lib/profile.js` `saveProfile` → `commitProfile`
 - 기사 초대(로그인, 슬라이스 A): `src/lib/requestDriverInviteSave.js` → `src/lib/driverLinkRpc.js` (`upsert_driver_link_idempotent`). outbox 없음.
 - 기사 상태/삭제(로그인, 슬라이스 B `[x]`): `requestDriverStatusChange` / `requestDriverDeletion` → `driver_links` update·delete 1회. outbox 없음. hydrate `mergeDriversFromRows`: 서버 배열(빈 배열 포함)이 정본.
 - 차량·거래처 삭제(로그인, 슬라이스 C `[x]`): `requestVehicleDeletion` / `requestClientDeletion` → 본체 delete 1회 후 Store. outbox/tombstone 없음. hydrate `mergeCarsFromRows` / `mergeClientsFromRows`: 서버 배열(빈 배열 포함)이 정본. `supabaseId` 없는 로컬만 빈 서버에서도 남을 수 있음.
 - 메인 일지(로그인, 슬라이스 D `[x]`): `commitMainDayLogToCloud` → 그 날짜 `daily_logs`(+`transport_details`) 1회 후 Store(`syncToCloud: false`). durable/재시도 없음. hydrate `mergeWorkDataFromRows`: `dailyRows` 배열(빈 배열 포함)이 정본.
 - 기사 쓰기 배럴: `src/lib/drivers.js` `saveDrivers` (게스트 로컬 잔존 — **초대 제품 기능 아님**, §8 Out-of-Scope)
-- 비용 쓰기 창구: `src/lib/expenses.js` `saveExpenses` → `commitExpenses` (신규 `requestExpense*` 없음)
-- 차량 쓰기 창구: `src/lib/vehicleMutations.js` `requestVehicleSave` (신규 `requestCar*` 없음)
-- 설정 쓰기 창구: `src/lib/practiceSettings.js` `savePracticeSettings` → `commitSettings` (신규 `requestSettings*` 없음)
-- 계산서 쓰기 창구: `src/lib/invoices.js` `saveInvoices` → `commitInvoices`
+- 비용 쓰기 창구: `src/lib/expenses.js` `saveExpenses` — 로그인: 서버 기록 1회 후 `commitExpenses(..., { syncToCloud: false })`. 게스트 persist 유지.
+- 차량 쓰기 창구: `src/lib/vehicleMutations.js` `requestVehicleSave` — 로그인: 서버 upsert 1회 후 Store. 게스트 persist 유지.
+- 설정 쓰기 창구: `src/lib/practiceSettings.js` `savePracticeSettings` — 로그인: profiles upsert 1회 후 Store. LS는 theme만.
+- 계산서 쓰기 창구: `src/lib/invoices.js` `saveInvoices` — 로그인: tax_invoices 1회 후 Store.
+- 프로필 쓰기 창구: `src/lib/profile.js` `saveProfile` — 로그인: profiles upsert 1회 후 Store.
 - 일지 맵 쓰기 창구: `persistWorkDataByLogId` → `saveWorkData` (맵은 main만)
 - 비용 SoT 테스트: `src/components/revenue/OwnerRevenueView.expensesSoT.test.js`
 - 차량 SoT 테스트: `src/components/DriverConnectionPage.carsSoT.test.js`
