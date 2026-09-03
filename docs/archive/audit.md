@@ -3515,3 +3515,64 @@ store/ownerDataHooks.js, store/ownerDataHooks.test.js). 커밋 메시지
 이번 건 역시 add/commit 실행 전 감시관이 `git status --short`/`git diff`
 원본을 직접 대조해 지시서와 실제 트리 간 차이를 두 차례 연속으로 사전에
 잡아낸 사례로 기록.
+
+
+---
+
+## main 빨간 테스트 1건 판별 — `DriverConnectionPage.carsSoT.test.js` (2026-09-03)
+
+보리 지시: "main의 빨간 테스트 1건을 먼저 처리하세요. 코드 회귀인지, 슬라이스
+E 이후 낡아버린 테스트인지 판별해서 둘 중 하나로 고쳐야해." 감시관이 코드
+작성 없이(작업자 착수 전) 직접 조사.
+
+### 조사 방법
+`DriverConnectionPage.carsSoT.test.js`, `DriverConnectionPage.jsx`,
+`DriverFormModal.jsx`, `lib/cloudSession.js`, `store/ownerDataHooks.js`,
+`.git/logs/HEAD`(reflog), `docs/report.md`(슬라이스 D 전문), `docs/audit.md`
+자체(기존 "문제 B"/슬라이스 E Phase 2 기록) 전부 직접 read + mtime 대조. 코드
+실행(`npm test`)은 감시관에게 실행 도구가 없어 수행하지 못했다 — 아래 판별은
+정적 코드 대조 기준이며, 작업자 착수지시서에 실제 실행 재확인을 포함시켰다.
+
+### 원인 규명 — **코드 회귀 아님. 테스트가 낡음(stale).**
+1. `DriverConnectionPage.carsSoT.test.js`는 `session: null`(게스트)로
+   렌더한 뒤 `+ 초대` 버튼을 클릭해 초대 모달을 열고, `commitCars`로 차량을
+   추가하면 모달이 리마운트 없이 `datalist`를 갱신하는지 검증한다. 파일
+   mtime(1788140839, 2026-09-02 초순)이 슬라이스 A(커밋 `c08af26`,
+   1788192594)보다도 앞서 — Step 9 관련 어떤 라운드보다도 먼저 작성된
+   파일이고 그 뒤로 한 번도 수정되지 않았다.
+2. 현재 `DriverConnectionPage.jsx` 148행: `{cloud && (<button
+   className="management-add-fab" onClick={openAdd}>+ 초대</button>)}` —
+   `cloud = isCloudSession(session)`이고 `isCloudSession(null) === false`
+   (`lib/cloudSession.js` 85~87행: `!!(session?.userId &&
+   !session.guestMode)`). 즉 게스트 세션으로 렌더하면 `+ 초대` 버튼 자체가
+   DOM에 없어 테스트의 `assert.ok(addBtn, '초대 버튼이 있어야 한다')`에서
+   바로 실패한다.
+3. 이 `cloud &&` 게이트는 이번 세션 신규 결함이 아니라, **슬라이스
+   E(소속기사 로그인, 커밋 `192ebe6`)에서 의도적으로 추가·검증된 수정**이다:
+   - 위 문서 "문제 B — 게스트도 `+ 초대` 버튼으로 기사를 등록할 수 있음"
+     (2026-09-03, 슬라이스 E 착수 전 발견) 절에서 이미 "게스트: 기사·차량
+     초대는 제품 기능이 아님(Explicit Out-of-Scope)"으로 알려진 이슈로
+     기록됨.
+   - "슬라이스 E 클라이언트 구현 — 감시관 Phase 2 실사" 절에서 "MyPage/
+     DriverConnectionPage 조건부 노출"을 감시관이 직접 검증해 **[PASS]**
+     판정한 항목 중 하나다.
+   - `AGENTS.md` 21행: "게스트는 기사 초대·차량(기사) 초대를 쓰지 않는다.
+     버그로 고치지 마라. SoT Explicit Out-of-Scope." — 사용자가 명시적으로
+     못 박은 비즈니스 규칙과 정확히 일치한다.
+   - 따라서 `DriverConnectionPage.jsx` 자체를 고치는 것은 **금지**(이미
+     승인·검증된 동작을 되돌리는 것이라 오히려 회귀를 만든다).
+4. 이 실패가 지금까지 감지되지 못한 이유: 슬라이스 D/E/F 라운드 전부
+   `npm test` 전체 스위트가 아니라 각 라운드 대상 파일만 재실행했다
+   (`docs/report.md` §3/§6/§8 — `driverRevenueScope.test.js` 3 pass만
+   기록). 이 문서에서 확인 가능한 마지막 전체 스위트 그린 기록은 그보다
+   앞선 "Fail-Fast 슬라이스 E"(LS 미러 제거, 2026-09-01/02, 별개 명칭
+   충돌 항목) 라운드의 `tests 529 / suites 116 / pass 529 / fail 0`뿐이다
+   — 이후 소속기사 로그인 슬라이스 E(`+ 초대` 게이트 추가 시점)부터
+   슬라이스 F·D까지 전체 회귀 스위트가 한 번도 재확인되지 않았다.
+
+### 판정
+**[코드 회귀 아님 / 테스트 스테일]** — 프로덕션 코드(`DriverConnectionPage.jsx`
+등)는 무변경 유지. `DriverConnectionPage.carsSoT.test.js` 하나만, 게스트
+세션 대신 클라우드(로그인) 세션으로 교체해 원래 검증 의도(차량 커밋 시
+모달이 리마운트 없이 `assignableCars`를 갱신하는지)를 유지한 채 고친다.
+지시서는 `docs/report.md`에 기록 후 작업자에게 전달(아래 절).

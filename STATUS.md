@@ -1,7 +1,7 @@
 # STATUS — 현재 상태 한눈에
 
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
-> 상세 이력은 `docs/audit.md`(동결, 필요할 때만 찾아봄).
+> 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
 > 최종 갱신: 2026-09-03 PM 10:19
 
@@ -40,13 +40,12 @@
 - `npm run typecheck` → 현재 **0 에러**(정상).
 
 ## 저장소 상태
-- **react-app**: `main` = `5c47e4f`, CI 🟢. 미커밋 2개(위 "지금 하는 일").
-- **ubiquitous-parakeet**: `main` = `2449787`. 미커밋: `AGENTS.md`, `docs/audit.md`,
-  `docs/report.md`, `docs/STATUS.md`(신규).
+- **react-app**: `main`, CI 🟢. 미커밋 = 슬라이스 C-2 (`RevenuePage.jsx`, `revenue/DriverRevenueView.jsx`).
+- **ubiquitous-parakeet**: `main`. 문서 갱신분만 미커밋일 수 있음.
+- 정확한 HEAD·미커밋 범위는 세션 시작 시 `git log`/`git status`로 직접 확인 (AGENTS.md §0-6).
 
-## 승인의 기준 (사용자가 승인·커밋 지시 전에 확인할 것)
-1. **GitHub Actions "CI / verify" 초록** — 매 push 자동으로 `npm test` + `typecheck` + `build` 재실행.
+## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
+1. **GitHub Actions "CI / verify" 초록** — 매 push 자동으로 `npm test` + `typecheck` + `build` 재실행. 초록 아니면 `[x]` 불가.
 2. **브라우저 실검증 완료** — `npm run dev`로 해당 화면 직접 조작. 사용자만 가능.
-> ※ 1·2는 "승인에 필요한 증거"다. 최종 승인(=`[x]`, 커밋 지시)은 사용자의 결정 행위(AGENTS.md §1).
->   AGENTS.md §2의 감시관 교차검증 절차를 CI로 어디까지 대체·간소화할지는
->   **미결 — 사용자가 AGENTS.md에서 직접 정한다.** 이 요약본은 절차를 바꾸지 않는다.
+3. **감시관 §5 리뷰 통과** — 범위·타입꼼수·몰래증설·200줄·테스트진실성·문서정합·요구사항충족.
+> ※ 1·2·3은 "승인에 필요한 증거". 최종 승인(=`[x]`)은 사용자의 결정 행위. 절차 정본은 AGENTS.md §3·§5.

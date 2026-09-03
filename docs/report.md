@@ -2,9 +2,9 @@
 
 > Step마다/작업 단위마다 리셋되는 착수지시서·실사 보고서 통합 파일이다(AGENTS.md §12).
 > 이전 내용(슬라이스 D)은 이미 `react-app` 커밋 `3d7e0c8`, `ubiquitous-parakeet`
-> 커밋 `2449787`로 영구 보존됐다(docs/audit.md에도 archived). 이번은 보리 지시
+> 커밋 `2449787`로 영구 보존됐다(docs/archive/audit.md에도 archived). 이번은 보리 지시
 > "main의 빨간 테스트 1건을 먼저 처리하세요"에 따른 별도 소규모 작업 —
-> 배경·판별 근거 전문은 `docs/audit.md` "main 빨간 테스트 1건 판별 —
+> 배경·판별 근거 전문은 `docs/archive/audit.md` "main 빨간 테스트 1건 판별 —
 > `DriverConnectionPage.carsSoT.test.js` (2026-09-03)" 절 참고.
 
 ## 0. DB 작업
@@ -17,7 +17,7 @@
 보리: "main의 빨간 테스트 1건(`DriverConnectionPage.carsSoT.test.js`)을 먼저
 처리하세요. 코드 회귀인지, 슬라이스 E 이후 낡아버린 테스트인지 판별해서 둘
 중 하나로 고쳐야해." 감시관이 코드 작성 없이 조사만 수행(방법·근거는
-`docs/audit.md` 해당 절 참고).
+`docs/archive/audit.md` 해당 절 참고).
 
 ### 판별 결과 (요지)
 **코드 회귀 아님 — 테스트가 낡음(stale).** `DriverConnectionPage.jsx` 148행의
@@ -83,7 +83,7 @@
 2. **전체 스위트 재실행**: `npm test`(또는 프로젝트의 전체 테스트 커맨드)
    원문 로그 — 이번 건 외에 슬라이스 E/F/D 라운드에서 놓쳤을 수 있는 다른
    빨간 테스트가 없는지 이 기회에 함께 확인한다(마지막 전체 그린 기록이
-   슬라이스 E 이전인 `tests 529 / pass 529`였음 — `docs/audit.md` 해당
+   슬라이스 E 이전인 `tests 529 / pass 529`였음 — `docs/archive/audit.md` 해당
    절 참고). 만약 이 테스트 외에 다른 실패가 나오면 **임의로 고치지 말고
    먼저 감시관에게 보고**(범위 외).
 3. **Revert-and-confirm-fail**(AGENTS.md §10): 수정 후 `session`을 다시
