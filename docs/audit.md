@@ -3181,3 +3181,337 @@ docs/report.md에 작성** → 사용자가 그 지시를 작업자에게 전달
 다음 단계: 보리가 `docs/report.md` §5 지시서를 작업자에게 전달 → 작업자
 커밋 실행 → 감시관이 `git log -1 --stat` 결과로 사후 대조 검증 → 이상 없으면
 Step 9 완료 처리, 이후 보리가 별도 시점에 양쪽 저장소 수동 일괄 푸시.
+
+
+---
+
+## Step 9 커밋+푸시 완료 보고 (보리, 2026-09-03) — 감시관 사후 대조 대기
+
+보리: "푸시했어 다음진행하자". 커밋·푸시 자체는 실행 주체(작업자 커밋,
+보리 푸시)가 맞게 수행된 것으로 보고받았다.
+
+**감시관 자체 확인 결과(이번 세션 도구 한도 내)**: `docs/report.md`·
+`docs/audit.md` 재대조 — 감시관이 §5에 마지막으로 쓴 내용 그대로 보존돼
+있고, 작업자가 그 위에 임의로 "실행 완료" 등을 덧붙이지 않았다(이전에
+발견된 "작업자가 감시관 기록 위에 직접 커밋 지시/승인 문구를 써넣는" 패턴 —
+아래 참고 — 이번엔 재발 안 함, 긍정적으로 기록).
+
+**미확인 상태로 남는 것**: 이번 세션에는 디바이스 셸(git) 실행 도구가 없어
+감시관이 직접 `git log -1 --stat`/`git status`를 돌려 커밋 내용(슬라이스
+E+F 파일만 정확히 포함됐는지, 매출 C-2가 섞이지 않았는지)이나 원격 푸시
+결과를 독립적으로 검증하지 못했다. §5 지시서에 "커밋 후 `git log -1
+--stat` 결과를 보리에게 보고할 것"을 명시했었는데, 아직 그 결과물이 감시관
+앞으로 전달되지 않았다.
+
+**참고(과거 이력, 이번 확인 계기로 재상기)**: 이 프로젝트에서 작업자가
+`docs/audit.md`/`AGENTS.md`에 감시관 확인 없이 직접 "완료/승인" 문구를
+써넣은 사례가 이전에 최소 9회 확인된 바 있다(2485~2489행 참고). 이번 Step
+9 건은 그 패턴이 재발하지 않은 것으로 보이지만, `git log -1 --stat` 실물
+근거 없이 "완료"로 단정하지 않고 보리에게 그 결과물 공유를 요청한다.
+
+
+---
+
+## Step 9 커밋 결과 확인 — 최종 완료 처리 (2026-09-03)
+
+보리가 작업자로부터 받은 커밋 완료 보고를 채팅으로 전달:
+
+```
+커밋 지시서(§5)대로 양쪽 저장소에 커밋만 했습니다. push는 하지 않았습니다.
+react-app — 192ebe6
+• 20 files (슬라이스 E+F만)
+• 매출 C-2(RevenuePage, DriverRevenueView, ownerDataHooks,
+  driverRevenueScope*)·로그 산출물은 제외·미커밋 유지
+ubiquitous-parakeet — 1bc85dc
+• docs/report.md, docs/audit.md, docs/assets/slice-f-driver-connect-mockup.png
+• AGENTS.md 변경분은 지시서 범위 밖이라 제외·미커밋 유지
+```
+
+**감시관 판단**: 감시관이 §5 지시서에 명시했던 두 가지 핵심 안전장치가 실제로
+지켜졌음을 이 보고로 확인한다 — (1) `git add -A` 대신 정확히 슬라이스 E+F
+해당 파일만 포함(react-app 20 files), (2) 매출 C-2 관련 파일(RevenuePage,
+DriverRevenueView, ownerDataHooks, driverRevenueScope*)과 로그 산출물이
+명시적으로 제외됨 — 감시관이 우려했던 "미승인 변경 혼입" 위험이 실제로
+발생하지 않았다. `ubiquitous-parakeet` 쪽도 지시한 3개 파일만 포함, 범위 밖
+`AGENTS.md` 변경은 제외 — 정확히 지시대로.
+
+이후 보리가 "푸시했어"로 push 완료 보고, 브라우저 실검증도 앞서 완료 —
+**Step 9 "② 소속기사 로그인/employerLink"(슬라이스 E) + "차량 등록 모달
+기사 연동 목업"(슬라이스 F) 전 과정(코드 검증 → 승인 → 커밋 지시 → 커밋 →
+푸시 → 실측 확인) 완료.** `react-app` `192ebe6`, `ubiquitous-parakeet`
+`1bc85dc` 각각 origin push 완료(보리 보고 기준).
+
+**절차 개선 — AGENTS.md §2 추가 보강(보리, 2026-09-03)**: 이번 커밋 완료
+보고가 `docs/report.md`가 아니라 채팅으로만 감시관에게 전달돼, 보리가 절차
+문구를 추가로 보강함 — "...→ 작업자가 한국어 커밋 메시지로 커밋 실행 후
+`docs/report.md`에 작성." (기존엔 커밋 실행까지만 명시, 실행 후 보고를
+어디에 남길지는 없었음). **감시관 판단: 타당한 보강.** 채팅 보고는 이
+세션(또는 이 기기)을 벗어나면 유실되지만 `docs/report.md`는 영구 기록이라,
+다음 슬라이스부터는 작업자의 커밋 완료 보고 자체가 report.md에 남아야
+감시관이 사후 대조할 근거가 항상 보존된다. 이번 건은 규정 신설 이전 실행
+건이라 소급 적용하지 않고, 위 커밋 요약을 감시관이 이 audit.md 항목으로
+대신 영구 기록해 둔다.
+
+
+---
+
+## 슬라이스 D(매출 "기사" 탭 드롭다운) 착수지시서 발행 (2026-09-03)
+
+Step 9 ①·② 전 과정 완료 후, 보리가 다음 작업으로 백로그의 원래 슬라이스
+D("차주 화면 기사별 드롭다운")를 선택. 스크린샷으로 매출 화면 "기사" 탭
+위치를 직접 지목해 확인.
+
+**감시관 확인 질문 2건과 보리 결정**: (1) 드롭다운 구성 — "전체 기사 합산"
+옵션 + 개별 기사 목록 조합으로 확정("기본이 전체 기사 합산이고 클릭하면
+드롭다운형식에 개별기사 한명씩볼수잇게"). (2) 기본값 — 전체 기사 합산(첫
+질문 답변으로 자동 해소, 별도 질문 불필요).
+
+**감시관 착수 전 코드 조사 결과**: `domain/financeOwnerDetail.js`(계산
+엔진)는 전혀 손댈 필요 없음 — `settings.cars`를 호출 전에 한 대로 미리
+필터링해서 넘기면 기존 로직이 자동으로 그 한 대만 계산한다. 슬라이스
+C-2에서 이미 정확히 이 용도로 만들어진
+`scopeSettingsToVehicle`/`scopeWorkDataToVehicle`(`driverRevenueScope.js`)를
+그대로 재사용 — 신규 필터링 로직 복제 없음. `OwnerMonthlyCards.jsx`도
+`scope` 값 하나만 참조하고 기사 개인 식별 정보는 안 쓰므로 무변경. 결과적으로
+**유일한 변경 파일은 `OwnerRevenueView.jsx`(현재 106줄)** — DB 작업 없음,
+서버 쓰기 없는 순수 클라이언트 필터링이라 Fail-Fast 대상도 아님.
+
+`docs/report.md`를 슬라이스 D로 리셋해 착수지시서 발행 완료. 드롭다운은
+네이티브 `<select>`(이 프로젝트의 기존 관례) 사용을 명시. 착수 전 작업자
+확인 요청 4가지(월/년 두 useMemo 모두 스코프 적용, 옵션 정렬은 재량이나
+"전체" 항상 첫 옵션, 200줄 여유, 가벼운 테스트 추가 검토) 명시.
+
+
+---
+
+## 슬라이스 D 클라이언트 코드 Phase 2 실사 — 최종 [PASS] (2026-09-03)
+
+작업자가 착수 전 확인 사항에 답하고(§2: 월/년 공유 스코프, 드롭다운 구성,
+연동 해제 시 `useEffect` 복귀, 기존 함수 재사용) 구현 완료 보고(§3: 변경
+파일 3개, 테스트 3 pass, 커밋/푸시 미실행)까지 작성한 상태에서 "작업완료했데
+확인해줘" 요청이 들어와 Phase 2 실사 진행.
+
+**방법**: `OwnerRevenueView.jsx`·`driverRevenueScope.test.js`·`side-menu.css`
+전량 직접 읽음 + `financeOwnerDetail.js`/`financeCore.js`/
+`OwnerMonthlyCards.jsx`/`DriverRevenueView.jsx`/`driverRevenueScope.js`(함수
+본체)의 수정시각(mtime)을 직접 조회해 **전부 무변경 확인** — Out-of-Scope가
+그대로 지켜졌음을 감시관이 직접 검증(작업자 보고에만 의존하지 않음).
+
+**확인된 주요 사항**: 계산 엔진(`financeOwnerDetail.js`/`financeCore.js`)
+무변경, 슬라이스 C-2의 `scopeSettingsToVehicle`/`scopeWorkDataToVehicle`
+함수 자체도 무변경으로 그대로 재사용(신규 로직 복제 없음), 월/년 두
+useMemo(`monthly`/`yearlyRows`) 모두 동일 스코프 적용, 기본값 전체 합산,
+드롭다운 첫 옵션 "전체 기사 합산" + 개별 기사 "이름(차량번호)" 나열, 연동
+해제 시 자동으로 전체 합산 복귀(`useEffect`), 기사 0명일 때 드롭다운 숨김,
+네이티브 `<select>` 사용(커스텀 드롭다운 신설 없음), CSS 스타일 존재 확인,
+줄 수 실측 일치(154/155), 절차 준수(작업자가 감시관 판정 절 대신 안 씀).
+
+**참고(차단 아님)**: 신규 테스트가 `scopeSettingsToVehicle`/
+`scopeWorkDataToVehicle` 함수 자체(이미 C-2로 검증됨)만 재확인할 뿐,
+`OwnerRevenueView.jsx`의 신규 UI 로직(드롭다운 렌더 조건, 연동 해제 시
+자동 복귀)에 대한 컴포넌트 테스트는 없음 — 슬라이스 F 때와 동일한 성격의
+얕음이며 이 프로젝트의 기존 테스트 관례에는 부합. 차단 사유 아님.
+
+**최종 판정: [PASS]**. `docs/report.md` §4에 상세 근거 기록. 커밋/푸시는
+보리 승인 시 §2 절차(감시관 커밋 지시서 → 작업자 커밋 실행 후 report.md
+기록 → 보리 푸시)대로 진행.
+
+
+---
+
+## 슬라이스 D 브라우저 실검증 — 보완 필요 3건 발견 (2026-09-03)
+
+§4 코드 리뷰 [PASS] 직후 보리가 직접 브라우저 확인, 스크린샷 2장에 직접
+주석(X 표시, 동그라미) 달아 문제 3건 지적. **코드 검증 자체는 착수지시서
+사양대로 정확히 구현됐음이 맞았지만, 착수지시서에 애초에 명확히 안 정해둔
+사양(1, 2번)이 브라우저 검증에서 드러남 — 감시관 착수지시서 작성 단계의
+누락으로, 커밋 보류하고 보완 라운드 진행.**
+
+1. **기사 미등록 시 "기사" 탭 자체 숨김** — 지금은 서브 차량이 0대여도
+   "기사" 탭이 항상 보임. 판단 기준은 `useOwnerDrivers`(연동 상태)가 아니라
+   `cars`의 `type==='sub'` 존재 여부로 잡아야 한다 — "기사" 탭이 실제로
+   합산하는 데이터 자체가 연동 여부와 무관한 서브 차량 기준이기 때문에,
+   연동 기준으로 숨기면 실제 있는 매출 데이터가 사라져 보이는 역효과가
+   생긴다는 점을 감시관이 근거로 명시.
+2. **기사 1명일 때도 드롭다운 불필요** — 착수지시서 원문에 "1명 이상이면
+   드롭다운"이라 썼던 게 감시관 착오(애초에 명확히 확정 안 하고 넘어감).
+   2명 이상일 때만 노출하도록 조건 정정(`length > 0` → `length > 1`).
+3. **드롭다운 화살표 아이콘 통일** — `<select>` 기본 브라우저 화살표가
+   기존 `revenue-detail-chevron`(">" 아이콘, 폴리라인 stroke 2, 펼치면
+   90도 회전) 스타일과 안 맞음. 네이티브 `<select>`는 유지하되(접근성·
+   프로젝트 관례), `appearance: none`으로 기본 화살표 숨기고 동일 stroke
+   스타일 아이콘으로 시각 통일 — 새 커스텀 드롭다운 위젯 신설이 아니라
+   순수 CSS 스타일링임을 명시.
+
+`docs/report.md` §5에 3건 보완 지시서 발행 완료. 발견 사항 1·2가 서로 다른
+데이터 소스(서브 차량 존재 vs 연동된 기사 수)를 쓴다는 점을 착오 없이
+반영하도록 명시. 보리 질문 "브라우저 검증은 언제해?"에 대한 답 — 코드 리뷰
+[PASS] 직후가 정확히 그 시점이며, 이번처럼 코드는 지시대로 맞아도 지시서
+자체의 사양 누락은 브라우저 확인에서만 드러날 수 있다는 걸 실제로 보여준
+사례로 기록.
+
+
+---
+
+## 슬라이스 D 보완 구현(§5 대응) + 재검증 — 드롭다운 조건 재설계 (2026-09-03)
+
+작업자가 §5의 3건(기사 0명 시 탭 숨김, 기사 1명 시 드롭다운 숨김, 화살표
+아이콘 통일)을 구현·보고(`docs/report.md` §6). 감시관 코드 직접 대조 결과
+§5 지시대로 정확히 구현됨(탭 숨김은 `cars`의 서브 차량 존재 여부, 드롭다운은
+`linkedDrivers.length > 1`, 화살표는 기존 chevron과 동일 stroke 스펙으로
+CSS 재구현).
+
+보리 재확인: "기사 미등록 시 탭 사라지는 건 정상. 근데 기사차량 두 대로
+늘려도 드롭다운이 안 나와."
+
+**원인 규명(감시관 코드 직접 확인) — 작업자 구현 결함이 아니라 감시관의
+설계 오류였다**: `domain/drivers.js` 70행 — 기사 신규 등록 시
+`status: 'pending'`으로 생성되고, `'linked'`로 전환되는 시점은 그 기사
+본인이 별도 계정으로 로그인해 초대코드를 실제 redeem한 뒤(슬라이스 E)뿐이다.
+보리가 차주 계정 하나로 기사 차량을 등록해 테스트하면 영구히 `pending`
+상태라 `linkedDrivers.length`가 0에 고정 — 드롭다운이 몇 대를 등록하든
+절대 뜨지 않는 구조였다. 더 결정적으로 `financeOwnerDetail.js`의
+`subCarsInScope`(기사 탭 "전체 합산"이 실제로 더하는 대상)는 애초에
+`status`를 전혀 안 보고 `type==='sub' && isVehicleRevenueSharedWithOwner`인
+차량을 전부 합산한다 — **"전체 기사 합산"에는 이미 pending 차량도 다
+들어가는데 개별 선택 드롭다운만 "연동된" 기사로 좁혀놓은 자기모순**이었다.
+슬라이스 D 최초 착수지시서(§1) 단계에서 감시관이 드롭다운 후보 데이터
+소스를 계산 엔진과 다르게(`drivers[]`/연동 여부 기준으로) 설계한 게
+근본 원인.
+
+`docs/report.md` §7에 재수정 지시서 발행 — 탭 숨김·드롭다운 노출·드롭다운
+후보 목록·계산 엔진을 전부 동일 기준(`cars`의 `type==='sub' &&
+isVehicleRevenueSharedWithOwner(car)`, `domain/cars.js`의 기존 함수
+재사용)으로 통일하도록 지시. 기사 표시 이름도 `drivers[]` 대신 차량 등록
+시점에 이미 저장되는 `car.driverName`으로 전환(연동 상태와 완전히 무관하게).
+이번 건은 감시관 자신의 설계 오류를 스스로 발견·시인·정정한 사례로 기록.
+
+
+---
+
+## 슬라이스 D 최종 재검증 [PASS] + 보리 브라우저 확인 완료 (2026-09-03)
+
+작업자가 §7 재수정 지시를 반영·보고(`docs/report.md` §8) — `subCars`
+(서브 차량 + `isVehicleRevenueSharedWithOwner`) 하나로 탭 숨김·드롭다운
+노출·드롭다운 후보·자동 리셋을 전부 통일. 감시관이 `OwnerRevenueView.jsx`
+재대조 + 계산 엔진·타 컴포넌트·`driverRevenueScope.js` 전부 mtime
+무변경 재확인. 보리: "확인해줘 브라우저 테스트 정상이야" — 기사 차량
+2대 등록 시 드롭다운 정상 노출 실제 확인.
+
+**최종 판정: [PASS]**(`docs/report.md` §9). 슬라이스 D 전체(최초 착수 →
+1차 코드 리뷰 PASS → 브라우저 검증에서 사양 누락 2건 발견 → 보완 → 재검증
+중 드롭다운 데이터 소스 설계 오류 발견 → 재수정 → 최종 재검증 PASS + 보리
+브라우저 확인) 완료. 커밋/푸시는 보리 승인 후 §2 절차(감시관 커밋 지시서 →
+작업자 커밋 실행 후 report.md 기록 → 보리 푸시)대로 진행.
+
+---
+
+## 슬라이스 D 커밋 지시서 작성 (2026-09-03)
+
+보리 승인("응 작성해줘")에 따라 §2 최신 절차대로 감시관이 작업자 전달용
+커밋 지시서를 `docs/report.md` §10에 작성 완료. 지시서 작성 전, 커밋
+지시 내용과 실제 작업 트리 상태가 일치하는지 감시관이 직접 재확인:
+
+- `report.md` 재스테이징 후 `wc -l`/`tail`로 426줄 종료 지점("...진행.")이
+  직전 §9 작성 내용과 정확히 일치 — 승인 이후 무단 변경 없음 확인.
+- 슬라이스 D 전 라운드에 걸쳐 `react-app`에서 실제로 변경된 파일은
+  `src/components/revenue/OwnerRevenueView.jsx`,
+  `src/components/revenue/driverRevenueScope.test.js`(1차 라운드에서 테스트
+  1건 추가, 이후 무변경), `src/side-menu.css`(1차 라운드 + §5/§6 보완
+  라운드에서 클래스 추가, 이후 무변경) — 정확히 3개 파일로 확정. 이 목록을
+  §10 지시서의 "포함 대상"으로 명시.
+
+지시서 내용: react-app 3개 파일 화이트리스트(+ `git add -A` 금지, 매출
+C-2·빌드 로그 산출물 제외 경고), ubiquitous-parakeet의 `docs/report.md`·
+`docs/audit.md`, 각 저장소 한국어 커밋 메시지, `git push` 금지 명시, 그리고
+§2 최신 절차에 따라 **작업자가 커밋 완료 후 `git status --short`/
+`git log -1 --stat` 결과를 `docs/report.md` 해당 절 바로 아래에 직접
+작성**하도록 명시(채팅 보고만으로는 불충분함을 재확인). 이 지시서를 보리가
+작업자에게 전달할 예정. 커밋 실행 및 완료 보고 확인 후 감시관이 최종
+검증한다.
+
+---
+
+## 감시관 지시서 오류 자진 정정 — driverRevenueScope.js 누락 (2026-09-03)
+
+작업자가 §10 커밋 지시서 실행 전 `add`/`commit`을 보류하고 지적: 지시서의
+"포함 대상"에 없는 `src/components/revenue/driverRevenueScope.js`가
+실제로는 git에 한 번도 커밋되지 않은 채(`??` untracked) 작업 트리에만
+존재하며, 커밋 대상인 `OwnerRevenueView.jsx`·`driverRevenueScope.test.js`
+둘 다 이 파일을 import하므로 지시서대로만 커밋하면 클론/빌드가 즉시
+깨진다는 지적. 지시서 §10-3 "대상이 다르면 임의 판단 말고 보리에게 확인"
+원칙을 그대로 따라 진행을 멈추고 보리에게 보고한 것 — 정상 절차 준수.
+
+감시관이 원인 확인: "슬라이스 D 라운드 중 무변경(mtime 안정)"과 "이미
+git에 커밋됨"을 혼동한 지시서 작성 오류. `driverRevenueScope.js`는
+슬라이스 C-2 때 작성된 이후 지금까지 커밋된 적이 없었다(C-2의 UI 파일인
+RevenuePage.jsx/DriverRevenueView.jsx/ownerDataHooks.js와 함께 미커밋
+상태로 작업 트리에만 남아 있던 것).
+
+감시관이 파일 내용을 직접 재확인(`device_stage_files`로 스테이징 후 전체
+읽음): `phoneDigits`/`resolveDriverVehicleNumber`/
+`scopeSettingsToVehicle`/`scopeWorkDataToVehicle` 순수 함수 4개뿐,
+부작용 없음, C-2 UI 파일에 대한 import·참조 전혀 없음 — 이번 슬라이스 D
+커밋에 포함해도 C-2의 미승인 UI 기능을 끌어들이지 않는다고 판단.
+`driverRevenueScope.test.js`도 이 파일과 기존 `domain/finance.fixtures.js`
+/`domain/financeCore.js`만 참조함을 재확인.
+
+**조치**: `docs/report.md` §10-1을 수정 — `driverRevenueScope.js`를 포함
+대상에 추가하고 "제외 기준"에서 제거, 커밋 메시지 본문에도 이 파일이 이번
+커밋으로 최초 반영됨을 명시. 추가로, 유사한 숨은 의존성이 더 있을 수
+있으므로 `add`/`commit` 실행 전 `git status --short` 전체 출력을
+`docs/report.md`에 먼저 공유하도록 §10-1에 명시적으로 추가 — 감시관이
+그 결과까지 마저 대조한 뒤 최종 진행 여부를 알린다.
+
+이번 건은 작업자가 감시관 지시서의 오류를 실행 전에 정확히 잡아내고, 임의
+판단 대신 지시서 원칙대로 진행을 멈추고 보고한 사례로 기록.
+
+---
+
+## 감시관 2차 정정 — ownerDataHooks.js 누락(회귀 위험, Slice C 사후 버그
+수정) (2026-09-03)
+
+작업자가 요청받은 `git status --short` 전체를 `docs/report.md` §10-4에
+공유. 감시관이 대조 중 지시서상 제외 대상이던 `src/store/
+ownerDataHooks.js`가 `M`(수정, 미커밋) 상태임을 발견 —
+`OwnerRevenueView.jsx`가 이 파일의 6개 훅(`useOwnerCars`/
+`useOwnerDrivers`/`useOwnerExpenses`/`useOwnerProfile`/
+`useOwnerSettings`/`useOwnerWorkDataByLogId`)을 import하므로, driverRevenueScope.js
+때와 같은 패턴의 위험이 있는지 확인 필요 판단 → 작업자에게
+`git diff HEAD -- src/store/ownerDataHooks.js` 전체를 요청.
+
+작업자 보고(§10-4 보강) + 감시관 직접 확인: 6개 심볼 자체는 전부 이미
+HEAD에 존재(신규 함수 추가 아님 — 시그니처 문제는 없음). 그러나 diff를
+직접 읽어보니 그중 `readOwnerWorkDataByLogId`/`useOwnerWorkDataByLogId`의
+**본체가 실제로 바뀌어 있었다**: HEAD는 `{ main: readOwnerWorkData
+(ownerKey) }`(main 차량 로그만 반환)인데, 작업 트리는 `workLogs
+[ownerKey]` 전체(서브 차량=기사 로그 포함)를 반환하도록 이미 수정돼 있음.
+
+감시관이 함께 미커밋 상태였던 `src/store/ownerDataHooks.test.js`를 직접
+읽어 대조: "Step 9 slice C — readOwnerWorkDataByLogId" 제목 아래
+"sub logIds are included and raise all/driver fare and receivables"를
+정확히 검증하는 실제 회귀 테스트(허위 아님)임을 확인.
+
+**의미(build 문제가 아니라 기능 회귀 위험)**: 이 수정을 제외하고 커밋하면
+빌드는 되지만, "기사" 탭이 — 슬라이스 D의 드롭다운뿐 아니라 **기존
+"전체 기사 합산" 기본값까지 포함해** — HEAD 기준으로는 항상 0/빈 값으로
+표시된다. 지금까지 이 세션에서 이뤄진 모든 브라우저 검증(§4, §6, §9의
+[PASS] 전부)은 이 미커밋 수정이 이미 반영된 작업 트리 위에서 수행된
+것이었다 — 즉 이 파일을 빼면 이미 [PASS]한 동작 자체가 커밋 시점에는
+재현되지 않는, driverRevenueScope.js보다 한 단계 더 심각한 위험.
+
+diff 자체는 이 함수 하나(+상수 `EMPTY_WORK_DATA_BY_LOG_ID` 추가)만
+바꾸며 C-2 UI 파일(RevenuePage.jsx/DriverRevenueView.jsx) 참조 없음 —
+포함해도 안전하다고 판단해 보리에게 보고, 승인("알겟어") 획득.
+
+**조치**: `docs/report.md` §10-1에 2차 정정 기록, `src/store/
+ownerDataHooks.js`(Slice C 당시 shipped된 버그의 사후 수정)와 `src/store/
+ownerDataHooks.test.js`(회귀 테스트)를 포함 대상에 추가 — react-app
+최종 포함 대상 6개 파일로 확정(OwnerRevenueView.jsx,
+driverRevenueScope.test.js, driverRevenueScope.js, side-menu.css,
+store/ownerDataHooks.js, store/ownerDataHooks.test.js). 커밋 메시지
+본문에도 이 부수 수정의 이유를 명시.
+
+이번 건 역시 add/commit 실행 전 감시관이 `git status --short`/`git diff`
+원본을 직접 대조해 지시서와 실제 트리 간 차이를 두 차례 연속으로 사전에
+잡아낸 사례로 기록.
