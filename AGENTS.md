@@ -14,6 +14,8 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
 - Fail-Fast 슬라이스 D `[x]`: 로그인 메인 일지 그 날짜 daily_logs 직접 1회 + hydrate 빈 daily_logs는 서버 정본. 사용자 실검증(저장·빈 날 삭제 후 새로고침 원복 없음, 오프라인 Fail-Fast). 커밋 `react-app` `f33699c`.
 - 슬라이스 E `[x]`: 로그인 업무 LS 미러 제거 + 저장은 서버 성공 후 Store. Phase 1(mock.module 인프라)·Phase 2(설정 초기화/콜상세 카드/게스트 세션 3건 수정) 전부 사용자 브라우저 실검증 PASS(2026-09-02). react-app 커밋 `fbe91d5`.
 - Step 8 `[x]`: 8-A~D 전부 완료(구현·JSX 크래시 수정 `8f9ac84`·vite 다운그레이드 `f38ff5e`·사용자 브라우저 실검증 PASS), 사용자 승인·push 완료(2026-09-02). typecheck ~35건(receivables/*)+기존 4건은 Explicit Out-of-Scope로 Step 8에서 제외, Step 9 착수 전 별도 정리 예정. 상세: `docs/audit.md` Step 8 8-C/8-D절.
+- Step 9-A `[x]`: 가입 역할선택 제거·온보딩 정산방식 단계 삭제. 커밋 `react-app` `f731636`.
+- Step 9-B/C/D `[x]`: 차량 레벨 매출제/월급제·매출 salary 반영(9-B), CarFormModal 정산 UI(9-C), 매출제 % 저장 버그 수정·차주 탭 기사급여 행 숨김(9-D). 사용자 브라우저 실검증 PASS, 승인(2026-09-03). react-app 커밋 `5d1de1f`. 푸시 없음.
 - 비즈니스 규칙 전수 목록(사용자 판별용): `docs/business_rules_audit.md`.
 - 게스트는 기사 초대·차량(기사) 초대를 **쓰지 않는다**. 버그로 고치지 마라. SoT Explicit Out-of-Scope.
 - SoT: `docs/sot.md`. Audit: `docs/audit.md` §5-8~5-11.
@@ -53,7 +55,7 @@ React 구현은 `react-app`. 보고·원칙은 이 저장소(`ubiquitous-parakee
    - 사용자 보고 및 소통: 검증 통과 시 사용자에게 2-Phase 보고서를 비개발자 눈높이에 맞춰 알기 쉽게 작성하여 보고한다.
 3. 작업자 (Claude Code CLI / 터미널 작업 도구):
    - 순수 코드 구현체. 감시관이 하달한 명확한 작업 범위 내에서 코드 수정, 빌드, 테스트, 스크립트 실행만 전담한다.
-   - 장부 파일(`.md`) 생성·수정·삭제를 전면 금지하며, 오직 프로덕션 코드와 테스트 코드만 다룬다.
+   - 장부 파일(`.md`) 텍스트 직접 작성·편집 전면 금지: 장부의 내용은 오직 감시관만 수정하며, 작업자는 감시관이 수정을 완료한 장부 파일의 단순 커밋(`git add/commit`)만 수행한다.
    - DB 임의 조작 전면 금지: 감시관의 지시 없이 DDL/DML을 직접 작성하거나 실행을 유도하지 않는다.
    - 감시관의 공식 장부 기록 완료 확인 전에는 코드 수정을 일체 시작하지 않는다.
 
