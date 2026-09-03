@@ -2588,3 +2588,596 @@ const commEnabled = driverPayMode === 'revenue'
 - 보리 요청은 기사가 여러 명(=서브 차량 여러 대)일 때 "기사" 탭을 개별 기사 선택 드롭다운으로 바꿔 특정 기사 1인의 손익만 보이게 하라는 것 — 이는 위 매출 반영과는 별개로 `OwnerRevenueView.jsx`(UI)와, 선택된 기사 1인의 차량번호만 걸러 `getOwnerMonthlyFinanceDetail`에 넘기는 로직이 추가로 필요하다. `financeOwnerDetail.js` 함수 시그니처 자체는 안 건드리고, `workDataByLogId`를 화면단에서 `{ main, [선택된 차량번호]: data }`처럼 미리 걸러 넘기면 계산 엔진(financeOwnerDetail.js) 변경 없이 UI 레이어만으로 처리 가능해 보인다(작업자 착수 전 재확인 필요).
 
 **감시관 판단**: 위 두 요청은 성격이 다르다 — (C) 매출탭 데이터 연동은 `ownerDataHooks.js` 훅 한 곳(약 10줄) 수정으로 끝나는 아주 작고 낮은 위험의 변경이고, (D) 기사별 드롭다운은 `OwnerRevenueView.jsx` UI 재구성 + 선택 로직이 필요한 별개의, 더 큰 작업이다. 슬라이스 A/B를 나눴던 것과 같은 원칙(데이터 레이어 먼저, UI는 그 위에)이 여기도 그대로 적용된다고 판단해 보리에게 분리 여부·순서를 확인한다(대화창 질문 참고).
+
+
+---
+
+## Step 9 ① 슬라이스 C(매출탭 데이터 연동) — 감시관 실사 및 보류 사유 (2026-09-03)
+
+- 착수지시서대로 `store/ownerDataHooks.js`의 `readOwnerWorkDataByLogId`/`useOwnerWorkDataByLogId`
+  단 한 곳만 수정(`{ main }` 고정 → `workLogs[ownerKey]` 전체 반환). Explicit
+  Out-of-Scope 9개 파일 mtime 재확인 결과 전부 무변경. 신규 테스트
+  `ownerDataHooks.test.js`는 실제 fixture·실제 계산 함수를 쓰는 진짜 통합 테스트로
+  확인(허위 아님). 상세 검증은 `docs/report.md` §3(Phase 2)에 기록.
+- **줄 수 보고 오차**: 작업자 보고 184줄, 감시관 실측 199줄(15줄 차이, `wc -l` 확인).
+  200줄 한도는 안 넘었지만 199/200으로 매우 근접 — 다음에 이 파일을 또 건드리면
+  분리부터 검토할 것.
+- **판정 보류 사유(보리 결정 필요)**: 이 훅을 소비하는 5개 화면 중 4개(매출·미수·
+  세금계산서·달력)는 차주 자신이 보는 화면이라 서브 반영이 명백히 맞지만,
+  `DriverRevenueView.jsx`(기사 본인 로그인 매출 화면)는 로그인한 기사가 누구인지와
+  무관하게 owner의 모든 차량(다른 기사 차량 포함) 데이터를 합산해서 보여주게 된다
+  — 기사 개인 화면에서 다른 기사의 매출이 노출되는 새로운 부수 효과. 감시관 단독
+  판단 불가, 대화창에서 A(의도된 동작으로 승인)/B(기사 본인 차량만 필터링하는
+  후속 슬라이스 필요) 결정 요청.
+- **슬라이스 A push 관측**: git 메타데이터 확인 결과 슬라이스 A가 이미 커밋
+  (`ce08638`, "Step9 기사 차량 일지 서버 동기화(슬라이스 A)")·origin push까지
+  완료됨. 내용 자체는 정상 승인된 완료 건이나, 보리가 이번 세션에 추가한
+  "챕터(Step) 전체 완료 시 일괄 push" 규정과는 타이밍이 다르다(슬라이스 단위
+  push). 의도된 예외인지 확인 요청(대화창).
+
+
+---
+
+## Step 9 ① 슬라이스 C — 보리 결정 2건 (2026-09-03)
+
+- **DriverRevenueView 데이터 범위**: 보리 결정 — "문제다, 본인 차량만 보여야 함".
+  기사 본인 로그인 매출 화면은 타 기사 차량 매출이 섞이면 안 됨. → 슬라이스 C-2로
+  후속 착수지시서 발행(아래, `docs/report.md`).
+- **슬라이스 A push 타이밍**: 보리 결정 — "의도된 예외였음(이번만)". 챕터(Step)
+  전체 완료 시 일괄 push 원칙은 그대로 유지, 이번 슬라이스 A건만 예외로 인정.
+  AGENTS.md 규정 자체를 수정하지 않음(사용자가 규정 변경을 원하지 않음).
+
+
+---
+
+## Step 9 ① 슬라이스 C 최종 완료 (C-1 + C-2) — 감시관 실사 PASS (2026-09-03)
+
+- C-2(기사 본인 로그인 매출 화면 필터링) 코드 검증 완료: `driverRevenueScope.js`
+  (신규, `resolveDriverVehicleNumber`/`scopeSettingsToVehicle`/`scopeWorkDataToVehicle`)
+  + `DriverRevenueView.jsx`/`RevenuePage.jsx` 수정. `financeCore.js`는 예상대로
+  무변경으로 해결(빈 `main` 키 → 자동 0). 세션의 `phone`이 기존 `boot.js`
+  (`profiles.phone`/`authUser.phone`)에 이미 있던 값임을 재확인 — 신규 인프라
+  아님. 줄 수 54/134/31 전부 작업자 보고와 일치(지난 라운드 불일치 개선됨).
+  상세는 `docs/report.md` §6 참고.
+- **슬라이스 C(C-1 훅 확장 + C-2 필터링) 감시관 실사 PASS.** 남은 절차는 보리의
+  브라우저 확인뿐 — 확인 후 커밋·승인하면 Step 9 ① 기사관리 대리작성은 슬라이스
+  A/C 완료, 슬라이스 B(진입점 UI)만 남는다. 슬라이스 D(개별 기사 드롭다운)는
+  애초 계획대로 아직 미착수(이번 C-2로 "본인 차량만 보기" 문제는 이미 해결됐으므로,
+  D는 "차주가 여러 기사 중 하나를 골라보는" 원래 목적으로 범위를 좁혀 재검토 필요 —
+  다음 착수 시 보리와 재확인).
+
+
+---
+
+## Step 9 — 브라우저 검증 중 보리가 발견한 계정모델 문제 3건 조사 (2026-09-03)
+
+보리가 슬라이스 C 브라우저 확인 중 마이페이지를 보다가 별개 문제 3건을 신고했다.
+감시관이 코드만 조사했다(코드 작성 없음). 세 건 모두 Step 9 "① 기사관리
+대리작성"과는 별개이며, ②(소속기사 로그인/employerLink) 쪽과 직결된다.
+
+### 문제 A — 마이페이지 차주/기사 뱃지·기사연동관리 메뉴가 무조건 노출됨
+`components/MyPage.jsx` 88행: `const employed = session?.accountType === 'employed_driver'`,
+106행: `<span className="mypage-role-pill">{employed ? '소속 기사' : '차주'}</span>` —
+"아직 차주도 기사도 아닌, 메인일지 하나만 쓰는 순수 계정"이라는 제3의 상태를
+구분하는 필드가 코드 어디에도 없다(`accountType`은 `'owner_driver'`(기본값,
+`boot.js` 70행) 아니면 `'employed_driver'` 둘뿐). 139~146행의 "기사연동관리"
+버튼도 동일하게 무조건 렌더링(가드 없음). **이건 "칩을 숨기는" 단순 수정이
+아니라, 계정이 실제로 분화됐는지(=기사를 한 명이라도 등록했는지) 판별할 근거
+자체가 지금 상태 모델에 없다는 뜻** — `useOwnerDrivers(ownerKey).length > 0`
+같은 파생값으로 판별 가능한지, 아니면 별도 플래그가 필요한지 착수 전 재확인 필요.
+
+### 문제 B — 게스트도 "+ 초대" 버튼으로 기사를 등록할 수 있음(이미 알려진 이슈)
+`DriverConnectionPage.jsx` 148행 "+ 초대" 버튼이 `cloud` 여부와 무관하게 항상
+렌더링되고, `save()`의 `!cloud` 분기(62~66행)가 로컬 `saveDrivers`를 그대로
+실행한다. 이 문제는 이미 이 문서 앞부분(2026-09-02, "게스트: 기사·차량 초대는
+제품 기능이 아님(Explicit Out-of-Scope)")에 알려진 채로 남아있던 항목이다 —
+새 발견이 아니라 이번에 보리가 직접 체감한 것.
+
+### 문제 C(핵심) — "초대코드 입력"이 안 되는 진짜 원인: 그 화면 자체가 없음
+보리가 "기사계정삭제로 초대코드 입력할수없음"이라 신고했지만, 조사 결과
+**삭제와 무관하게 애초에 기사가 초대코드를 입력해 연동되는 화면이 현재 앱에
+전혀 없다.** `AuthPage.jsx`의 회원가입은 96~101행에서 `accountType:'owner_driver'`,
+`inviteCode:''`을 무조건 보낸다 — 예전에 있던 "`employed_driver` 전용 초대코드
+입력란"은 Step 9-A 라운드에서 의도적으로 제거됐다(코드 주석: "accountType prop은
+App.jsx가 아직 넘기지만 9-A에서 분기 제거"). `OnboardingPage.jsx`에도 대체
+진입점이 없다(차량번호/톤수만 물어봄). `driverLinkRpc.js`/`requestDriverInviteSave.js`는
+전부 **차주가 기사를 초대하는 방향**(owner→invite)만 구현돼 있고, **기사가
+코드를 입력해 스스로를 연동하는 방향**(driver→redeem)의 RPC·컴포넌트는 코드
+전체를 훑어도(`inviteCode`/`employerLink`/`employed_driver` grep) 존재하지 않는다.
+
+→ 이건 버그가 아니라, **이번 세션 초반에 보리가 "원래 범위까지 계속 진행"이라고
+결정했던 Step 9의 두 번째 축 "소속기사 로그인/employerLink"가 통째로 미착수
+상태라는 뜻**이다("기사계정삭제" 재현 시나리오는 증상일 뿐, 원인이 아니다).
+
+
+---
+
+## 문제 C 추가 조사 — "소속기사 로그인/employerLink"의 실제 범위 (2026-09-03)
+
+우선순위 질문에서 보리가 "큰 건(C)부터"를 선택한 뒤, 착수지시서를 쓰기 전에
+더 깊이 조사한 결과 예상보다 범위가 크다는 게 확인됐다 — 착수지시서 작성 전에
+먼저 보고한다.
+
+### 확인된 사실
+- `supabase/migrations/0001_driver_links_idempotency_key.sql` 주석(2026-08-31,
+  보리가 직접 확인해 준 라이브 스키마)에 따르면 `driver_links` 테이블은 이미
+  `id uuid, owner_id uuid, driver_id uuid, vehicle_id uuid, invite_code text UNIQUE,
+  status text, assignment_start/end date` 구조다. **`driver_id` 컬럼이 이미
+  있다** — 즉 "기사가 코드를 입력해 자기 자신을 그 행에 연결"하는 것 자체는
+  스키마상 가능해 보인다.
+- 그런데 `App.jsx` 42행: `const ownerKey = session?.userId || (session?.guestMode ? 'guest' : session?.phone) || 'guest'`
+  — **로그인한 사람이 차주든 기사든, 지금 코드는 항상 "자기 자신의 userId"를
+  ownerKey로 쓴다.** 기사가 로그인했을 때 "내가 속한 차주의 데이터"를 봐야
+  하는데, 그 차주 ownerKey로 바꿔주는 로직이 코드 어디에도 없다 —
+  `DriverRevenueView`/`RevenuePage`가 `ownerKey` prop을 받는 구조 자체는 이미
+  있지만, 그 prop이 지금은 항상 "틀린"(자기 자신의) 값이 들어간다.
+- 즉 남은 작업은 최소 4가지다: (1) 기사용 초대코드 입력 화면(신규 UI),
+  (2) 코드로 `driver_links` 행을 찾아 `driver_id`를 채우고 `status`를
+  `'linked'`로 바꾸는 신규 서버 로직(RPC 또는 RLS 정책 검토 필요 — 지금 RPC는
+  전부 차주(owner_id=auth.uid()) 관점으로만 짜여 있다), (3) 부트 시점에
+  "내 `driver_id`로 연결된 `driver_links` 행이 있으면 그 행의 `owner_id`를
+  ownerKey로 쓴다"는 세션 해석 로직 추가(`app/boot.js`), (4) 기사 세션이
+  `daily_logs`/`cars` 등 차주 데이터에 실제로 접근(읽기, 그리고 슬라이스 D
+  이후엔 쓰기)할 수 있는 RLS 정책이 이미 있는지 — **이건 감시관이 코드만 봐서는
+  확인 불가능한, DB 쪽 확인이 필요한 부분**이다.
+
+### 감시관 판단
+UI 화면 하나 추가하는 수준이 아니라, "기사 자신의 로그인 세션이 차주 데이터에
+접근하는 경로 자체"를 새로 만드는 일이라 슬라이스 A~C를 합친 것보다 클 수
+있다. 특히 (4) RLS는 보리가 이전에 라이브 스키마를 직접 SELECT로 확인해 준
+것처럼, 이번에도 보리(또는 작업자가 Supabase 대시보드로) 직접 확인이 필요한
+부분이라 감시관 혼자 착수지시서를 완성할 수 없다 — 대화창에서 재확인 요청.
+
+
+---
+
+## 슬라이스 E(소속기사 로그인) 착수지시서 발행 (2026-09-03)
+
+보리 "DB는 자세히 알려주면 내가 해줄게" → `docs/report.md`를 슬라이스 E로 리셋해
+(1) 보리가 직접 Supabase에서 실행할 RLS 정책 + `redeem_driver_invite_code` RPC
+SQL 초안(§0), (2) 그 DB 작업 완료를 전제로 한 클라이언트 코드 착수지시서(§1,
+초대코드 입력 화면·`App.jsx` ownerKey 해석 로직·`boot.js` 세션 확장·마이페이지
+뱃지/메뉴 조건부 노출·게스트 초대버튼 숨김)를 작성해 발행했다. 컬럼명은 전부
+`src/lib/hydrate.js` 실제 쿼리에서 확인된 것만 사용(`vehicles.user_id`,
+`clients.user_id`, `profiles.id`, `driver_links.owner_id`) — `daily_logs`/
+`transport_details`는 자체 소유자 컬럼을 확인 못 해 `vehicle_id → vehicles.user_id`
+조인으로 우회. SQL 실행은 보리 담당, 작업자는 실행 여부를 착수 전 확인 필수.
+
+
+---
+
+## 슬라이스 E 결정 — 이중역할(기사+차주 동시) 범위 확인 (2026-09-03)
+
+보리 질문: "기사가 다른 차주에 재연동은 막히는데, 기사가 자기 하위기사를 두는
+건 막히나?" → 감시관 확인: RPC 차단조건은 `driver_id = 나`인 행만 보고
+`owner_id = 나`(자기가 차주로서 하위기사를 초대하는 것)와는 무관한 컬럼이라
+막히지 않는다 — DB상 한 계정이 기사이면서 동시에 차주인 것 자체는 가능.
+
+다만 이 경우 `App.jsx`의 ownerKey 해석(§1, "기사면 무조건 연동된 차주만 본다")
+설계로는, 그 계정이 로그인했을 때 **자기 자신의 차주 데이터(자기 차량·자기
+하위기사)가 화면에서 안 보이는** 제약이 생긴다는 걸 감시관이 짚었다. 역할 전환
+UI(마이페이지에서 "차주로 보기/기사로 보기" 전환)가 필요한 문제인데, 보리 결정:
+**"이번은 단순하게 — 기사면 무조건 그 차주만"** — 역할전환 UI는 이번 슬라이스 E
+범위에서 제외, 필요해지면 별도 슬라이스로 착수. `docs/report.md` §1에 이 제약을
+"알려진 제한사항"으로 명시해 뒀다(작업자가 실수로 해결하려 시도하지 않도록).
+
+
+---
+
+## 슬라이스 E §0 SQL 자체 결함 발견·수정 — profiles 민감컬럼 노출 (2026-09-03)
+
+보리가 직접 실행한 확인 쿼리 결과(`information_schema.columns`)로 `profiles`
+테이블 실제 컬럼이 드러났다: `bank_name`, `account_number`, `business_number`
+등 민감 필드가 `practiceSettings`(=`settings` jsonb)와 같은 테이블에 있었다.
+
+감시관이 스스로 발견한 결함: 원래 초안의 "linked driver reads owner profiles"
+RLS 정책은 `profiles` 테이블에 행 단위 SELECT를 열어주는 방식이었는데, 이러면
+연동된 기사가 차주의 계좌번호·사업자번호까지 그대로 읽을 수 있게 된다. RLS는
+컬럼 단위로 제한할 수 없고(`GRANT SELECT(cols)`는 `authenticated` 역할 전체에
+적용되어 차주 본인의 정상적인 전체 컬럼 읽기까지 막아버림), 그래서 대안으로
+`profiles`에는 정책을 추가하지 않고 안전한 필드(`name`/`business_name`/
+`settings`)만 골라 반환하는 `security definer` 함수
+`get_linked_owner_profile_settings(p_owner_id)`로 교체했다.
+
+`docs/report.md` §0 SQL, "실행 전 확인 사항" 3~4번, §1 "착수 전 작업자 확인
+요청 사항" 2번을 전부 이 방식으로 수정해 커밋 완료(device_commit_files 성공
+확인). 이 과정에서 감시관 자신의 기기-동기화 실수(로컬 편집 후 재-stage를
+호출해 편집분을 한 번 유실시킴)도 있었고, 재작업 후 최종적으로 반영을
+확인했다. 추가로 `vehicles`/`clients` 테이블도 민감 컬럼이 섞여 있는지
+보리에게 재확인 쿼리를 요청해 둔 상태(§0 "실행 전 확인 사항" 4번) — 그 답변과
+함께 SQL 실행을 대기 중.
+
+
+---
+
+## 슬라이스 E §0 SQL 2차 결함 발견·수정 — vehicles/daily_logs/transport_details 노출 범위 (2026-09-03)
+
+보리가 `vehicles`/`clients` 컬럼 확인 쿼리 결과를 전달했다. 확인된 사실:
+- `vehicles`엔 `driver_bank_name`/`driver_account_number`/`driver_business_number`/
+  `driver_salary_amount`(그 차량을 모는 기사 본인의 급여·계좌 정보)가 컬럼으로
+  같이 있다.
+- `clients`엔 `biz_number`/`payment_term`/`payment_term_value`/`raw`(jsonb, 용도
+  불명) 등 owner 업무상 민감한 필드가 섞여 있다.
+
+감시관이 스스로 발견한 2차 결함: §0 SQL의 "linked driver reads owner vehicles"
+정책(과 그걸 그대로 참조한 daily_logs/transport_details 정책)이 `owner_id`
+기준(연동된 차주가 소유한 **모든** 차량)으로 열려 있었다 — 이러면 연동된 기사가
+같은 차주 밑의 **다른 하위기사**의 계좌·급여·운행일지까지 볼 수 있게 된다.
+`driver_links.vehicle_id`(본인에게 배정된 차량 1건) 기준으로 좁혀 수정했다.
+`clients`는 실제 사용 여부가 코드로 확인되지 않아 이번 라운드엔 정책 자체를
+추가하지 않기로 했다(최소 권한 원칙 — 필요해지면 그때 안전한 필드만 반환하는
+함수로 추가).
+
+`docs/report.md` §0 SQL(vehicles/daily_logs/transport_details 정책 전면 교체,
+clients 정책 삭제), "실행 전 확인 사항" 4번, §1 "착수 전 작업자 확인 요청
+사항" 3번을 전부 수정해 커밋 완료(device_commit_files 성공 확인). 이로써 §0
+SQL의 알려진 결함은 모두 수정됐다고 판단 — 다음 SQL 실행 시점부터는 안전.
+
+
+---
+
+## 슬라이스 E §0 SQL 실행 오류 수정 — CREATE POLICY IF NOT EXISTS 문법 오류 (2026-09-03)
+
+보리가 실제로 SQL을 실행하다가 `ERROR: 42601: syntax error at or near "not"`
+(`create policy if not exists ...`)로 실패했다고 보고. 확인 결과 Postgres는
+`CREATE POLICY`에 `IF NOT EXISTS`를 지원하지 않는다(`CREATE TABLE`/`CREATE INDEX`와
+달리) — 감시관이 SQL 초안 작성 시 놓친 실수. `begin;`/`commit;`으로 감싼 트랜잭션
+안에서 발생한 오류라 전체가 롤백됐을 것으로 판단 — 부분 적용 걱정 없이 전체
+재실행 가능.
+
+수정: 4개 정책(driver_links/vehicles/daily_logs/transport_details) 전부
+`drop policy if exists "..." on ...;` + `create policy "..." ...`로 교체(재실행해도
+안전한 멱등 패턴). `docs/report.md` §0 SQL 반영·커밋 완료.
+
+추가로 보리가 `vehicles`/`clients`의 `raw`(jsonb, 용도 불명) 컬럼 내용을
+확인하고 싶다고 요청 — 실제 데이터 대신 키 이름만 뽑는 조회 쿼리를 대화창으로
+전달함(민감 데이터를 대화창에 그대로 노출하지 않기 위함).
+
+
+---
+
+## 슬라이스 E §0 SQL 3차 결함 발견·수정 — vehicles.raw 노출 (2026-09-03)
+
+보리가 `jsonb_object_keys()`로 `vehicles.raw`/`clients.raw`의 키 이름만(값은
+비공개) 확인해 전달. 결과:
+- `clients.raw`: `taxRepresentative`/`taxEmail`/`taxAddress`/`bizNumber` 등
+  거래처(제3자)의 세금계산서 정보 — `clients` 정책을 열지 않기로 한 기존
+  결정이 재확인됨.
+- `vehicles.raw`: `businessInfo`/`personalInfo`처럼 내용을 알 수 없는 중첩
+  필드가 확인됨 — 누구의 정보인지 코드로 확인 불가.
+
+`vehicles`는 이미 `driver_bank_name`/`driver_account_number`/
+`driver_business_number`/`driver_salary_amount`도 갖고 있어 `profiles`와 같은
+문제(행 단위 정책으로 열면 raw 포함 전체 컬럼이 노출)로 판단, 기존 "linked
+driver reads own assigned vehicle" 행단위 정책을 제거하고 안전한 컬럼(`id`/
+`number`/`type`/`tonnage`/`settlement_mode`/`driver_pay_mode`/
+`driver_salary_amount`)만 반환하는 `get_assigned_vehicle_summary()` 함수로
+교체했다. `docs/report.md` §0 SQL, "실행 전 확인 사항" 5번(완료 기록) +
+6번(신규, daily_logs/transport_details/driver_links 미확인 항목 추가), §1
+작업자 확인사항 3번을 전부 수정·커밋 완료.
+
+보리는 아직 §0 SQL을 실행하지 않은 상태 — daily_logs/transport_details/
+driver_links의 컬럼 목록 확인 결과를 기다리는 중.
+
+
+---
+
+## 슬라이스 E §0 SQL 최종 검토 완료 — daily_logs/transport_details/driver_links (2026-09-03)
+
+보리가 마지막 남은 세 테이블 컬럼 목록을 확인해 전달. 결과:
+- `daily_logs`: `raw` jsonb 있음. `transport_details`: `payments`/
+  `commission_snapshot`/`raw` jsonb 있음(+ `client_id`로 거래처와 연결됨
+  확인). `driver_links`: `raw` 없음, 전부 스칼라 컬럼.
+
+감시관 판단: `daily_logs`/`transport_details`는 이미 RLS가 "본인에게 배정된
+차량(`vehicle_id`)"으로 좁혀져 있어서, 그 안의 `raw`/`payments`/
+`commission_snapshot`도 결국 "그 차량이 수행한 그 운행 자체"의 데이터다 —
+`vehicles.raw`(제3자일 수 있는 businessInfo/personalInfo)나 `clients.raw`
+(거래처 세금정보)처럼 "다른 사람"의 정보가 섞여 들어올 구조가 아니므로, 추가
+함수 제한 없이 기존 행단위 RLS를 그대로 유지하기로 했다. `driver_links`는
+raw류 필드가 아예 없고 본인 행만 보이므로 안전.
+
+`transport_details.client_id` 존재가 확인되어, 매출 화면이 거래처명을
+표시해야 한다면 `clients` 미개방으로 인해 별도 함수가 필요할 수 있다는 점을
+작업자 확인사항에 추가해 뒀다(작업자가 임의로 clients 접근을 열지 않도록
+명시).
+
+`docs/report.md` §0 "실행 전 확인 사항" 6번을 완료 처리하고, **"§0 SQL의
+알려진 결함은 모두 확인·수정됐다 — 실행해도 된다"**는 결론을 명시했다. 이제
+보리에게 실행을 요청할 차례.
+
+
+---
+
+## 슬라이스 E §0 SQL 4차 결함 수정 + 감시관 자신의 오류 정정 — 트랜잭션 원자성 (2026-09-03)
+
+보리가 최신 SQL(vehicles 함수 교체 버전)을 실행하다가
+`ERROR: 42P13: cannot change return type of existing function`
+(`redeem_driver_invite_code`)로 실패. 원인 추적 결과, 보리의 **첫 번째** 실행
+시도(=`CREATE POLICY IF NOT EXISTS` 문법 오류로 중단됐던 그 실행)에서 그
+오류가 나기 전에 실행된 `redeem_driver_invite_code` 함수 생성 statement는
+이미 커밋되어 DB에 남아 있었던 것으로 확인됐다.
+
+이는 감시관이 그 직전 라운드("SQL 실행 오류 수정" 항목)에서 했던 설명 —
+"`begin;`/`commit;`으로 감싼 트랜잭션 안에서 발생한 오류라 전체가 롤백됐을
+것으로 판단 — 부분 적용 걱정 없이 전체 재실행 가능" — 이 **틀렸다는 뜻이다**.
+Supabase SQL 에디터/커넥션 풀러가 스크립트에 쓰인 `begin;`/`commit;`을 하나의
+원자적 트랜잭션으로 처리하지 않을 수 있다(트랜잭션 모드 풀러의 흔한 특성) —
+정정.
+
+수정: `redeem_driver_invite_code`/`get_assigned_vehicle_summary`/
+`get_linked_owner_profile_settings` 세 함수 전부, `create or replace` 앞에
+`drop function if exists`를 추가해 어떤 이전 실행 상태에서 재실행해도 항상
+안전(멱등)하도록 만들었다. `docs/report.md` §0 SQL 반영·커밋 완료.
+
+교훈: 앞으로 감시관은 "트랜잭션이 실패를 자동으로 되돌려줄 것"이라는 가정을
+하지 않는다 — 재실행 안전성은 각 statement를 멱등하게(`drop ... if exists` +
+`create`, 또는 `create or replace`가 실제로 무해한 경우만) 만드는 방식으로
+직접 보장한다.
+
+
+---
+
+## 슬라이스 E §0 SQL 실행 완료 (2026-09-03)
+
+보리가 §0 최종본(4차 수정 — drop function/policy if exists 전부 반영된 버전)을
+실행 → "Success. No rows returned". 총 4차례 수정(민감컬럼 노출 2건, 문법 오류
+1건, 재실행 원자성 문제 1건)을 거쳐 확정된 버전이 실제 프로덕션 DB에 적용됐다.
+
+`docs/report.md` §0에 실행 완료 표시, §1 작업자 확인사항 1번(DB 작업 완료
+여부)을 완료 처리했다 — 착수 전제조건 충족, 작업자는 §1 착수지시서에 따라
+클라이언트 코드 작업을 시작해도 된다.
+
+
+---
+
+## 슬라이스 E 클라이언트 구현 — 감시관 Phase 2 실사 [보류] (2026-09-03)
+
+작업자가 초대코드 연동 클라이언트 코드 구현 완료 보고(§2/§3). 감시관이
+14개 변경/신규 파일 전부를 직접 read + grep으로 검증(서브에이전트 교차검증
+병행, 핵심 파일은 감시관이 직접 재확인).
+
+**통과**: RLS-safe RPC만 사용(hydrate.js의 employedDriver 분기가 profiles/
+vehicles/clients 블랭킷 select 전에 return하는 것을 직접 확인 — clients
+접근 구조적 차단), ownerKey 우선순위(`boot.js`의 `ownerKeyFromSession`이
+linkedOwnerId를 최우선으로 하고 로그인/부트 양쪽 경로 다 이 함수 하나로
+통일 — App.jsx가 인라인하지 않고 import해서 쓰는 점은 지시보다 더 나은
+설계로 판단), 이중역할 역할전환 UI 미추가(지시 준수), MyPage/
+DriverConnectionPage 조건부 노출, 실제 유의미한 단위테스트, durable/재시도
+큐 미추가(Fail-Fast 준수), 마이그레이션 SQL 로직(5개 보안 기준) 전부
+실제 실행분과 일치.
+
+**필수 수정 1건(보류 사유)**: `supabase/migrations/0002_driver_invite_redeem.sql`
+파일이 인코딩 깨짐(mojibake) 상태로 저장돼 있음을 감시관이 직접 파일을 열어
+확인 — 주석뿐 아니라 `raise exception` 안의 한국어 에러 메시지 문자열
+리터럴까지 깨져 있어서, 이 파일을 그대로 재실행하면 사용자에게 깨진 글자
+에러 메시지가 노출된다(단순 주석 문제 아님). 실제 프로덕션 DB는 보리가
+Supabase 웹 에디터로 직접 실행했으니 정상일 가능성이 높지만(미검증), 저장소
+기록 파일 자체는 고쳐야 한다. 작업자에게 `docs/report.md` §0 SQL 코드블록을
+그대로 복사해 덮어쓰라고 요청(재실행 아님 — 파일 재저장만).
+
+**참고(블로킹 아님)**: 줄 수 자기보고가 10개 중 4개에서 1~4줄 오차(Slice C
+때와 같은 패턴 — 재차 지적). `App.jsx`(이미 221줄이던 파일)를 건드린 건
+§1 착수지시서가 정확한 위치·최소 변경을 사전에 명시했으므로 §3 사전승인
+요건 충족으로 판단, 추가 분리설계안 불요.
+
+마이그레이션 파일만 재저장하면 즉시 최종 PASS 예정 — 나머지 13개 파일은
+재작업 불필요.
+
+
+---
+
+## 백로그 후보 확인 — 차량 등록 모달에 "기사 연동" UI 임베드 (2026-09-03)
+
+보리가 브라우저 스크린샷으로 요청: 차량 등록/수정 모달의 "정산" 섹션 아래
+있는 안내 문구("기사 차량으로 등록됩니다. (기사 연동은 나중에)")를 지우고,
+그 자리에 기존 `DriverConnectionPage.jsx`의 "기사 연동" 탭 UI(초대코드
+발급 — "기사를 초대해 차량을 배정하세요" + 저장/취소)를 그대로 넣고 싶다고
+확인해 줌.
+
+감시관 확인: 기존 어느 슬라이스(A~E)에도 없던 새 요청 — 슬라이스 D(차주
+화면 기사별 드롭다운)와도, 슬라이스 E(기사 본인 초대코드 입력 화면)와도
+다르다. 새 DB 작업은 필요 없어 보인다 — 기존 `upsert_driver_link_idempotent`
+RPC를 그대로 재사용하는 UI 재배치/임베드로 판단(차량 등록 모달이 이미
+vehicleId 컨텍스트를 갖고 있어서 오히려 지금의 "따로 페이지 가서 차량
+고르는" 흐름보다 자연스러움). "정산"(매출제/월급제/%) 섹션은 그대로 두고
+그 아래 문구만 실제 기능형 UI로 교체하는 것으로 이해 — 보리에게 확인 중.
+
+**슬라이스 F 후보로 백로그 등록.** 슬라이스 E Phase 2가 마이그레이션 파일
+인코딩 수정 하나만 남기고 사실상 마무리 단계라, 그거 닫힌 뒤 착수지시서
+작성 여부를 보리와 논의하기로 함.
+
+
+---
+
+## 슬라이스 F 후보 범위 확정 (2026-09-03)
+
+보리 확인: 차량 등록 모달의 "정산"(매출제/월급제, %) 섹션은 그대로 두고,
+그 아래 안내 문구("기사 차량으로 등록됩니다. (기사 연동은 나중에)")만
+기존 "기사 연동" 탭의 기능형 UI(초대코드 발급)로 교체 — 맞다고 확인.
+
+착수지시서는 슬라이스 E가 최종 PASS로 닫힌 뒤 `docs/report.md`를 리셋해서
+작성하기로 함(현재 report.md는 슬라이스 E 판정 대기 중이라 덮어쓰지 않음).
+
+
+---
+
+## 슬라이스 E 최종 [PASS] — 마이그레이션 파일 인코딩 수정 확인 (2026-09-03)
+
+작업자가 `supabase/migrations/0002_driver_invite_redeem.sql`을 `docs/report.md`
+§0 SQL 코드블록 그대로 복사해 UTF-8로 재저장. 감시관이 직접 파일을 다시 열어
+확인: `raise exception` 4건 전부 정상 한국어(mojibake 없음), 163줄 전체가
+§0 SQL과 정확히 일치(drop function/policy if exists 패턴, 세 RPC, daily_logs/
+transport_details 정책, clients 정책 미추가 전부 보존). §4에서 통과한 13개
+클라이언트 파일은 재변경 없음 확인.
+
+**절차 지적**: 작업자가 report.md §5에 "감시관 재확인"/"최종 판정: [PASS]"를
+스스로 기입했다 — 이는 감시관의 권한이지 작업자 권한이 아니다(AGENTS.md §12,
+report.md는 감시관이 Phase 2를 쓴다). 이번엔 결과가 정확했지만, 절차 위반
+자체를 report.md §6에 명시적으로 짚고 다음부턴 작업자가 자기 수정 사항만
+보고하고 판정 문구는 쓰지 말라고 기록해 뒀다.
+
+**슬라이스 E(소속기사 로그인/초대코드 연동) 최종 [PASS] — 완료.** 커밋/푸시는
+보리 승인 대기. 이어서 슬라이스 F(차량 등록 모달에 기사 연동 UI 임베드)
+착수지시서 작성 예정.
+
+
+---
+
+## 슬라이스 E 브라우저 실검증 보류 (2026-09-03)
+
+보리가 초대코드 발급 UI 도달이 안 돼서(기사 등록이 안 된 상태라 "기사연동관리"
+메뉴 자체가 아직 안 보임) 지금은 테스트 불가 판단 — 슬라이스 F(차량 등록
+모달에 기사 연동 UI 임베드) 완료 후 두 슬라이스를 묶어서 한 번에 브라우저
+실검증하기로 함. 코드 리뷰(Phase 2)는 이미 [PASS] — 실행 자체를 막는 문제는
+아니고 검증 시점 조정.
+
+
+---
+
+## 슬라이스 F 착수지시서 발행 (2026-09-03)
+
+감시관 오해 정정: 두 번째 스크린샷("기사 연동/운행일지" 탭)이 실제 앱 코드
+어디에도 없어서 "기존 화면 재배치"로 착각, 보리에게 확인 질문했으나 보리가
+"운행일지 탭을 새로 만들자는 게 아니라, 이미 전달한 목업을 그 자리에 그대로
+반영해 달라는 것"이라고 정정. 목업이 실제 신규 디자인이라는 점 자체는 맞았지만,
+범위를 필요 이상으로 키워 되물은 것 — 이번엔 보리가 이전에 정리해 준 계정
+규칙 4가지를 다시 확인해 주며 착수를 요청.
+
+감시관이 직접 코드에서 정확한 대상을 찾음: `src/components/cars/CarFormModal.jsx`
+131행의 `isSub` 분기 안내 문구("기사 차량으로 등록됩니다. (기사 연동은
+나중에)")가 교체 대상. "정산" 섹션(81~128행)은 유지. 기존 초대 저장 경로
+(`requestDriverInviteSave`/`generateInviteCode`)를 재사용하고
+`DriverConnectionPage.jsx`는 그대로 둔 채 추가 진입점만 만드는 것으로 범위
+확정.
+
+목업 이미지를 `docs/assets/slice-f-driver-connect-mockup.png`로 저장소에
+커밋해 작업자가 참고할 수 있게 함.
+
+`docs/report.md`를 슬라이스 F로 리셋해 착수지시서 발행 완료 — DB 작업 없음
+(§0), 클라이언트 착수지시서(§1)만. 착수 전 작업자 확인 사항 5가지(목업 확인,
+기사명/연락처 필드 중복 처리, 운행일지 탭 데이터 소스, 게스트 가드,
+200줄 여유) 명시.
+
+
+---
+
+## 슬라이스 F 클라이언트 코드 Phase 2 실사 — 최종 [PASS] (2026-09-03)
+
+작업자가 착수지시서 5가지 확인 사항에 모두 답하고(§1의 "정산" 섹션 유지,
+기사명/연락처 재입력 없음, 운행일지 탭 신규/기존 분기, 게스트 가드,
+200줄 초과 예상돼 `CarDriverConnectPanel.jsx` 사전 분리설계) 구현 완료 보고
+(§3)까지 작성한 상태에서 확인 요청("작업햇다니 확인해줘")이 들어와 Phase 2
+실사 진행.
+
+**방법**: 서브에이전트 위임 없이 감시관 본인이 변경/신규 파일 전체를 디바이스에서
+직접 스테이징해 읽었다 — `CarFormModal.jsx`, `CarDriverConnectPanel.jsx`(신규),
+`CarListPage.jsx`, `carInviteFromDraft.js`(신규), `carInviteFromDraft.test.js`,
+`AppShellRoutes.jsx`. 여기에 작업자 보고서엔 없던 2개 파일도 추적해 추가
+확인: `CarManagementPage.jsx`(재수출 스텁 — `session` prop이 실제
+`CarListPage.jsx`까지 전달되는지 끝까지 추적하기 위해 필요), `side-menu.css`
+(목업 UI가 실제 스타일을 받는지 확인).
+
+**확인된 주요 사항**:
+- "정산" 섹션 원본 그대로 보존, `isSub`가 아닌 분기(메인 차량) 불변.
+- 목업 UI가 지시한 정확한 위치(131행 안내 문구 자리)에 `showConnect = isSub
+  && cloud` 조건으로 반영됨.
+- 기사명/연락처 재입력 필드 중복 없음 — 기존 필드 재사용 확인.
+- `saveInviteAfterVehicle`이 기존 `upsertDriver`/`requestDriverInviteSave`를
+  그대로 호출 — 저장 로직 신규 복제 없음.
+- 저장 순서 Fail-Fast 준수(차량 저장 실패 시 초대 저장 시도 안 함, durable
+  재시도 큐 없음, §0-1 A/B 준수).
+- 게스트 가드(계정 규칙 3) 정상 동작 — `cloud`가 false면 연동 패널 자체 렌더
+  안 됨.
+- 운행일지 탭 신규/빈 데이터/데이터 있음 3단계 분기, 기존 데이터 재사용(새
+  화면 설계 없음).
+- `session` prop 전달 경로를 `AppShellRoutes.jsx` → `lazyPages.js`(lazy
+  import) → `CarManagementPage.jsx`(재수출 스텁) → `CarListPage.jsx`까지
+  끝까지 추적해 정상 확인(처음엔 grep으로 `CarListPage`라는 이름이
+  `AppShellRoutes.jsx`에 안 잡혀 의심했으나, 간접 참조였을 뿐 결함 아니었음).
+- `side-menu.css`에 `.car-driver-connect*`/`.car-daylog-preview`/
+  `.driver-code-row` 전부 스타일 존재 — 목업 UI가 날것으로 뜨는 문제 없음.
+- 줄 수 보고 정확(102/150/183/83), 200줄 규칙 위반 없음.
+- 범위 밖 항목(clients 접근, DriverConnectionPage 리팩터링, 이중역할 UI,
+  슬라이스 D) 전부 미침범 확인.
+- **절차 준수 확인**: `report.md` §3이 정확히 "커밋/푸시 미실행 / 감시관
+  Phase 2 실사 대기"에서 멈춰 있었다 — 슬라이스 E에서 발생했던 "작업자가
+  감시관 판정 절을 대신 작성"하는 절차 위반이 이번엔 재발하지 않음. 개선
+  확인, 긍정적으로 기록.
+
+**참고(차단 아님)**: `carInviteFromDraft.test.js`가 스킵 조건만 검증하고
+실제 성공 경로(코드 있음 → upsertDriver/requestDriverInviteSave 호출)는 목
+없이 테스트하지 않아 다소 얕음 — 다만 그 내부 함수들은 슬라이스 A에서 이미
+검증된 기존 코드라 이번 슬라이스의 신규 위험은 아니라고 판단.
+
+**최종 판정: [PASS]**. `docs/report.md` §4에 상세 근거 기록. 커밋/푸시는
+보리 승인 시 슬라이스 E와 함께 배치 처리(§2). 슬라이스 E + F 통합 브라우저
+실검증을 보리에게 재안내할 시점 — 이 [PASS]로 초대코드 발급 UI(기사 등록
+모달의 "기사 연동" 탭)에 도달 가능해졌으므로 이전에 보류했던 테스트를 다시
+진행할 수 있음.
+
+
+---
+
+## 슬라이스 E + F 통합 브라우저 실검증 — 보리 확인 완료 (2026-09-03)
+
+보리가 직접 브라우저에서 실기기 테스트 진행, "브라우저 테스트 확인완료" 보고.
+앞서 §"슬라이스 E 브라우저 실검증 보류" 항목에서 미뤄뒀던 검증을 슬라이스 F
+[PASS] 이후 진행한 것 — 코드 리뷰(Phase 2)에 이어 실행 단계 검증까지 완료.
+
+이로써 Step 9의 "② 소속기사 로그인/employerLink"(슬라이스 E) +
+"차량 등록 모달에 '기사 연동' 목업 반영"(슬라이스 F) 모두 코드 리뷰 [PASS] +
+브라우저 실검증 완료 상태. 남은 절차는 보리의 커밋/푸시 승인(§2, Step 완료
+시점 배치 처리)뿐.
+
+
+---
+
+## 감시관 절차 오류 정정 — 커밋 실행 주체 (2026-09-03)
+
+보리가 "커밋진행하자"라고 하자, 감시관이 (a) 자신에게 디바이스 셸(git) 실행
+도구가 없다는 걸 확인하지 않은 채 "감시관이 로컬 커밋, 보리가 푸시" 같은
+선택지를 사용자에게 물었고, (b) AGENTS.md §2에 이미 명시된 절차("감시관
+교차검증 완료 및 한국어 상세 보고 → 사용자 승인 획득 → **작업자**가 한국어
+커밋 메시지로 커밋 실행")를 재확인하지 않고 임의의 실행 주체 후보를
+제시했다. 보리가 §2 원문을 그대로 인용해 정정.
+
+**정정된 이해**: 커밋 실행은 감시관도 보리도 아닌 **작업자**의 역할이다.
+감시관의 역할은 검증 + 한국어 상세 보고까지이고, 그 보고를 근거로 보리가
+승인하면, 감시관이 작업자에게 "무엇을(파일 범위) · 어떤 한국어 커밋
+메시지로" 커밋할지 지시서를 남기고, 작업자가 실제 `git add`/`git commit`을
+실행한다. 푸시는 여전히 전적으로 보리 — 챕터(Step) 전체 완료 시점에 양쪽
+저장소 내역을 보리가 직접 검토 후 수동 일괄 푸시(임의 push 전면 금지).
+
+추가로 확인된 위험: `react-app` 작업 트리에는 이번에 승인된 슬라이스 E+F
+외에 아직 감시관이 검토하지 않은 "매출 C-2" 미커밋 변경도 섞여 있을 수
+있음(작업자의 착수 전 상태 메모: "슬라이스 E 미커밋 + 매출 C-2 미커밋").
+작업자에게 커밋 지시 시 슬라이스 E+F 해당 파일만 명시적으로 범위 지정해야
+하며, `git add -A`류의 임의 전체 스테이징은 금지 사항으로 함께 지시할 것.
+
+
+---
+
+## 보리, AGENTS.md §2 절차 보강 + 커밋 승인 (2026-09-03)
+
+보리가 §2 절차 문구를 직접 보강: "감시관 교차검증+한국어 상세 보고 → 사용자
+승인 → **감시관이 작업자 전달용 커밋 지시(작업 범위 + 한국어 커밋 메시지)를
+docs/report.md에 작성** → 사용자가 그 지시를 작업자에게 전달 → 작업자가
+한국어 커밋 메시지로 커밋 실행." 기존엔 "지시서를 report.md에 작성"하는
+단계가 명시돼 있지 않았는데, 이번에 명문화됨.
+
+동시에 앞서 감시관이 제시한 상세 보고(슬라이스 E DB [PASS], 슬라이스 E
+클라이언트 코드 [PASS], 슬라이스 F 클라이언트 코드 [PASS], 브라우저
+실검증 완료)에 대해 "승인하는데"로 커밋 승인.
+
+이에 따라 `docs/report.md` §5에 작업자 전달용 커밋 지시서 작성 완료 —
+두 저장소(`react-app`, `ubiquitous-parakeet`) 각각의 포함 파일 범위, 한국어
+커밋 메시지, `git add -A` 금지 및 매출/C-2 파일 제외 명시, 커밋 전
+`git status --short` 선공유 요구, push 절대 금지 명시. 슬라이스 E 클라이언트
+파일 목록은 감시관이 파일 수정시각(mtime) 기반으로 재구성한 참고용 목록임을
+명시하고, 작업자에게 실제 변경분과의 최종 대조를 요구함(신뢰도가 100%가
+아니므로 확정 목록이라 단정하지 않음).
+
+다음 단계: 보리가 `docs/report.md` §5 지시서를 작업자에게 전달 → 작업자
+커밋 실행 → 감시관이 `git log -1 --stat` 결과로 사후 대조 검증 → 이상 없으면
+Step 9 완료 처리, 이후 보리가 별도 시점에 양쪽 저장소 수동 일괄 푸시.
