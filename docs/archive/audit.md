@@ -3734,3 +3734,74 @@ hydrate가 서브 차량 비용 조회 → `getOwnerMonthlyFinanceDetail`은 이
 배열 읽음). 이후 다중 배정 차량 / 슬라이스 B / Step 9 ②.
 후속 nit: 소속기사 지출 카드에 값이 뜨는데 순이익 안 줄어드는 것 — 브라우저에서
 헷갈리는지 보리 확인, 필요 시 힌트 문구.
+
+
+---
+
+## Step 9 ① 소속기사 지출 입력 — 2차(차주 화면 반영) 최종 [x] 확정 (2026-09-04)
+
+**목표**: 소속기사가 입력한 정비/주유/기타를 차주 매출 화면 지출에도 반영.
+
+**보리 결정**: Q1 서브(기사) 차량 비용은 [전체 손익]+[기사] 탭에 표시,
+[차주] 탭엔 제외(차주 개인 지출과 안 섞이게). Q2 읽기 전용. Q3 별도
+읽기전용 버킷(`expenses` 배열·저장 경로 무변경). [기사] 탭 유가보조금 라인
+노출 = 유지.
+
+**커밋**: `react-app` `0b089b0` (14 files):
+- `domain/financeOwnerExpenseSweep.js`(신규 88줄): `selectExpensesForScope`
+  (owner=expenses/driver=driverExpenses/all=concat) + `filterDriverExpensesByVehicle`
+  (기사 드롭다운) + `sweepExpenseItems`(monthKey·kind bucket, 유가보조금 동일 규칙).
+- `domain/financeOwnerDetail.js`: 인라인 sweep 제거 → 위 모듈 호출. 6번째 인자
+  `driverExpenses = []`(호출부 호환). **203→162줄.**
+- `lib/hydrateOwnerDriverExpenses.js`(신규 58줄): 차주 hydrate가 서브 차량
+  `supabaseId`로 비용 3종 조회 → `mergeExpenseKind`/`expenseFrom*Record` 재사용
+  → `vehicleNumber` 태그.
+- `lib/hydrate.js`: 위 호출 → 스냅샷 `driverExpenses`. 소속기사 세션은
+  `driverExpenses: []`로 replace(스테일 제거).
+- `store/app-store.js`+`owner-state.js`: `driverExpenses` **메모리 전용 슬라이스**
+  (PersistDomain·LS·sync 비확장, `replaceDriverExpenses` replace-only).
+- `store/ownerDriverExpensesHooks.js`(신규 24줄): `useOwnerDriverExpenses`.
+- `OwnerRevenueView.jsx`: 구독·전달·기사 드롭다운 차량 필터.
+- `expenseTypes.js`: `DriverExpenseItem` typedef. `OwnerMonthlyCards.jsx` 무변경.
+- 테스트 3종: sweep 단위 / `getOwnerMonthlyFinanceDetail` 3스코프 / CalendarPage 불변.
+
+**검증**: 감시관 §5 코드 실사 통과(범위·타입꼼수·200줄 전부 이상 없음,
+`financeOwnerDetail` 203→162, 테스트 픽스처 역산). 보리 push → CI "CI"
+`0b089b0` **success**(감시관 독립 확인) → 보리 브라우저 검증([전체손익]=합/
+[차주]=본인만/[기사]=기사만 확인) → 보리 `[x]` 확정.
+
+**후속(별건, 이 슬라이스 아님)**: 브라우저 검증 중 보리 발견 — 매출제 정산액이
+차주 "기사 급여"(배정기간 필터 O) ≠ 기사 "순이익"(배정기간 필터 X, D-2 §6-J
+#1로 감시관이 null link 지시). 보리 결정: **기사 화면도 배정기간 기준으로
+통일** → 다음 슬라이스.
+
+
+---
+
+## Step 9 ① 매출제 정산액 차주↔기사 화면 일치 최종 [x] 확정 (2026-09-04)
+
+**배경**: 보리 브라우저(지출 2차 검증 중 발견) — 매출제 20% + 운송료 500,000 →
+기사 화면 "순이익" 100,000 vs 차주 화면 "기사 급여" 60,000. 원인: D-2 §6-J #1에서
+감시관이 `driverSelfRevenue`에 `getMonthlyDriverTotals(..., null link)` + commission을
+`base.income.fare.total` 기준으로 지시 → 배정기간 필터 없음. C-3 owner "기사 급여"
+(`getMonthlyDriverRevenueShareExpense`)는 `link` 필터 O.
+
+**보리 결정**: 기사 화면도 배정기간(link) 기준으로 통일(§6-J #1 되돌림).
+
+**커밋**: `react-app` `401d9d3` — `domain/driverSelfRevenue.js` 매출제 분기 ~4줄:
+`null` → 실제 `link`(C-3와 동일한 `links.find(id===driverLinkId || vehicleNumber===number)`),
+commission을 `totals.grossAmount`/`totals.count` 기준으로. 산재·`base.income.fare`
+(운송료 표시)·salary·hydrate·C-3·차주 화면 무변경. `driverSelfRevenue.test.js`
+신규 2: ① 배정기간 밖 트립 제외(narrow 15,000 / full 30,000, 운송료 표시는 200k
+유지) ② `getDriverSelfMonthlyDetail(...).income.settlement.total ===
+getOwnerMonthlyFinanceDetail(monthKey, 'all', ...).expense.salary.total`(둘 다
+64,500) — 두 화면 일치 직접 검증(회귀 방지).
+
+**검증**: 감시관 §5 코드 실사 통과(범위·타입꼼수·200줄 96/170·테스트 진실성 —
+매출제 분기가 C-3 per-car와 줄 단위 대응). 보리 push → CI "CI" `401d9d3`
+**success**(감시관 독립 확인) → 보리 브라우저 검증(기사 순이익 == 차주 기사급여)
+통과 → 보리 `[x]` 확정.
+
+**메모**: 운송료 표시 라인(`base.income.fare.total`)은 배정기간 필터 안 함 —
+차주 [기사] 탭 운송료 라인도 미필터라 일치. 표시 라인도 줄일지는 보류(보리가
+브라우저에서 문제없다고 판단하면 그대로).
