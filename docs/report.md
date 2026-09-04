@@ -1,113 +1,115 @@
-# docs/report.md — Step 9 ①: 매출제 정산액 차주↔기사 화면 일치
+# docs/report.md — Step 9 ① 기사 연동 이관 완성: [기사이름] 기사 관리 화면 + 서브 일지 진입 정리
 
 > Step마다/슬라이스마다 리셋되는 착수지시서·실사 보고서 통합 파일이다(AGENTS.md §12).
-> 이전 내용(소속기사 지출 입력 2차)은 `react-app` `0b089b0`,
-> `docs/archive/audit.md` "소속기사 지출 입력 — 2차 최종 [x] 확정"(2026-09-04)으로 보존.
+> 직전(슬라이스 B 1차: 서브 일지 진입·달력 라우트)은 `react-app`
+> `84b5909`·`6109551`·`50f939b`·`11bc798`·`5dc3ab4`로 이미 커밋·푸시됨.
+> 이 슬라이스는 그 위에서 **바닐라 "[기사이름] 기사 관리" 화면을 그대로(A안) 이관**하고,
+> 서브 일지 메뉴 노출 조건을 바로잡는다. 이전 슬라이스 상세는 `docs/archive/audit.md`
+> "슬라이스 B" 절(이 슬라이스 완료 시 함께 기록).
 
 ---
 
-## 0. DB 작업
+## 0. 감시관 사전 조사
 
-**없음.** 순수 클라이언트 계산 일치 수정.
+### 바닐라 "[기사이름] 기사 관리" 화면 (`showLinkedDriverManagement`, index.html:946)
+연동된(`status==='linked'`) 기사마다 사이드 메뉴 `renderLinkedDriverMenu` →
+`showLinkedDriverManagement(link.id)`:
+1. **헤더**: 뒤로가기(→ 기사 연동 관리) + 제목 "[기사이름] 기사 관리"
+2. **프로필 카드** (`linkedDriverProfileCard`): 이니셜 아바타 + 이름 + 연락처 +
+   차량번호 + **할당 상태 뱃지**(할당중 / 할당 예정 / 할당 종료 — `getAssignmentState`)
+3. **칩 3개**: "거래처"(→ `linkedDriverClientsPage`) / "정산·계산서 설정"(→
+   `showBillingSettingsPage`) / "상세 설정"(→ 토스트 "구상중")
+4. **기사 정산 요약 카드**: 카드 상단에 **월 네비게이터**(◀ year/month select ▶),
+   그 아래 `건수 / 총 운송료 / 수수료(−) / 산재보험(−) / 최종 정산액`
+5. **거래처 세금계산서 섹션**: "이 기사가 실제 운송한 거래처별 매출" — 거래처별
+   카드(거래처명 · 건수 · 공급가액/세액/합계 + 운송 건 목록). 거래처 미지정 운행 N건
+   안내.
 
-## 1. 감시관 착수지시서 (2026-09-04)
+**서브 화면 `linkedDriverClientsPage`** ("거래처" 칩): 이 기사 전용 거래처
+(`scopedToVehicleNumber` 태그) 목록 + `+ 추가`. **계산서 처리 방식별 권한**:
+- 직원기사 / 회사 정산 / 기본값 → 차주가 **직접 등록·수정·삭제**(단 일반 거래처
+  관리·자동완성·즐겨찾기엔 안 섞임 — `scopedToVehicleNumber` 태그)
+- 기사 직접 정산(`driver_direct`) → 차주는 **조회만**(기사 계정 clients를 그때그때
+  읽기만, 차주 로컬 저장 안 함)
 
-### 배경
-보리 브라우저 검증(2026-09-04): 매출제 20% 기사 + 운송료 500,000 →
-**기사 화면 "순이익" 100,000** vs **차주 화면 "기사 급여" 60,000**. 불일치.
-
-원인:
-- **차주 "기사 급여"**(C-3 `domain/driverRevenueShareExpense.js`의
-  `getMonthlyDriverRevenueShareExpense`): 차량별로
-  `getMonthlyDriverTotals(getDriverCarWorkData(car, work), monthKey, **link**)`
-  → `calculateDriverVehicleCommission(car, totals.grossAmount, totals.count)`.
-  **배정기간(`link.assignmentStart/End`) 필터 적용.**
-- **기사 "순이익"**(D-2 `domain/driverSelfRevenue.js`): D-2 §6-J #1에서
-  감시관이 `getMonthlyDriverTotals(logData(work,'main'), monthKey, **null**)`로
-  지시(당시 "배정기간 필터로 운송료 표시와 어긋남 방지" 목적). 그리고 commission을
-  `base.income.fare.total`(배정기간 필터 없는 전체 운송료)에서 계산.
-  → **배정기간 필터 없음.**
-
-### 보리 결정
-**기사 화면도 배정기간(할당 날짜) 기준으로 계산** → 두 화면 정산액 일치.
-(§6-J #1을 되돌린다.)
-
-### 목표 상태
-`driverSelfRevenue.js`의 매출제 분기가 C-3의 per-car 계산과 **구조적으로 동일**:
-- `link` = `settings.driverLinks`에서 `id === assigned.driverLinkId ||
-  vehicleNumber === assigned.number`로 찾기(C-3와 같은 로직).
-- `totals = getMonthlyDriverTotals(logData(workDataByLogId, 'main'), monthKey,
-  **link**)` — `null` → `link`.
-- `commission = calculateDriverVehicleCommission(assigned, **totals.grossAmount**,
-  **totals.count**)` — `base.income.fare.total`/`base.tripCount` → `totals` 것.
-- 산재·`Math.max(0, ...)`는 그대로.
-- 기사 세션의 `logData(work,'main')`와 차주 세션의 `work[번호판]`은 같은 서버
-  `daily_logs`/`transport_details` 행 → `getMonthlyDriverTotals` 결과 동일 →
-  정산액 동일.
-
-### 대상 파일
-| 파일 | 변경 |
+### react-app 현황
+| 조각 | 상태 |
 |---|---|
-| `src/domain/driverSelfRevenue.js` | 매출제 분기 ~4줄: `null` link → 실제 link, commission을 `totals.grossAmount`/`totals.count` 기준으로. `salary` 분기·`base`(운송료 표시·부가세·미수) 무변경. |
-| `src/domain/driverSelfRevenue.test.js` | 기존 (b)~(d): 픽스처 `link-1`이 2026-05 전체를 덮으므로 숫자 불변 → 그대로 통과. **신규 테스트 2개**: ① 배정기간 밖 트립이 있으면 정산액이 그만큼 줄어든다. ② `getDriverSelfMonthlyDetail(...).income.settlement.total` === `getOwnerMonthlyFinanceDetail(monthKey, 'all', ...).expense.salary.total`(같은 트립을 기사=`{main}`, 차주=`{번호판}`으로 세팅) — 두 화면 일치 직접 검증. |
+| 도메인 계산 `getLinkedDriverSettlementDetail(data, monthKey, link, car)` | ✅ 있음(`financeTaxInvoiceGroups.js:158`) — 반환 `{ totalFare, tripCount, commissionAmount, insuranceAmount, finalAmount, trips, tripsFareSum }` = 정산 카드에 그대로 대응 |
+| 도메인 계산 `getLinkedDriverClientInvoiceGroups(trips, car, ownerSettings)` | ✅ 있음(같은 파일:176) — 반환 `{ groups: [{ clientName, count, supplyAmount, taxAmount, totalAmount, trips, supplierBiz, vehicleLabel }], unassignedCount }` = 거래처 계산서 섹션에 그대로 대응 |
+| `flattenLinkedDriverTrips` | ✅ 있음 |
+| 기사 일지 데이터(daily_logs by vehicle_id) | ✅ 차주 hydrate가 이미 `workLogs[ownerKey][번호판]`에 채움 — **새 서버 조회 불필요** |
+| `scopedToVehicleNumber` 거래처 데이터 모델 | ✅ 있음(`clientTypes.js`, persist, hydrate) |
+| **`getAssignmentState`(할당중/예정/종료)** | ❌ 없음 — 신규(작음, `isDateWithinAssignment` 옆) |
+| **`LinkedDriverManagementPage` 컴포넌트** | ❌ 없음 |
+| **`renderLinkedDriverMenu` 사이드 메뉴** | ❌ 없음 |
+| **`/app/drivers/:linkId` 라우트** | ❌ 없음(`/app/drivers`만 = `DriverConnectionPage` 초대 관리) |
+| **`linkedDriverClientsPage`(기사 전용 거래처 CRUD)** | ❌ 없음 |
+| **"정산·계산서 설정"(`showBillingSettingsPage`)** | ❌ 별도 화면 미이관(`driverInvoiceBasis`는 `TaxInvoicePage`에서만 사용) |
 
-### 건드리지 않을 파일
-`driverRevenueShareExpense.js`(C-3 — 이미 link 필터, 무변경), `financeOwnerDetail.js`,
-`OwnerRevenueView.jsx`, `OwnerMonthlyCards.jsx`, D-2/2차 신규 모듈, hydrate 경로.
-**운송료 표시 라인(`base.income.fare.total`)은 그대로** — 배정기간 필터 안 함
-(차주 [기사] 탭 운송료 라인도 필터 안 하므로 일치). 표시 라인도 줄일지는
-브라우저 보고 별도 판단.
+### 착수 전 4대 질문
+1. 구독: `useOwnerDrivers`/`useOwnerCars`/`useOwnerSettings`/`useOwnerWorkDataByLogId`
+   /`useOwnerClients`.
+2. 값 출처: Store(차주 hydrate). 기사 일지 = `workLogs[ownerKey][번호판]`.
+3. 쓰기 창구: 거래처 CRUD만 — 기존 client 저장 경로(`saveClients`/scoped 태그).
+   정산·일지 데이터는 조회만.
+4. 경합: 없음(조회) / 거래처는 기존 client 저장 경로 재사용.
 
-### 실패 처리 (§7)
-신규 레이어 없음. 계산 소스 교체(4줄). 서버 쓰기 없음.
+## 1. 감시관 착수지시서 (보리 결정: A안 — 바닐라 그대로 완전 이관)
 
-### 착수 전 작업자 확인 요청 사항
-1. 수정 후 `driverSelfRevenue.js` 매출제 분기가 `getMonthlyDriverRevenueShareExpense`
-   의 per-car 로직과 **줄 단위로 대응**하는지 확인(같은 함수·같은 인자 순서).
-2. 신규 테스트 ②(두 화면 일치)를 반드시 넣을 것 — 회귀 방지 핵심.
-3. 기존 D-2 테스트 (b) 제목이 "운송료 × %"인데 이제 "배정기간 내 운송료 × %"
-   — 제목만 정정 재량.
-4. 파일 200줄 이하 유지 확인.
+### 1-A. "[번호] 일지" 메뉴 노출 조건 정정 (슬라이스 B 잔여)
+`src/app/subLogMenuItems.js`: 현재 "모든 sub 차량". → **"연동 안 된 sub
+차량"으로 좁힌다** — 그 차량번호로 `status !== 'disconnected'`인 `driverLinks`가
+없을 때만. (연동된 차량은 1-B의 "[기사] 기사 관리" 메뉴가 담당.) 관련 테스트
+(`subLogMenuItems.test.js`) 케이스 추가.
 
-### 작업자 전달문 (AGENTS.md §5)
+### 1-B. "[기사이름] 기사 관리" 화면 이관 (신규)
+
+| 파일 | 내용 |
+|---|---|
+| `src/domain/drivers.js` | `getAssignmentState(link)` 신규 — `{ key: 'scheduled'\|'ended'\|'active', label: '할당 예정'\|'할당 종료'\|'할당 중' }`. `assignmentStart`/`End` + 오늘 비교(바닐라 `getAssignmentState` 그대로). |
+| `src/components/drivers/LinkedDriverManagementPage.jsx` (신규) | 헤더(뒤로가기 → `/app/drivers`) + 프로필 카드 + 칩 3개 + 월 네비게이터 + 정산 요약 카드(`getLinkedDriverSettlementDetail`) + 거래처 세금계산서 섹션(`getLinkedDriverClientInvoiceGroups`). **200줄 초과 예상 → §3에 분리설계안**(예: 정산요약/계산서섹션/프로필카드 하위 컴포넌트). |
+| `src/components/drivers/LinkedDriverClientsPage.jsx` (신규) | "거래처" 칩 대상. 이 기사 전용(`scopedToVehicleNumber === 차량번호`) 거래처 목록 + `+ 추가`. 권한: 계산서 처리 방식(`getEffectiveDriverSettlementMode(car, settings)`)이 `driver_direct`면 조회만, 아니면 CRUD. **§3에 설계 선제시**(기존 client 모달·저장 경로 재사용 범위). |
+| `src/app/AppShellRoutes.jsx` | `<Route path="drivers/:linkId" element={<LinkedDriverManagementPage .../>} />` + `drivers/:linkId/clients`(또는 내부 상태). |
+| `src/components/SideMenu.jsx` + `src/app/subLogMenuItems.js`(또는 새 헬퍼) | AppShell이 `status==='linked'` 기사 목록(`{ linkId, driverName }`) 계산 → "관리" 섹션에 "[기사이름] 기사 관리" → `/app/drivers/:linkId`. (§5-1의 prop 방식 — SideMenu 순수 유지.) 소속기사 세션 제외. |
+| `src/components/DriverConnectionPage.jsx` | (선택) "연동 중" 기사 항목 클릭 시 `/app/drivers/:linkId`로 — 자연스러운 추가 진입점. §3에서 판단. |
+| "정산·계산서 설정" 칩 | §3에 확인: 별도 화면 이관 필요한지 / `driverInvoiceBasis`·정산방식 설정을 어디에 둘지. 최소로는 토스트 or 기존 설정 링크. |
+| "상세 설정" 칩 | 토스트 "상세설정은 구상중입니다."(바닐라 그대로). |
+
+### 1-C. 건드리지 않을 것
+슬라이스 A 서버 계약, `DayLogPage`, 소속기사 경로(`DriverRevenueView` 등),
+`getLinkedDriverSettlementDetail`/`getLinkedDriverClientInvoiceGroups` **로직**
+(재사용만), 일반 거래처 관리(`ClientManagementPage`), 매출 화면.
+
+### 1-D. 실패 처리 (§7)
+신규 durable/큐 없음. 조회 화면 + 거래처는 기존 저장 경로. DB 작업 없음
+(`scopedToVehicleNumber`·정산 컬럼 이미 존재).
+
+### 1-E. 착수 전 작업자 확인 요청 사항 (→ §3)
+1. `LinkedDriverManagementPage` 하위 분리(200줄) 설계.
+2. `LinkedDriverClientsPage`: 기존 client 모달/`saveClients`/`scopedToVehicleNumber`
+   태그 재사용 방식 + `driver_direct` 조회 전용 처리(기사 계정 clients를 어떻게
+   읽나 — 이미 있는 RPC/hydrate 경로 확인).
+3. "정산·계산서 설정" 칩 대상 결정(감시관 확인).
+4. 사이드 메뉴 2종("[번호] 일지" 연동X sub / "[기사] 기사 관리" 연동 기사) 동시
+   노출 시 UX·순서.
+5. 각 파일 `wc -l` 실측.
+
+### 1-F. 작업자 전달문 (§3 확인 후)
 > AGENTS.md의 §1 작업자 규칙을 준수하라. `.md` 파일은 수정하지 말고 지시된
-> 코드 작업만 하라. 범위 = `src/domain/driverSelfRevenue.js`(매출제 분기 ~4줄)
-> + `.test.js`(신규 2 + 제목 정정). `driverRevenueShareExpense.js`·`financeOwnerDetail.js`
-> ·차주 화면·hydrate 무변경. `npm test` 전체 통과 후 `0b089b0` 위 커밋 1개.
+> 코드 작업만 하라. DB 없음. 범위 = §1-A + §1-B. 도메인 계산
+> (`getLinkedDriverSettlementDetail`·`getLinkedDriverClientInvoiceGroups`)은
+> 재사용만, 로직 무변경. 슬라이스 A·`DayLogPage`·매출 화면·소속기사 경로 무변경.
+> §3에 (1)~(5) 답 + 화면 분리설계 먼저 제시하고 감시관 확인 후 구현.
+> `npm run typecheck` + `npm test` 전체 통과 후 커밋.
 
 ## 2. 착수 전 상태 (2026-09-04)
-- `react-app` HEAD `0b089b0` = origin/main. 미커밋 없음.
+- `react-app` HEAD `5dc3ab4` = origin/main.
+- `ubiquitous-parakeet` `c41b44d` + 문서 갱신분 미커밋.
 
-## 3·4. 작업자 구현 완료 (2026-09-04) — `react-app 401d9d3`
+## 3. 작업자 Phase 1 보고
+(§1-E 답 + 설계)
 
-`driverSelfRevenue.js`(96줄) 매출제 분기 ~4줄:
-- `link = links.find(item => item.id === assigned.driverLinkId || item.vehicleNumber === assigned.number) || null` — C-3 `getMonthlyDriverRevenueShareExpense`와 **동일 라인**.
-- `getMonthlyDriverTotals(logData(work,'main'), monthKey, link)` — `null` → `link`.
-- `calculateDriverVehicleCommission(assigned, totals.grossAmount, totals.count)` — `base` → `totals`.
-- 산재·`Math.max`·`base.income.fare`(운송료 표시)·salary·hydrate·C-3·차주 화면 무변경.
-`driverSelfRevenue.test.js`(170줄): 신규 ①②, (b)(c) 제목 정정.
-`npm test` 전체 pass.
+## 4. 작업자 구현 완료 보고
 
-## 5. 감시관 실사 — **최종 [x] 확정 (2026-09-04)**
-
-`401d9d3` push → CI "CI" **success**(감시관 `gh run list` 독립 확인) + 보리
-브라우저(기사 순이익 == 차주 기사급여) 통과 + 감시관 §5 코드 실사 통과 →
-보리 `[x]`. 영구 기록: `docs/archive/audit.md` "매출제 정산액 차주↔기사 화면
-일치 최종 [x] 확정". 다음 슬라이스 착수 시 이 파일 리셋.
-
-### §5 코드 체크리스트 (2026-09-04)
-
-| # | 확인 | 결과 |
-|---|---|---|
-| 1 범위 | ✅ `driverSelfRevenue.js` + `.test.js` 2개만. `driverRevenueShareExpense.js`·`financeOwnerDetail.js`·차주 화면·hydrate 무변경(diff 확인). |
-| 2 몰래 증설 | ✅ 계산 소스 교체 4줄. 새 함수·저장소 0. |
-| 3 타입 꼼수 | ✅ `git show` grep 0. `@typedef DriverLinkLike` 추가(테스트). |
-| 4 200줄 | ✅ 96 / 170. |
-| 5 테스트 진실성 | ✅ **① 배정기간 밖 트립 제외**(narrow link 15,000 = 100k×15%, full 30,000 = 200k×15%, 운송료 표시는 200k 유지) + **② `getDriverSelfMonthlyDetail` settlement == `getOwnerMonthlyFinanceDetail('all')` salary**(둘 다 64,500, 기사=`{main}`·차주=`{번호판}`) — 두 화면 일치 직접 검증. 기존 테스트 약화 0. |
-| 6 문서 정합 | ✅ react-app diff에 `.md` 없음. |
-| 7 요구사항 | ✅ 매출제 분기가 C-3 per-car와 줄 단위 대응. 기사 순이익 = 차주 "기사 급여"(배정기간 필터·`totals` 기준). 운송료 표시 라인은 미필터(차주 [기사] 탭과 동일). |
-
-**요약(한국어):** D-2 §6-J #1(null link) 되돌려 기사 매출제 정산액을 C-3
-owner "기사 급여"와 같은 경로(배정기간 필터 + `getMonthlyDriverTotals` 기준)로
-계산한다. 4줄 교체 + 두 화면 일치 검증 테스트. 남은 확인: CI 초록 + 보리
-브라우저(기사 순이익 == 차주 기사급여, 배정기간 밖 트립은 정산 제외).
+## 5. 감시관 실사

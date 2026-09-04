@@ -8,11 +8,15 @@
 ---
 
 ## 지금 하는 일
-**다음 슬라이스 미착수.** Step 9 ① 소속기사 정산·지출 관련 마무리됨.
-- 다음 후보: 다중 배정 차량 / 슬라이스 B(대리작성 진입점) / Step 9 ②(소속기사 로그인 화면 완성). 착수 전 보리와 확인.
+**Step 9 ① 기사 연동 이관 완성 — "[기사이름] 기사 관리" 화면(바닐라 그대로 A안) + 서브 일지 메뉴 정리.**
+- 슬라이스 B 1차(서브 일지 진입·달력 라우트)는 `84b5909`·`6109551`·`50f939b`·`11bc798`·`5dc3ab4` 커밋·푸시됨. 그 위에서 이어감.
+- 보리 지시(2026-09-04): 미루거나 쪼개지 말고, 바닐라 "[기사이름] 기사 관리" 화면(프로필+월별 정산 요약+거래처별 계산서 카드 전부)을 **완전 이관**.
+- **도메인 계산은 이미 다 이관됨**(`getLinkedDriverSettlementDetail`·`getLinkedDriverClientInvoiceGroups`·`flattenLinkedDriverTrips`; 기사 일지 데이터도 차주 hydrate가 `workLogs[ownerKey][번호판]`에 채움). **갭 = UI**: `LinkedDriverManagementPage`·`renderLinkedDriverMenu` 사이드 메뉴·`/app/drivers/:linkId` 라우트·`getAssignmentState` 헬퍼·`LinkedDriverClientsPage`(기사 전용 거래처 CRUD, 권한별).
+- 착수지시서: **`docs/report.md` §1** (§1-A "[번호] 일지"를 연동 안 된 sub로 좁힘 + §1-B 기사 관리 화면).
+- 작업자 §3에 (1)화면 200줄 분리설계 (2)`LinkedDriverClientsPage` 권한·저장 경로 (3)"정산·계산서 설정" 칩 대상 (4)사이드 메뉴 2종 UX (5)wc-l 실측 → 감시관 확인 후 구현.
 
 ## 다음 할 일 (순서대로)
-1. **Step 9 ① 슬라이스 B** — 대리작성 진입점 UI (차주가 소속기사 일지를 대신 작성). 끝나면 Step 9 ① 전체 `[x]`.
+1. **Step 9 ① 기사 연동 이관 완성** (위) — 끝나면 Step 9 ① 전체 `[x]`.
 2. **Step 9 ②** — 소속기사 로그인 화면 완성 (employerLink, RLS 신규; MyPage 메뉴 가드 = audit "문제 A" — 계정 분화 판별 근거 조사 필요).
    → 위 1·2가 끝나야 Step 9 전체 `[x]` 확정 가능
 
