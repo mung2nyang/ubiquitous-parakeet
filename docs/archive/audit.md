@@ -3576,3 +3576,161 @@ E 이후 낡아버린 테스트인지 판별해서 둘 중 하나로 고쳐야�
 세션 대신 클라우드(로그인) 세션으로 교체해 원래 검증 의도(차량 커밋 시
 모달이 리마운트 없이 `assignableCars`를 갱신하는지)를 유지한 채 고친다.
 지시서는 `docs/report.md`에 기록 후 작업자에게 전달(아래 절).
+
+
+---
+
+## Step 9 ① 슬라이스 C-2 (개정) 최종 [x] 확정 (2026-09-04)
+
+**경위**: 전 감시관이 C-2 착수지시서를 커밋하지 못한 채(작업자 터미널이 지시서
+기록 중 종료) 구두 지시로 진행 → 코드검토(순수함수 테스트)만 PASS로 남음. 현
+감시관이 지시서 복원 + §5 재리뷰 → 보리 브라우저 실검증에서 **FAIL**(소속기사
+매출 ₩0). 보리 결정으로 개정:
+- ① ₩0 원인: `driverRevenueScope`의 세션전화번호→차량번호→키 필터 사슬이 실제
+  소속기사 세션에서 취약(전화번호 불일치 시 null, 방금 입력분은 `workLogs['main']`
+  인데 필터가 버림). 소속기사 세션은 최소권한 hydrate로 본인 차량 데이터만 들고
+  오므로 화면단 필터링 자체가 과설계 → 제거, `getMonthlyFareRevenue`에 원본
+  전달(main+배정차량 합산).
+- ②③ 차량관리 화면: 소속기사 뷰어에게 배지 "기사차량"→"배정차량", "+ 추가"
+  버튼 숨김(셀프 차량등록 미구현).
+- ④ 소속기사 매출 UI를 차주와 동일하게 → **슬라이스 D-2로 분리**.
+
+**결과**: `react-app` `06b9ca2`(4 files: `RevenuePage.jsx`,
+`revenue/DriverRevenueView.jsx`, `cars/CarListPage.jsx`, `cars/CarListItem.jsx`,
+19 insertions / 6 deletions). 감시관 §5 코드 실사 통과(줄 수 자기보고 오차
+27/108/177 vs 실측 31/118/186 재지적 — 전부 200 이하). 보리 push →
+GitHub Actions "CI" `06b9ca2` **completed/success**(감시관 `gh run list`로 독립
+확인) → 보리 브라우저 재검증 "모두 통과" → 보리 `[x]` 확정.
+
+**후속(별건, C-2 회귀 아님)**:
+- `driverRevenueScope.js`의 `resolveDriverVehicleNumber`/`phoneDigits`가 이제
+  프로덕션 미사용(死코드) — "삭제 금지" 지시로 남김, 정리는 D-2/별도.
+- **매출제(revenue-share %) 기사 정산액이 매출 손익 "기사 급여" 라인에 0**
+  (`getMonthlyDriverSalaryExpense`가 `driverPayMode === 'salary'`만 합산) →
+  슬라이스 C-3. Step 9-A~D(`5d1de1f`) 이후 상존하던 결함.
+- 소속기사가 "수정"/"삭제"로 배정 차량 편집 가능 — Step 9 ② 영역.
+
+
+---
+
+## Step 9 ① 슬라이스 C-3 최종 [x] 확정 (2026-09-04)
+
+**배경**: C-2 브라우저 재검증 중 보리 발견 — 차주 매출 "전체 손익"의 "기사 급여"가
+매출제(revenue-share %) 기사에 대해 0원. `getMonthlyDriverSalaryExpense`가
+`driverPayMode === 'salary'`만 합산하고, 매출제 % 정산액 계산
+(`calculateDriverVehicleCommission`)은 수수료계산서에서만 쓰이고 매출 손익
+화면엔 미연결이었다. C-2/C-1 회귀 아님 — Step 9-A~D(`5d1de1f`) 이후 상존.
+
+**보리 결정**: Q1(계산 기준) = 기존 함수가 이미 `fare`(부가세 별도) × % 라
+그대로 사용. Q3 = A(한 라인에 월급제+매출제 합산, `>` 펼치면 기사별 내역).
+Q4 = A(매출제 정산액에서 산재보험료 차감 — 정산 상세 화면과 동일 기준).
+
+**결과**: `react-app` `eb1ad2e`(4 files):
+- `src/domain/driverRevenueShareExpense.js`(신규 50줄, `// @ts-check`, 순수):
+  `getMonthlyDriverRevenueShareExpense(monthKey, settings, subCars, workDataByLogId)`
+  → 각 매출제 sub 차량의 `getMonthlyDriverTotals` gross × % − 산재(insuranceOn일
+  때), `{ total, items }` 반환(salary 함수와 동형).
+- `src/domain/financeOwnerDetail.js`(201→203줄): `scope !== 'owner'`일 때
+  salary part + share part의 `total` 합·`items` concat.
+- 신규 `.test.js`(76줄) + `finance.test.js` 기대값 정정(옛 "매출제=급여 0" 단언이
+  C-3로 바뀌므로 불가피 — 감시관이 픽스처로 역산해 정직성 확인, 커버리지 강화).
+- `financeCore.js`·`financeTaxInvoiceGroups.js`·`OwnerMonthlyCards.jsx` 무변경(재사용만).
+
+**검증**: 감시관 §5 코드 실사 통과(줄 수 자기보고 오차는 이번엔 §3/§4 보고
+자체가 생략돼 감시관이 git에서 직접 실측 — `financeOwnerDetail.js` 203줄).
+보리 push → GitHub Actions "CI" `eb1ad2e` **completed/success**(감시관 `gh run
+list` 독립 확인) → 보리 브라우저 검증 통과(전체손익 기사급여 값·펼침 내역·차주
+탭 회귀·수수료계산서 회귀) → 보리 `[x]` 확정.
+
+**다음**: 슬라이스 D-2(소속기사 매출 UI = 차주 UI + 순수익을 매출제 %로 —
+`driverRevenueShareExpense.js` 재사용). 착수 전 "동일하게" 범위 보리와 확정.
+
+
+---
+
+## Step 9 ① 슬라이스 D-2 최종 [x] 확정 (2026-09-04)
+
+**목표**: 소속기사 매출 화면을 차주 카드 UI(순이익/운송수입/운행지출/부가세)로
+재작성 + 본인 정산(운송료 × 매출제%) 기준.
+
+**보리 문답 다수 라운드로 확정된 사양**:
+- 탭 없음(월/년 토글만). 순이익 = 본인 정산액(지출로 차감 안 함 — 정비는 차주가 냄).
+- 운송수입 카드: 운송료(전체) + 운임수수료. "기사 정산" 라인·"유가보조금" 라인은
+  소속기사 화면에서 뺌(§5-1 #1·#2). 순이익 라벨에 정산율 `당월 순이익 (30%)`(§5-1 #3).
+- 운행지출 카드: 정비/주유/기타 라인 두되 현재 항상 0(소속기사 지출 입력 기능
+  미구현 — 별도 슬라이스). 기사 급여 라인 숨김.
+- 차주 몫(−70%) 절대 미표시.
+
+**커밋(react-app, 3개 — 브라우저 검증 라운드마다 수정 커밋)**:
+- `81ddbbe`: 카드 UI 재작성 — 신규 `domain/driverSelfRevenue.js`,
+  `OwnerMonthlyCards.jsx` `variant='driverSelf'`, `DriverRevenueView.jsx` 재작성.
+- `f219ed5`: 보리 브라우저 #1~#4 — "기사 정산"/"유가보조금" 라인 제거,
+  순이익 라벨 정산율, `carFromAssignedSummary`에 comm_* 매핑, `0003` SQL 파일.
+- `a0037d7`: 브라우저 재검증 버그 2건 수정 — (A) 소속기사 일지 입력 직후 매출
+  0원 / (B) 재로그인 시 일지가 "일일운행" 화면에서 사라지고 매출엔 나타남.
+  원인: 입력은 `main` 키, hydrate는 번호판 키. 수정: **소속기사는 `main` 키로
+  통일** — `hydrateEmployedDriver.js`에 순수 헬퍼 `remapEmployedDriverWorkLogs`
+  (배정차 서버일지 → `workLogs.main`, 번호판 키 제거), `driverSelfRevenue.js`
+  택 A 재작성(`getOwnerMonthlyFinanceDetail` owner scope base + 배정차 1대로
+  정산액 = `calculateDriverVehicleCommission(car, base.income.fare.total,
+  base.tripCount)` − 산재(link=null)). 배정차 0대·다중배정 가드/TODO.
+
+**DB**: 새 마이그레이션 `0003_assigned_vehicle_commission.sql` — `get_assigned_vehicle_summary`
+RPC 반환에 `comm_enabled bool`/`comm_type text`/`comm_value text` 3개 추가
+(additive, security definer 유지). 보리가 라이브 실행·시그니처 사후검증 완료
+(2026-09-04). 진단 SELECT로 컬럼 타입 확인 후 감시관이 완성본 발행(§9 절차).
+
+**검증**: 감시관 §5 코드 실사 3회(각 커밋) 통과 — 범위·타입꼼수·200줄
+(99/140/143줄)·테스트 진실성(신규 테스트가 입력직후/재로그인후 동일값·산재차감·
+월급제·배정차0·키미통일회귀 커버, 픽스처로 역산 확인)·문서정합 이상 없음.
+자잘한 nit: `hydrateEmployedDriver.test.js`에 `/** @type {any} */` 1건(테스트
+픽스처, 블로킹 아님). 보리 push(3회) → GitHub Actions "CI" `a0037d7`
+**completed/success**(감시관 `gh run list` 독립 확인) → 보리 브라우저 재검증
+통과(입력 직후 + 재로그인 후 둘 다 정상) → 보리 `[x]` 확정.
+
+**후속 대기열**: 소속기사 지출(정비/주유) 입력 기능 / 다중 배정 차량 UI·집계 /
+소속기사 매출 운송료 표시 토글(백로그, 이관 후) / 슬라이스 B(대리작성 진입점) /
+Step 9 ②(소속기사 로그인 화면 완성).
+
+
+---
+
+## Step 9 ① 소속기사 지출 입력 — 1차(소속기사 쪽) 최종 [x] 확정 (2026-09-04)
+
+**배경**: 소속기사가 "일일운행"에서 정비/주유를 입력해도 새로고침하면 사라짐.
+원인 = `hydrateEmployedDriver`가 `expenses: []` 고정(쓰기 경로는 이미 서버까지
+갔음 — `saveExpenses`가 소속기사도 클라우드 sync, RLS도 이미 3종 테이블 기사
+CRUD 허용).
+
+**보리 결정**: Q1 소속기사 순이익 안 깎음(정보용) / Q2 차주 지출에도 반영(=2차)
+/ Q3 "일일운행" 비용 섹션 그대로 / Q4 1·2차 분할.
+
+**DB**: 없음. `fuel_records`/`maintenance_records`/`misc_expense_records` 3종
+모두 연동 기사 전체 CRUD RLS 이미 존재(2026-09-04 진단으로 확인, `daily_logs`도
+동일). 저장소 마이그레이션 파일엔 없음 — 필요 시 나중 `0004`로 스냅샷.
+
+**커밋**: `react-app` `7e66d7d` (5 files):
+- `hydrateEmployedDriver.js`(139→174줄): `fetchExpensesForAssignedVehicle` —
+  배정 차량 `supabaseId`로 3종 조회 → `mergeExpenseKind` + `expenseFromFuel/
+  Maint/MiscRecord` + `replace*Expenses`(hydrate.js:138-153과 **같은 함수**
+  재사용) → 스냅샷 `expenses`. 배정 0대 가드, 다중 배정 첫 차량만(TODO).
+- `driverSelfRevenue.js`(96줄): `expenses` 파라미터, `base =
+  getOwnerMonthlyFinanceDetail(..., expenses)`, `expense = base.expense`(표시용),
+  `netProfit`/`income.total` = `settlementTotal` 유지(Q1).
+- `DriverRevenueView.jsx`(88줄): `useOwnerExpenses(ownerKey)` 구독 → 전달.
+- `expenses.js` 무변경. `OwnerMonthlyCards.jsx` 무변경(순이익 미반영 힌트 생략).
+- 테스트: `driverSelfRevenue.test.js` +지출 있어도 netProfit 불변,
+  `cloudMemorySave.test.js` +소속기사 saveExpenses가 fuel_records insert 도달.
+
+**검증**: 감시관 §5 코드 실사 통과 — 범위·타입꼼수·200줄·문서정합 이상 없음.
+nit: `fetchExpensesForAssignedVehicle` 단위 테스트 없음(작업자 §3 계획엔 있었음;
+`hydrate.js` 재사용 + 브라우저 검증으로 갈음, 블로킹 아님). 보리 push → CI "CI"
+`7e66d7d` **success**(감시관 `gh run list` 독립 확인) → 보리 브라우저 검증(비용
+입력 → Network `fuel_records` insert → 새로고침 후 지출 카드 유지, 순이익 불변)
+통과 → 보리 `[x]` 확정.
+
+**후속 대기열**: **2차** = 소속기사 비용을 차주 매출 화면 지출에도 반영(차주
+hydrate가 서브 차량 비용 조회 → `getOwnerMonthlyFinanceDetail`은 이미 `expenses`
+배열 읽음). 이후 다중 배정 차량 / 슬라이스 B / Step 9 ②.
+후속 nit: 소속기사 지출 카드에 값이 뜨는데 순이익 안 줄어드는 것 — 브라우저에서
+헷갈리는지 보리 확인, 필요 시 힌트 문구.

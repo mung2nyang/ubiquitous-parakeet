@@ -1,177 +1,169 @@
-# docs/report.md — main 빨간 테스트 1건 수정: `DriverConnectionPage.carsSoT.test.js`
+# docs/report.md — Step 9 ①: 소속기사 지출(정비/주유/기타) 입력 기능
 
-> Step마다/작업 단위마다 리셋되는 착수지시서·실사 보고서 통합 파일이다(AGENTS.md §12).
-> 이전 내용(슬라이스 D)은 이미 `react-app` 커밋 `3d7e0c8`, `ubiquitous-parakeet`
-> 커밋 `2449787`로 영구 보존됐다(docs/archive/audit.md에도 archived). 이번은 보리 지시
-> "main의 빨간 테스트 1건을 먼저 처리하세요"에 따른 별도 소규모 작업 —
-> 배경·판별 근거 전문은 `docs/archive/audit.md` "main 빨간 테스트 1건 판별 —
-> `DriverConnectionPage.carsSoT.test.js` (2026-09-03)" 절 참고.
-
-## 0. DB 작업
-
-**없음.** 테스트 파일 1개만 수정하는 순수 클라이언트 테스트 보정 작업.
-
-## 1. 감시관 착수지시서 (2026-09-03)
-
-### 배경
-보리: "main의 빨간 테스트 1건(`DriverConnectionPage.carsSoT.test.js`)을 먼저
-처리하세요. 코드 회귀인지, 슬라이스 E 이후 낡아버린 테스트인지 판별해서 둘
-중 하나로 고쳐야해." 감시관이 코드 작성 없이 조사만 수행(방법·근거는
-`docs/archive/audit.md` 해당 절 참고).
-
-### 판별 결과 (요지)
-**코드 회귀 아님 — 테스트가 낡음(stale).** `DriverConnectionPage.jsx` 148행의
-`{cloud && (<button ... >+ 초대</button>)}` 게이트는 슬라이스 E(소속기사
-로그인, 커밋 `192ebe6`)에서 "게스트도 `+ 초대` 버튼으로 기사를 등록할 수
-있음"(문제 B)을 고친 의도된 수정이며, 감시관이 이미 Phase 2 실사에서
-"MyPage/DriverConnectionPage 조건부 노출" 항목으로 **[PASS]** 판정했다.
-`AGENTS.md` 21행("게스트는 기사 초대·차량(기사) 초대를 쓰지 않는다. 버그로
-고치지 마라.")과 정확히 일치하는 동작이다. 반면 실패 중인 테스트
-(`DriverConnectionPage.carsSoT.test.js`)는 이 수정보다 훨씬 이전
-(슬라이스 A보다도 이전, mtime 기준)에 작성된 채 한 번도 갱신되지 않아,
-`session: null`(게스트)로 렌더한 뒤 이제는 게스트에게 보이지 않는 `+ 초대`
-버튼을 클릭하려다 실패한다.
-
-### 대상 코드 (감시관이 직접 확인)
-`react-app/src/components/DriverConnectionPage.carsSoT.test.js` (전체 56줄,
-유일한 변경 대상):
-- 19~33행: `session: null`으로 `DriverConnectionPage`를 렌더.
-- 35~37행: `+ 초대` 버튼을 찾아 클릭 — 게스트 세션이면 이 버튼이 DOM에
-  없어 여기서 실패.
-
-### 지시 (작업자)
-1. `session: null`을 **클라우드(로그인) 세션 객체**로 교체한다.
-   `lib/cloudSession.js` 85~87행의 `isCloudSession`은
-   `!!(session?.userId && !session.guestMode)`만 검사하므로, 예를 들어
-   `{ userId: 'sot-cars-drivers-owner', guestMode: false }` 같은 최소
-   plain object로 충분하다 — Supabase 목킹이나 `beginSessionEpoch` 호출은
-   불필요하다(이 테스트는 `openAdd()`로 모달을 여는 것까지만 하고
-   `save()`/네트워크 호출은 전혀 트리거하지 않는다 — `testSupport/
-   stubSupabaseClient.js`가 이미 import돼 있어 혹시 모를 네트워크 접근도
-   안전하게 스텁된다).
-2. 테스트가 실제로 검증하려는 원래 의도(차량을 `commitCars`로 커밋하면
-   이미 열려 있는 초대 모달이 리마운트 없이 `assignableCars`
-   (`datalist option`)를 갱신한다)는 **그대로 유지** — 세션 객체 교체
-   외의 로직·assert는 바꾸지 않는다.
-3. 테스트 이름(19행 `test('...')` 문자열)은 필요하면 "게스트" 뉘앙스가
-   없으므로 그대로 둬도 무방하나, 명확성을 위해 바꾸고 싶다면 자유
-   재량(선택 사항).
-
-### 건드릴 파일 / 건드리지 않을 파일
-- 건드릴 파일: `react-app/src/components/DriverConnectionPage.carsSoT.test.js`
-  **이 1개 파일만.**
-- 건드리지 않을 파일: `DriverConnectionPage.jsx`, `DriverFormModal.jsx`,
-  `lib/cloudSession.js`, `store/ownerDataHooks.js` 등 모든 프로덕션 코드,
-  그리고 `DriverConnectionPage.driversSoT.test.js` 등 다른 모든 테스트
-  파일. **프로덕션 코드는 어떤 이유로도 이번 작업 범위에서 수정하지
-  않는다** — 위 판별대로 현재 동작이 이미 승인된 의도된 사양이기 때문.
-
-### 실패 시 처리 방식
-해당 없음에 가깝다 — 순수 테스트 코드 보정이며 신규 실패 경로/방어
-레이어가 생기지 않는다(§0-1 A/B 대상 아님).
-
-### 사용자 승인 근거
-2026-09-03, 보리가 이 세션에서 직접 지시: "main의 빨간 테스트 1건을 먼저
-처리하세요 ... 판별해서 둘 중 하나로 고쳐야해 ... 작업자에게 지시서작성해."
-감시관 판별 결과(테스트 스테일)에 따른 이 지시서 작성 자체가 그 지시의
-이행이다.
-
-### 착수 전 작업자 확인 요청 사항
-1. `session` 교체 후 **단독 재실행**: `node --test
-   src/components/DriverConnectionPage.carsSoT.test.js` 결과 원문(PASS
-   확인).
-2. **전체 스위트 재실행**: `npm test`(또는 프로젝트의 전체 테스트 커맨드)
-   원문 로그 — 이번 건 외에 슬라이스 E/F/D 라운드에서 놓쳤을 수 있는 다른
-   빨간 테스트가 없는지 이 기회에 함께 확인한다(마지막 전체 그린 기록이
-   슬라이스 E 이전인 `tests 529 / pass 529`였음 — `docs/archive/audit.md` 해당
-   절 참고). 만약 이 테스트 외에 다른 실패가 나오면 **임의로 고치지 말고
-   먼저 감시관에게 보고**(범위 외).
-3. **Revert-and-confirm-fail**(AGENTS.md §10): 수정 후 `session`을 다시
-   `null`로 잠깐 되돌려 실제로 원래 실패(FAIL) 그대로 재현되는지 확인하고,
-   그 FAIL 원문 로그(종료 코드·실패 Assert 라인 포함)를 아래 §2에 첨부한
-   뒤 다시 되돌려서 최종 PASS 상태로 제출할 것 — 이 테스트가 "진짜
-   테스트"임을 증명하는 절차.
-
-## 2. 작업자 Phase 1 보고
-
-### 착수 전 확인 답
-1. 단독 `node --test src/components/DriverConnectionPage.carsSoT.test.js` —
-   아래 §3에 PASS 원문.
-2. `npm test`(= `test:unit` + `test:app`) — 아래 §3. 이번 건 외 추가 빨간
-   테스트 **없음**(unit 485 + app 105, fail 0).
-3. Revert-and-confirm-fail — `session: null`로 되돌린 뒤 FAIL 재현 확인,
-   원문 §3 첨부 후 클라우드 세션으로 복구·최종 PASS.
-
-### 구현 계획
-- `DriverConnectionPage.carsSoT.test.js` 30행만:
-  `session: null` → `{ userId: 'sot-cars-drivers-owner', guestMode: false }`
-- 프로덕션·타 테스트 파일 무변경.
-
-착수·구현 완료 → §3.
-
-## 3. 작업자 구현 완료 보고
-
-### 변경
-| 파일 | 내용 |
-|---|---|
-| `react-app/src/components/DriverConnectionPage.carsSoT.test.js` | 30행: 게스트 `session: null` → 클라우드 세션 `{ userId: 'sot-cars-drivers-owner', guestMode: false }` 1줄만 |
-
-프로덕션 코드(`DriverConnectionPage.jsx` 등) 미수정. 테스트 이름·assert·
-`commitCars` 시나리오 유지.
-
-### 단독 재실행 (수정 후 PASS)
-명령: `node --experimental-test-module-mocks --test-force-exit --test src/components/DriverConnectionPage.carsSoT.test.js`  
-종료 코드: **0**
-
-```
-✔ 차량을 커밋하면 기사 초대 모달이 리마운트 없이 할당 목록을 갱신한다
-ℹ tests 1
-ℹ pass 1
-ℹ fail 0
-```
-
-### Revert-and-confirm-fail (session을 다시 null로)
-동일 명령, 30행만 `session: null`로 임시 복원 후 실행.  
-종료 코드: **1**
-
-```
-✖ 차량을 커밋하면 기사 초대 모달이 리마운트 없이 할당 목록을 갱신한다 (57.0726ms)
-ℹ tests 1
-ℹ pass 0
-ℹ fail 1
-
-✖ failing tests:
-
-test at src\components\DriverConnectionPage.carsSoT.test.js:19:1
-✖ 차량을 커밋하면 기사 초대 모달이 리마운트 없이 할당 목록을 갱신한다 (57.0726ms)
-  AssertionError [ERR_ASSERTION]: 초대 버튼이 있어야 한다
-      at TestContext.<anonymous> (.../DriverConnectionPage.carsSoT.test.js:36:12)
-      at async Test.run (node:internal/test_runner/test:1088:7)
-      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:332:3) {
-    generatedMessage: false,
-    code: 'ERR_ASSERTION',
-    actual: undefined,
-    expected: true,
-    operator: '=='
-  }
-```
-
-→ 게스트에서 `+ 초대` 버튼 부재로 36행 `assert.ok(addBtn, ...)` 실패 —
-지시서 판별(스테일 테스트)과 동일. 이후 세션을 클라우드로 다시 복구.
-
-### 전체 `npm test`
-명령: `npm test` (`test:unit` && `test:app`)  
-종료 코드: **0**
-
-| suite | tests | pass | fail | duration_ms |
-|---|---:|---:|---:|---:|
-| test:unit | 485 | 485 | 0 | ~23071 |
-| test:app | 105 | 105 | 0 | ~27448 |
-| **합계** | **590** | **590** | **0** | — |
-
-이번 건 외 추가 실패 없음. 커밋/푸시 미실행.
+> Step마다/슬라이스마다 리셋되는 착수지시서·실사 보고서 통합 파일이다(AGENTS.md §12).
+> 이전 내용(슬라이스 D-2)은 `react-app` `81ddbbe`+`f219ed5`+`a0037d7` + DB `0003`,
+> `docs/archive/audit.md` "슬라이스 D-2 최종 [x] 확정"(2026-09-04)으로 보존.
 
 ---
 
-## 4. 감시관 Phase 2 실사 및 최종 판정
-(감시관이 작업자 보고 수신 후 작성)
+## 0. 감시관 사전 조사 (착수 전, 코드만 확인 — 코드 작성 없음)
+
+### 현재 상태
+- 소속기사 "일일운행" 화면(`day-log/DayLogPage.jsx`)에는 **비용 입력 섹션이
+  이미 렌더된다**(`useExpenseForm` — 계정 유형 가드 없음). 소속기사가 정비/주유를
+  입력할 수는 있다.
+- 하지만 저장 경로 `lib/expenses.js`의 `saveExpenses(ownerKey, next)`:
+  - 소속기사는 `getCloudOwnerKey() !== ownerKey`(ownerKey=linkedOwnerId) →
+    **`commitExpenses` 로컬 저장만, 서버 동기화 안 함.**
+- `hydrateEmployedDriver.js`는 주석대로 **"Skip clients / fuel / maint / misc"**
+  — 소속기사는 비용을 **서버에서 안 불러온다**(`expenses: []`).
+- 그래서 소속기사가 입력한 비용은 **새로고침하면 사라진다**(D-2 버그 B와 같은
+  패턴, 더 심함 — 아예 hydrate 안 됨).
+- D-2 `driverSelfRevenue.js`는 소속기사 매출의 `expense`를 **전부 0**으로 둔다
+  (지출 카드는 자리만 있고 항상 0).
+
+### 서버 비용 저장 구조 (참고)
+- 비용 3종은 `fuel_records` / `maintenance_records` / `misc_expense_records`
+  테이블에 **`daily_log_id` 기준**으로 저장(`lib/syncExpenseRecords.js` — delete
+  후 insert). 차주 경로는 `saveExpenses` → `syncFuel/Maint/MiscRecords`.
+- 소속기사 RLS: `daily_logs`/`transport_details`는 0002에서 **SELECT만** 열림.
+  일지 쓰기는 되는 것으로 관측됨(D-2에서 재로그인 후 서버 데이터 확인) — 비용
+  3종 테이블에는 소속기사 INSERT 정책이 **없을 가능성이 높음**(확인 필요).
+
+### 착수 전 4대 질문 (AGENTS.md §8)
+1. 구독/스냅샷: `useExpenseForm`은 별도 expenses 스토어 즉시 저장. 매출 화면은
+   `useOwner*` 훅 구독.
+2. 값의 출처: 지금은 localStorage(`readJsonKey('expenses')`) → 소속기사는 서버
+   미연동.
+3. 쓰기 창구: `saveExpenses`(배럴). 소속기사 분기가 로컬로 빠짐.
+4. 경합: hydrate가 expenses를 안 건드려서(소속기사) 지금은 경합 없음 — 서버
+   연동하면 D-2 일지처럼 키·hydrate 정합 설계 필요.
+
+## 1. 보리 결정 (2026-09-04 확정)
+- **Q1 = 안 깎음(정보용)**: 소속기사 순이익 = 정산액. 지출 카드는 "내가 쓴 돈"
+  기록용, 순이익 계산에 안 들어감.
+- **Q2 = 차주 지출에도 반영**: 차주가 내는 돈이므로 차주 손익에도 잡혀야 함.
+  → **2차 슬라이스**.
+- **Q3 = "일일운행" 화면 비용 섹션 그대로** (이미 렌더됨 — 저장/hydrate만 연결).
+- **Q4 = 1차·2차 분할**:
+  - **1차** = 소속기사 입력 → 서버 저장 → hydrate → **본인 지출 카드 표시**
+    (순이익 불변).
+  - **2차** = 그 비용이 **차주 매출 화면 지출**에도 반영.
+
+---
+
+## 2. 감시관 착수지시서 — **1차 (소속기사 쪽)**
+
+### 2-0. DB 작업 — **불필요(2026-09-04 진단으로 확인)**
+보리 진단 SELECT 결과: `fuel_records`/`maintenance_records`/`misc_expense_records`
+**3개 테이블 모두 이미 연동 기사 전체 CRUD 정책 보유**:
+- 작성/수정/삭제/조회 각 정책의 조건에 `EXISTS (select 1 from driver_links dl
+  where dl.vehicle_id = <table>.vehicle_id and dl.driver_id = auth.uid()
+  and dl.status = 'linked')` 포함. INSERT는 추가로 `user_id = auth.uid()`.
+- `daily_logs`도 동일(그래서 기사 일지 쓰기가 통과함).
+- 컬럼: 3개 테이블 공통 `id/daily_log_id/user_id/vehicle_id(uuid)`,
+  `work_date(date)`, `sequence(int)`, `cost_amount(numeric)`, `raw(jsonb)`.
+  fuel은 추가 `subsidy_amount`/`volume_liter`/`mileage_km`, maint는 `mileage_km`.
+
+→ **새 마이그레이션 없음.** 서버 쓰기/읽기 권한은 이미 열려 있다. 1차는
+**순수 클라이언트 작업**(hydrate에 조회 추가 + 저장 경로 확인 + 매출 계산 연결).
+
+### 2-1. 코드 (진단·`0004` 후 최종화)
+| 파일 | 변경(예상) |
+|---|---|
+| `src/lib/expenses.js` `saveExpenses` | 소속기사도 클라우드 동기화 경로를 타는지 확인. `blockedReasonForOwnerDataWrite`는 소속기사를 안 막는 것으로 보임(`cloudOwnerKey==ownerKey`, `userId` 일치). `syncFuel/Maint/MiscRecords`는 `mainCar = cars.find(main) \|\| cars.find(supabaseId)` → 소속기사는 배정 차량 사용 → **경로는 이미 맞을 수 있음**. 실제로 되는지 확인, 안 되면 최소 보정. |
+| `src/lib/hydrateEmployedDriver.js` | 배정 차량 `supabaseId`로 `fuel_records`/`maintenance_records`/`misc_expense_records` 조회 → **`hydrate.js:138-153`과 같은 패턴**(`mergeExpenseKind` + `expenseFromFuelRecord`/`expenseFromMaintenanceRecord`/`expenseFromMiscRecord`)으로 `expenses` 채움. 스냅샷 `expenses: []` → 실제 배열. |
+| `src/domain/driverSelfRevenue.js` | `getDriverSelfMonthlyDetail`에 `expenses` 파라미터 추가. `base = getOwnerMonthlyFinanceDetail(monthKey, 'owner', settings, work, expenses)`(빈 배열 → 실제 배열). 반환의 `expense`를 `base.expense`로(현재는 전부 0으로 덮어씀). **단 `netProfit`·`income.total`은 `settlementTotal` 유지**(Q1 — 지출로 안 깎음). |
+| `src/components/revenue/DriverRevenueView.jsx` | `useOwnerExpenses(ownerKey)` 구독 → `getDriverSelfMonthlyDetail(monthKey, settings, work, expenses)`로 전달. |
+| `src/components/revenue/OwnerMonthlyCards.jsx` driverSelf | 지출 카드가 이제 값이 참(0 아님). 순이익 카드와 시각적으로 이미 분리돼 있음 — 추가 변경 최소. 필요 시 "본인 부담(순이익 미반영)" 힌트 1줄(보리 확인). |
+
+### 2-2. 건드리지 않을 파일
+차주 hydrate(`hydrate.js`)·차주 매출(`OwnerRevenueView`)·`getOwnerMonthlyFinanceDetail`
+본체 — **2차 몫**. `financeCore.js`·D-2/C-3 신규 모듈 — 재사용만.
+`useExpenseForm`/`DayLogExpenses`(비용 입력 UI 자체는 이미 있음).
+
+### 2-3. 실패 처리 (§7)
+신규 durable/큐 없음. 기존 `saveExpenses` Fail-Fast 경로 재사용. hydrate에
+비용 3종 조회 추가(D-2 일지 hydrate와 같은 성격).
+
+### 2-4. 착수 전 작업자 확인 요청 사항
+1. **먼저 실측**: 소속기사 계정에서 "일일운행" 비용 입력 시 `saveExpenses`가
+   서버까지 가는지(네트워크 `fuel_records` insert 확인). `0004` 적용 전에는
+   RLS로 막힐 것 — 그 에러 원문을 §3에 기록.
+2. hydrate 비용 조회는 배정 차량 1대 기준(다중 배정 TODO — D-2와 같은 한계).
+3. `driverSelfRevenue` 변경 후 **순이익이 지출과 무관하게 정산액 그대로**인지
+   테스트로 고정.
+4. 각 파일 200줄 이하 실측.
+
+### 2-5. 진행 순서 (DB 불필요 — 바로 착수 가능)
+1. 작업자: §3에 실측(소속기사 비용 입력이 서버까지 가는지) + 설계 제시 →
+   감시관 확인.
+2. 작업자 구현 → `npm test` → 커밋(`a0037d7` 위).
+3. 감시관 §5 → 보리 브라우저(소속기사: 비용 입력 → 새로고침 후 지출 카드에
+   유지, **순이익 불변**) → push → CI → `[x]`.
+
+### 2-6. 작업자 전달문
+> AGENTS.md의 §1 작업자 규칙을 준수하라. `.md` 파일은 수정하지 말고 지시된
+> 코드 작업만 하라. DB 작업 없음(비용 3종 테이블 RLS는 이미 기사 CRUD 허용 —
+> §2-0). 범위 = §2-1 5개 파일 + 테스트. **차주 hydrate/매출 무변경(2차 몫).**
+> `driverSelfRevenue` 변경 후 순이익은 지출과 무관하게 정산액. `hydrateEmployedDriver`
+> 비용 조회는 `hydrate.js:138-153` 패턴(`mergeExpenseKind` 재사용). §3에 실측
+> (소속기사 비용 입력 → `fuel_records` 서버 도달 여부)·설계 먼저 제시하고
+> 감시관 확인 후 구현. `npm test` 전체 통과 후 커밋. 각 파일 200줄 이하 실측.
+
+## 3. 작업자 Phase 1 — 실측 + 설계 (2026-09-04)
+
+**실측(코드 추적)**: `saveExpenses`는 소속기사도 클라우드 경로를 탄다
+(`getCloudOwnerKey() === ownerKey`, `blockedReasonForOwnerDataWrite` 통과).
+`syncFuel/Maint/MiscRecords`의 차량은 `cars.find(main) || cars.find(supabaseId)`
+= 배정 sub 차량. RLS는 §2-0으로 이미 허용. → **쓰기 경로는 이미 서버까지 갈
+가능성 높음.** 진짜 결함은 `hydrateEmployedDriver`가 `expenses: []` 고정 →
+새로고침 시 지출이 사라짐. 라이브 INSERT 여부는 구현 후 브라우저 Network로 최종 확인.
+
+**설계**:
+- A. `expenses.js` — **무변경 우선**. "소속기사도 `syncFuelRecords` 호출" 테스트만 고정. 막히면 최소 보정.
+- B. `hydrateEmployedDriver.js` — `remapEmployedDriverWorkLogs` 이후, `nextCars[0]?.supabaseId` 있으면 `hydrate.js:138-153` 동일: fuel/maint/misc `select * where vehicle_id = 배정차.supabaseId` → `mergeExpenseKind` + `expenseFromFuel/Maint/MiscRecord` → `snapshot.expenses`. 배정 0대 → `[]`. 2대+ 첫 차량만(주석 TODO).
+- C. `driverSelfRevenue.js` — `getDriverSelfMonthlyDetail(monthKey, settings, work, expenses = [])`, `base = getOwnerMonthlyFinanceDetail(..., expenses)`, `expense = base.expense`(표시용), `netProfit`/`income.total` = `settlementTotal`(불변), `income.fuelSubsidy` = EMPTY 유지.
+- D. `DriverRevenueView.jsx` — `useOwnerExpenses(ownerKey)` → 전달.
+- E. `OwnerMonthlyCards.jsx` — 추가 UI 없음(지출 카드 값만 참).
+
+### 3-1. 감시관 회신 (2026-09-04) — **설계 승인.**
+1. **쓰기 경로 무변경 + hydrate·매출 연결만 — 동의.** 단 A의 테스트(소속기사
+   분기가 `syncFuelRecords`에 도달)는 반드시 넣을 것. 라이브 INSERT 검증은
+   구현 후 보리 브라우저 Network(질문 3 답).
+2. **`OwnerMonthlyCards` 힌트 — 이번엔 생략.** 지출 카드에 값이 뜨는데 순이익은
+   안 줄어드는 게 브라우저에서 헷갈리는지 보리가 확인 → 필요하면 후속에 문구 1줄.
+   (감시관이 브라우저 검증 가이드에 이 확인 항목 명시.)
+3. **라이브 Network 실측은 구현 후 브라우저 검증에서.** 구현 전 보리 사전
+   입력 불요 — 코드 경로가 충분히 추적됨. 막히면 그때 소폭 보정.
+
+추가 유의:
+- `base.expense.salary`도 owner scope면 0(무배정 시). driverSelf는 "기사 급여"
+  라인 숨김 유지 — `expense.salary` 값이 뭐든 렌더 안 함. OK.
+- `expenseFromFuel/Maint/MiscRecord`·`mergeExpenseKind` import는 `hydrateMerge.js`
+  또는 실제 위치 확인해서. `hydrate.js`가 쓰는 것과 **같은 함수** 재사용(복제 금지).
+
+→ 승인. `a0037d7` 위 커밋 1개로 구현 → `npm test` 전체 → 커밋. §4에 `wc -l`
+실측·테스트 원문.
+
+## 4. 작업자 구현 완료 보고 (2026-09-04)
+`react-app 7e66d7d` (5 files): `hydrateEmployedDriver.js` 174줄 /
+`driverSelfRevenue.js` 96줄 / `DriverRevenueView.jsx` 88줄 / `expenses.js` 무변경 /
+`OwnerMonthlyCards.jsx` 142줄. `npm test` unit 504 + app 111, fail 0, typecheck 0.
+
+## 5. 감시관 실사 — **1차 최종 [x] 확정 (2026-09-04)**
+
+| # | 결과 |
+|---|---|
+| 1 범위 | ✅ 5파일(prod 3 + test 2), §2-1 범위. `expenses.js` 무변경(설계대로). 차주 hydrate/매출 무변경(2차). |
+| 2 몰래 증설 | ✅ `fetchExpensesForAssignedVehicle` = `hydrate.js:138-153` 패턴 + 같은 도메인 함수 재사용. 새 저장소 0. |
+| 3 타입 꼼수 | ✅ 없음. `@typedef ExpenseItem` 정상. |
+| 4 200줄 | ✅ 174 / 96 / 88 / 142. |
+| 5 테스트 진실성 | ⚠️ 신규 2건 정직(지출 있어도 netProfit 불변 / 소속기사 saveExpenses가 fuel insert 도달). **단 `fetchExpensesForAssignedVehicle` 단위 테스트 없음**(§3 계획엔 있었음) — `hydrate.js` 재사용 + 브라우저 검증으로 갈음, nit. |
+| 6 문서 정합 | ✅ |
+| 7 요구사항 | ✅ 1차 목표 달성 — 소속기사 지출 hydrate → 지출 카드 표시, 순이익 불변(Q1). |
+
+독립 확인: `origin/main` = `7e66d7d`, CI "CI" = **success**. 보리 브라우저 검증
+(Network `fuel_records` insert + 새로고침 후 지출 카드 유지 + 순이익 불변) 통과.
+→ `[x]` 확정. 영구 기록: `docs/archive/audit.md` "소속기사 지출 입력 — 1차 최종
+[x] 확정". 다음 슬라이스 착수 시 이 파일 리셋.
