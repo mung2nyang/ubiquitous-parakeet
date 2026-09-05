@@ -1,115 +1,83 @@
-# docs/report.md — Step 9 ① 기사 연동 이관 완성: [기사이름] 기사 관리 화면 + 서브 일지 진입 정리
+# docs/report.md — Step 10 1차: 게스트 백업 내보내기/가져오기 + 백업 권장 알림
 
-> Step마다/슬라이스마다 리셋되는 착수지시서·실사 보고서 통합 파일이다(AGENTS.md §12).
-> 직전(슬라이스 B 1차: 서브 일지 진입·달력 라우트)은 `react-app`
-> `84b5909`·`6109551`·`50f939b`·`11bc798`·`5dc3ab4`로 이미 커밋·푸시됨.
-> 이 슬라이스는 그 위에서 **바닐라 "[기사이름] 기사 관리" 화면을 그대로(A안) 이관**하고,
-> 서브 일지 메뉴 노출 조건을 바로잡는다. 이전 슬라이스 상세는 `docs/archive/audit.md`
-> "슬라이스 B" 절(이 슬라이스 완료 시 함께 기록).
+> 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12). Step 9(①+②) 전체 `[x]`
+> 완료. 이제 **Step 10(리포트 PDF/알림/온보딩/고객센터)** 착수 — 보리 지시로 "완벽한 이관"이
+> 우선(`STATUS.md` "우선순위 원칙" 참고). Step 10의 "알림" 항목 중 가장 작은 조각(백업
+> 알림+기능)부터.
 
 ---
 
-## 0. 감시관 사전 조사
+## 1. 착수지시서
 
-### 바닐라 "[기사이름] 기사 관리" 화면 (`showLinkedDriverManagement`, index.html:946)
-연동된(`status==='linked'`) 기사마다 사이드 메뉴 `renderLinkedDriverMenu` →
-`showLinkedDriverManagement(link.id)`:
-1. **헤더**: 뒤로가기(→ 기사 연동 관리) + 제목 "[기사이름] 기사 관리"
-2. **프로필 카드** (`linkedDriverProfileCard`): 이니셜 아바타 + 이름 + 연락처 +
-   차량번호 + **할당 상태 뱃지**(할당중 / 할당 예정 / 할당 종료 — `getAssignmentState`)
-3. **칩 3개**: "거래처"(→ `linkedDriverClientsPage`) / "정산·계산서 설정"(→
-   `showBillingSettingsPage`) / "상세 설정"(→ 토스트 "구상중")
-4. **기사 정산 요약 카드**: 카드 상단에 **월 네비게이터**(◀ year/month select ▶),
-   그 아래 `건수 / 총 운송료 / 수수료(−) / 산재보험(−) / 최종 정산액`
-5. **거래처 세금계산서 섹션**: "이 기사가 실제 운송한 거래처별 매출" — 거래처별
-   카드(거래처명 · 건수 · 공급가액/세액/합계 + 운송 건 목록). 거래처 미지정 운행 N건
-   안내.
+### 1-A. 배경
+- 원본(`ubiquitous-parakeet`)엔 "데이터 백업 권장" 알림(로컬 백업 안 하면 날아간다는 경고,
+  `script.js` `getBackupNotificationItem`)이 있는데 react-app엔 이 알림 자체가 없다.
+- 원본은 로그인/게스트 둘 다에 이 알림을 띄우지만(로그인 시 더 느슨한 기준), **보리 결정:
+  이번 슬라이스는 게스트만** — 로그인(클라우드) 세션은 Supabase 자동 저장이 정본이라 이번엔
+  범위 밖(원본과 다른 점, 명시적 결정).
+- react-app엔 백업 **내보내기/가져오기 기능 자체가 아직 없어서**, 알림만 만들면 "지금 백업"
+  버튼이 갈 곳이 없다 — 기능도 같이 만든다(보리 지시).
 
-**서브 화면 `linkedDriverClientsPage`** ("거래처" 칩): 이 기사 전용 거래처
-(`scopedToVehicleNumber` 태그) 목록 + `+ 추가`. **계산서 처리 방식별 권한**:
-- 직원기사 / 회사 정산 / 기본값 → 차주가 **직접 등록·수정·삭제**(단 일반 거래처
-  관리·자동완성·즐겨찾기엔 안 섞임 — `scopedToVehicleNumber` 태그)
-- 기사 직접 정산(`driver_direct`) → 차주는 **조회만**(기사 계정 clients를 그때그때
-  읽기만, 차주 로컬 저장 안 함)
+### 1-B. 설계 — 신규 저장소·복구 레이어 없음(§7), 기존 스냅샷 메커니즘 재사용
+- **내보내기**: `store/owner-state.js`의 `SLICE_DOMAINS`(`cars`·`clients`·`settings`·
+  `expenses`·`invoices`·`drivers`·`profile`·`dismissedNotifications`·`workDataDeletedDates`)
+  각각을 `store/persistDomainRead.js`의 `readPersistDomain(domain, 'guest')`로 읽고,
+  `workData`는 `store/persist.js`의 `readLogWorkData('guest', logId)`를 `cars`(type='sub')
+  전부 + `'main'`에 대해 돌며 모은다(원본 `subWorkData` 패턴과 동일). 하나의 JSON 객체로
+  묶어 `Blob`+`<a download>`로 파일 다운로드(원본 `exportData()` 참고, `html2pdf` 같은
+  외부 라이브러리 불필요 — 순수 JS).
+- **가져오기**: 파일 선택 → JSON.parse → 최상위가 객체인지, 예상 도메인 키가 있는지 런타임
+  검증(AGENTS §6 "외부 경계 값은 중첩까지 검증") → **`store/owner-state.js`의
+  `replaceOwnerState('guest', snapshot, { sync: false })`를 그대로 호출**해서 한 번에
+  반영(새 배치 함수 작성 금지 — 이미 hydrate/스냅샷 복원에 쓰는 검증된 원자적 경로 재사용).
+  `sync: false`는 게스트라 어차피 무관하지만 명시.
+- **원본과 의도적으로 다르게 하는 것**: 원본의 `IMPORT_PROTECTED_IDENTITY_FIELDS`(계정
+  간 정체성 보호 로직)는 **이번 스코프에서 구현하지 않는다** — 게스트는 항상 `ownerKey==='guest'`
+  하나뿐이라 여러 계정 간 데이터가 섞일 위험 자체가 없다(원본은 로그인 다계정 환경이라
+  필요했던 방어). 이 로직을 굳이 옮기지 말 것 — 신규 검증 레이어를 게스트 스코프에 억지로
+  넣지 않는다.
+- **알림**: `lib/notifications.js`의 `collectNotifications`에 항목 추가. 게스트 전용
+  (`ownerKey === 'guest'` 또는 `!isCloudSession(session)` — 기존 판별 방식과 맞출 것,
+  `MyPage.jsx`/`DriverConnectionPage.jsx`가 쓰는 `isCloudSession` 재사용). `lastBackupAt`
+  타임스탬프(신규 로컬스토리지 키 하나, 게스트는 항상 `ownerKey='guest'`라 별도 스코프 불필요)
+  가 없거나 14일(원본 `BACKUP_REMINDER_DAYS` 그대로) 넘게 지났으면 알림. 내보내기 성공 시
+  이 키를 현재 시각으로 갱신.
 
-### react-app 현황
-| 조각 | 상태 |
-|---|---|
-| 도메인 계산 `getLinkedDriverSettlementDetail(data, monthKey, link, car)` | ✅ 있음(`financeTaxInvoiceGroups.js:158`) — 반환 `{ totalFare, tripCount, commissionAmount, insuranceAmount, finalAmount, trips, tripsFareSum }` = 정산 카드에 그대로 대응 |
-| 도메인 계산 `getLinkedDriverClientInvoiceGroups(trips, car, ownerSettings)` | ✅ 있음(같은 파일:176) — 반환 `{ groups: [{ clientName, count, supplyAmount, taxAmount, totalAmount, trips, supplierBiz, vehicleLabel }], unassignedCount }` = 거래처 계산서 섹션에 그대로 대응 |
-| `flattenLinkedDriverTrips` | ✅ 있음 |
-| 기사 일지 데이터(daily_logs by vehicle_id) | ✅ 차주 hydrate가 이미 `workLogs[ownerKey][번호판]`에 채움 — **새 서버 조회 불필요** |
-| `scopedToVehicleNumber` 거래처 데이터 모델 | ✅ 있음(`clientTypes.js`, persist, hydrate) |
-| **`getAssignmentState`(할당중/예정/종료)** | ❌ 없음 — 신규(작음, `isDateWithinAssignment` 옆) |
-| **`LinkedDriverManagementPage` 컴포넌트** | ❌ 없음 |
-| **`renderLinkedDriverMenu` 사이드 메뉴** | ❌ 없음 |
-| **`/app/drivers/:linkId` 라우트** | ❌ 없음(`/app/drivers`만 = `DriverConnectionPage` 초대 관리) |
-| **`linkedDriverClientsPage`(기사 전용 거래처 CRUD)** | ❌ 없음 |
-| **"정산·계산서 설정"(`showBillingSettingsPage`)** | ❌ 별도 화면 미이관(`driverInvoiceBasis`는 `TaxInvoicePage`에서만 사용) |
-
-### 착수 전 4대 질문
-1. 구독: `useOwnerDrivers`/`useOwnerCars`/`useOwnerSettings`/`useOwnerWorkDataByLogId`
-   /`useOwnerClients`.
-2. 값 출처: Store(차주 hydrate). 기사 일지 = `workLogs[ownerKey][번호판]`.
-3. 쓰기 창구: 거래처 CRUD만 — 기존 client 저장 경로(`saveClients`/scoped 태그).
-   정산·일지 데이터는 조회만.
-4. 경합: 없음(조회) / 거래처는 기존 client 저장 경로 재사용.
-
-## 1. 감시관 착수지시서 (보리 결정: A안 — 바닐라 그대로 완전 이관)
-
-### 1-A. "[번호] 일지" 메뉴 노출 조건 정정 (슬라이스 B 잔여)
-`src/app/subLogMenuItems.js`: 현재 "모든 sub 차량". → **"연동 안 된 sub
-차량"으로 좁힌다** — 그 차량번호로 `status !== 'disconnected'`인 `driverLinks`가
-없을 때만. (연동된 차량은 1-B의 "[기사] 기사 관리" 메뉴가 담당.) 관련 테스트
-(`subLogMenuItems.test.js`) 케이스 추가.
-
-### 1-B. "[기사이름] 기사 관리" 화면 이관 (신규)
-
+### 1-C. 파일 (예상 3~4개, 신규 코드 최소화)
 | 파일 | 내용 |
 |---|---|
-| `src/domain/drivers.js` | `getAssignmentState(link)` 신규 — `{ key: 'scheduled'\|'ended'\|'active', label: '할당 예정'\|'할당 종료'\|'할당 중' }`. `assignmentStart`/`End` + 오늘 비교(바닐라 `getAssignmentState` 그대로). |
-| `src/components/drivers/LinkedDriverManagementPage.jsx` (신규) | 헤더(뒤로가기 → `/app/drivers`) + 프로필 카드 + 칩 3개 + 월 네비게이터 + 정산 요약 카드(`getLinkedDriverSettlementDetail`) + 거래처 세금계산서 섹션(`getLinkedDriverClientInvoiceGroups`). **200줄 초과 예상 → §3에 분리설계안**(예: 정산요약/계산서섹션/프로필카드 하위 컴포넌트). |
-| `src/components/drivers/LinkedDriverClientsPage.jsx` (신규) | "거래처" 칩 대상. 이 기사 전용(`scopedToVehicleNumber === 차량번호`) 거래처 목록 + `+ 추가`. 권한: 계산서 처리 방식(`getEffectiveDriverSettlementMode(car, settings)`)이 `driver_direct`면 조회만, 아니면 CRUD. **§3에 설계 선제시**(기존 client 모달·저장 경로 재사용 범위). |
-| `src/app/AppShellRoutes.jsx` | `<Route path="drivers/:linkId" element={<LinkedDriverManagementPage .../>} />` + `drivers/:linkId/clients`(또는 내부 상태). |
-| `src/components/SideMenu.jsx` + `src/app/subLogMenuItems.js`(또는 새 헬퍼) | AppShell이 `status==='linked'` 기사 목록(`{ linkId, driverName }`) 계산 → "관리" 섹션에 "[기사이름] 기사 관리" → `/app/drivers/:linkId`. (§5-1의 prop 방식 — SideMenu 순수 유지.) 소속기사 세션 제외. |
-| `src/components/DriverConnectionPage.jsx` | (선택) "연동 중" 기사 항목 클릭 시 `/app/drivers/:linkId`로 — 자연스러운 추가 진입점. §3에서 판단. |
-| "정산·계산서 설정" 칩 | §3에 확인: 별도 화면 이관 필요한지 / `driverInvoiceBasis`·정산방식 설정을 어디에 둘지. 최소로는 토스트 or 기존 설정 링크. |
-| "상세 설정" 칩 | 토스트 "상세설정은 구상중입니다."(바닐라 그대로). |
+| `src/lib/guestBackup.js` (신규) | `buildGuestBackupData()`(내보내기용 JSON 조립) / `applyGuestBackupData(parsed)`(검증 후 `replaceOwnerState` 호출) / `getLastBackupAt()`·`markBackupDone()`(타임스탬프 키) — 순수 로직 + 위 두 저장소 함수 호출만, DOM 없음. |
+| `src/components/AppSettingsPage.jsx` | 게스트 세션에서만 보이는 "백업" 섹션 추가(내보내기 버튼 → `guestBackup.js` 호출 + Blob 다운로드, 가져오기 `<input type="file">` → 파싱 후 `guestBackup.js` 호출). 200줄 넘으면 §6에 따라 분리설계 먼저 보고(현재 107줄이라 여유 있어 보이나 실제 추가 후 재확인). |
+| `src/lib/notifications.js` | `collectNotifications`에 백업 알림 항목 추가(게스트 전용). |
+| 신규 테스트 | `guestBackup.test.js`(내보내기→가져오기 왕복 후 각 도메인 값 일치 assert, 손상된 JSON 거부) + `notifications.test.js`(있으면 기존에 추가, 없으면 신규 — 게스트/로그인 세션 분기, 14일 경계값). |
 
-### 1-C. 건드리지 않을 것
-슬라이스 A 서버 계약, `DayLogPage`, 소속기사 경로(`DriverRevenueView` 등),
-`getLinkedDriverSettlementDetail`/`getLinkedDriverClientInvoiceGroups` **로직**
-(재사용만), 일반 거래처 관리(`ClientManagementPage`), 매출 화면.
+### 1-D. 건드리지 않을 것
+- 로그인(클라우드) 세션 쪽 백업/알림 로직 — 이번 스코프 아님, 원본의 "로그인 시 30일 기준"
+  분기 옮기지 않는다.
+- `replaceOwnerState`/`readPersistDomain`/`readLogWorkData` 등 기존 저장소 함수 시그니처 —
+  무변경, 그대로 호출만.
+- DB 무변경.
 
-### 1-D. 실패 처리 (§7)
-신규 durable/큐 없음. 조회 화면 + 거래처는 기존 저장 경로. DB 작업 없음
-(`scopedToVehicleNumber`·정산 컬럼 이미 존재).
+### 1-E. 실패 처리 (§7)
+가져오기 파일이 손상됐거나 예상 구조가 아니면 **토스트 안내 후 아무것도 반영하지 않는다**
+(부분 반영 금지 — `replaceOwnerState` 호출 전 검증에서 걸러야 함). 신규 durable/재시도
+레이어는 만들지 않는다 — 실패하면 그냥 실패로 끝(게스트 로컬 작업이라 재시도 큐 불필요).
 
-### 1-E. 착수 전 작업자 확인 요청 사항 (→ §3)
-1. `LinkedDriverManagementPage` 하위 분리(200줄) 설계.
-2. `LinkedDriverClientsPage`: 기존 client 모달/`saveClients`/`scopedToVehicleNumber`
-   태그 재사용 방식 + `driver_direct` 조회 전용 처리(기사 계정 clients를 어떻게
-   읽나 — 이미 있는 RPC/hydrate 경로 확인).
-3. "정산·계산서 설정" 칩 대상 결정(감시관 확인).
-4. 사이드 메뉴 2종("[번호] 일지" 연동X sub / "[기사] 기사 관리" 연동 기사) 동시
-   노출 시 UX·순서.
-5. 각 파일 `wc -l` 실측.
+### 1-F. 작업자 전달문
+> AGENTS.md §1 준수. `.md` 수정 금지. DB 변경 없음. 범위 = 위 표의 파일들만(3~4개).
+> 신규 저장소/복구 레이어 금지 — 내보내기는 기존 `readPersistDomain`/`readLogWorkData`로 읽고,
+> 가져오기는 반드시 기존 `replaceOwnerState('guest', snapshot, { sync: false })`를 그대로
+> 호출할 것(새 배치 함수 작성 금지). 원본의 "계정 간 정체성 보호" 로직은 게스트 단일 계정
+> 환경이라 옮기지 않는다(이유: 1-B 참고). 로그인(클라우드) 세션은 이번 스코프 아님 — 알림도
+> 백업 섹션 UI도 게스트에서만 노출.
+> `npm run typecheck` + `npm test` 통과 → 커밋 1개 → push 안 함(보리).
+> 줄수·테스트 개수는 실제 실행 결과 그대로 정확히 보고(지난 두 번 오기재 있었음 — 재발 금지).
 
-### 1-F. 작업자 전달문 (§3 확인 후)
-> AGENTS.md의 §1 작업자 규칙을 준수하라. `.md` 파일은 수정하지 말고 지시된
-> 코드 작업만 하라. DB 없음. 범위 = §1-A + §1-B. 도메인 계산
-> (`getLinkedDriverSettlementDetail`·`getLinkedDriverClientInvoiceGroups`)은
-> 재사용만, 로직 무변경. 슬라이스 A·`DayLogPage`·매출 화면·소속기사 경로 무변경.
-> §3에 (1)~(5) 답 + 화면 분리설계 먼저 제시하고 감시관 확인 후 구현.
-> `npm run typecheck` + `npm test` 전체 통과 후 커밋.
+## 2. 착수 전 상태 (2026-09-05)
+- `react-app` HEAD `f1d25c6` = origin/main (한 기사 차량 다중배정 금지, CI 초록·보리 `[x]`).
+  미커밋 없음.
+- `ubiquitous-parakeet`: 문서 갱신분 미커밋.
 
-## 2. 착수 전 상태 (2026-09-04)
-- `react-app` HEAD `5dc3ab4` = origin/main.
-- `ubiquitous-parakeet` `c41b44d` + 문서 갱신분 미커밋.
+## 3. 작업자 구현 완료 보고
 
-## 3. 작업자 Phase 1 보고
-(§1-E 답 + 설계)
-
-## 4. 작업자 구현 완료 보고
-
-## 5. 감시관 실사
+## 4. 감시관 실사

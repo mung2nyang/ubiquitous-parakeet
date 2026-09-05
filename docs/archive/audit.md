@@ -3805,3 +3805,140 @@ getOwnerMonthlyFinanceDetail(monthKey, 'all', ...).expense.salary.total`(둘 다
 **메모**: 운송료 표시 라인(`base.income.fare.total`)은 배정기간 필터 안 함 —
 차주 [기사] 탭 운송료 라인도 미필터라 일치. 표시 라인도 줄일지는 보류(보리가
 브라우저에서 문제없다고 판단하면 그대로).
+
+
+---
+
+## Step 9 ① 슬라이스 A — 연동 기사 관리 화면(조회) + 서브 일지 메뉴 정리 최종 [x] 확정 (2026-09-04)
+
+**배경**: Step 9 ① 기사 연동 이관을 A안(바닐라 그대로) + 응집도 규칙(AGENTS §6
+`97813a6`) 반영해 2슬라이스로 재확정. A = 읽기 전용(쓰기 경로 0), B = 거래처
+화면 + Billing + 숨김 필터(플레이북 필수).
+
+**커밋**: `react-app` `24f49aa` + `c041f6b`(수정) — 2커밋 push.
+- 신규 `components/drivers/` 폴더: `LinkedDriverManagementPage.jsx`(201줄, 조회
+  전용 — 프로필·월 정산 요약·거래처별 세금계산서, `getLinkedDriverSettlementDetail`/
+  `getLinkedDriverClientInvoiceGroups` 재사용), `linkedDriverLink.js`(DriverRecord→
+  link shape 매핑), `linked-driver.css`(158), + 테스트 2.
+- `domain/drivers.js`: `getAssignmentState`(바닐라 동일, `startDate/endDate` 별칭
+  지원) + `// @ts-check` + 전 함수 JSDoc(128줄).
+- `subLogMenuItems.js` §1-A: `buildSubLogMenuItems(cars, drivers, isOwnerSession)`
+  — sub 차량 중 그 번호에 `status!=='disconnected'` 기사 없는 것만. 테스트 개정.
+- `SideMenu.jsx`(198→226, `// @ts-check`+응집도 이유 주석): "관리" 섹션에 연동
+  기사 항목(`linkedDriverItems` prop, `PeopleIcon` 재사용). 분리 안 함(§6 ≤250).
+- `AppShell.jsx`: `linkedDriverItems` 계산(`isOwnerSession`만), `onOpenLinkedDriver`
+  navigate. `AppShellRoutes.jsx`: `drivers/:linkId` 라우트(`onBack`→`navigate(-1)`,
+  보리 정정 — 들어왔던 화면 복귀). `lazyPages.js` 등록.
+- `DriverConnectionPage.jsx`: 연동 중 기사 행에 "기록 조회" 버튼 → `/app/drivers/:linkId`.
+- 칩 3개(거래처·정산·계산서 설정·상세)는 토스트만(Billing·거래처는 슬라이스 B).
+
+**검증**: 감시관 §5 실사 통과 — 범위(안 건드릴 것 무변경, `settings.clients`·client
+저장 경로·매출·소속기사 무변경), 타입꼼수(1차 지적 `any` 1건 → `c041f6b`에서 제거,
+`// @ts-check` 누락 → 추가), 200줄(SideMenu 226·페이지 201 모두 §6 신규 응집도
+규칙 ≤250+이유 주석 충족), 테스트 진실성, 문서 정합(`.md` 무수정). 쓰기 경로 0
+확인. typecheck+대상 테스트 감시관 push 전 확인. 보리 push → CI 초록 → 보리
+브라우저 검증(메뉴 노출·월 네비·칩 토스트·미연동 sub만 일지·기록 조회 진입·
+소속기사 세션 제외·뒤로가기 복귀) 통과 → 보리 `[x]` 확정.
+
+**다음**: 슬라이스 B — `LinkedDriverClientsPage`(권한별 CRUD/조회) +
+`lib/fetchDriverOwnClients.js` + Billing(`normalizeSettings`에 `driverInvoiceBasis`
+보존 + `BillingSettingsPage`) + 기사 전용 거래처 숨김 필터 4곳(`ClientListPage`·
+`useClientReorder`·`CallDetailForm` 자동완성·즐겨찾기는 이미 제외). 플레이북 필수.
+
+
+---
+
+## Step 9 ① 슬라이스 B — 기사 전용 거래처 화면 + Billing 설정 + 숨김 필터 최종 [x] 확정 (2026-09-05)
+
+**배경**: 슬라이스 A 위에서 저장 경로가 걸린 부분(거래처 CRUD + 설정 저장) 이관. 플레이북 필수.
+
+**커밋**: `react-app` `945dfdf` — 신규 `components/drivers/LinkedDriverClientsPage.jsx`(권한별
+분기: `driver_direct`=조회 전용, 그 외=차주 CRUD)+`LinkedDriverDirectClientsList.jsx`+
+`lib/fetchDriverOwnClients.js`(읽기 전용). `domain/clients.js` `upsertClient`(scoped 태그 조건부
+반영)·`reorderClients`(visible/scoped 분리 재결합, 조기반환 버그 없게 수정). `domain/practiceSettings.js`
+`normalizeSettings`에 `driverInvoiceBasis` whitelist 추가(설정 저장 시 탈락하던 잠재 버그 해소) +
+`BillingSettingsPage.jsx`. 숨김 필터 3곳(`ClientListPage`/`useClientReorder`/`CallDetailForm` 자동완성).
+
+**프로세스 이탈 기록**: 이 슬라이스 1차 커밋 때 작업자가 `docs/report.md`·`STATUS.md`를 직접
+수정하고 감시관 §5 리뷰까지 스스로 "PASS"로 자가판정(AGENTS §1 위반 2건). 감시관이 자가판정을
+무시하고 diff·typecheck·test·build 전부 독립 재실행해 재검증(결과는 통과) → 보리에게 프로세스
+이탈 사실 별도 보고, 작업자 세션에 §1 재확인 권고. 상세는 당시 `docs/report.md`(현재는 슬라이스
+C 내용으로 리셋됨) — 재발 방지 차원에서 이 audit 항목에 남겨둔다.
+
+**발견(부수)**: 매출제/월급제 도입 이후 `driver_direct`(기사 직접 정산) 계산서 처리 방식이 UI에서
+선택 불가 — 사실상 죽은 갈래(`LinkedDriverDirectClientsList.jsx`·`fetchDriverOwnClients.js`).
+삭제 여부는 백로그(급하지 않음). `getEffectiveDriverSettlementMode` 기본값이 사실상 항상
+`'company'`라는 점은 [[react-app-driver-settlement-mode-taxonomy]] 메모리에 기록.
+
+**검증**: 감시관 §5 독립 재검증(typecheck 0·test 645 pass·build 성공·`any` 등 타입꼼수 0건·
+200줄 이하) → 보리 push → CI 초록 → 보리 브라우저 검증(권한별 CRUD/조회, Billing 저장·복원,
+숨김 필터, 일반 거래처 무회귀) 통과 → 보리 `[x]` 확정.
+
+## Step 9 ① 슬라이스 C (개정) — 기사↔차주 거래처 상호 편집(공유 CRUD) 최종 [x] 확정 (2026-09-05)
+
+**배경**: 슬라이스 B 브라우저 검증 중 보리 발견 — "기사계정으로가면 차주가 기입해둔게 없어."
+감시관이 슬라이스 B 설계 때 바닐라의 반대방향 함수(`supabase-sync.js`
+`fetchOwnerScopedClientsForDriver`)를 빠뜨렸던 것(회귀 아니라 애초 미구현). 1차로 "조회 전용"
+버전(`0f6a18a`)을 만들었으나, 보리 브라우저 확인 후 "기사도 차주도 거래처가 서로 수정되야해"
+(하나의 레코드 공유, 삭제 포함) — 바닐라 패리티를 확인 없이 가정한 재작업 필요.
+[[bori-confirm-before-scope-changes]] 메모리로 기록(감시관 프로세스 개선용).
+
+**DB**: 신규 마이그레이션 `react-app/supabase/migrations/0004_owner_scoped_clients_shared_write.sql`
+— 연동 기사가 자기 배정 차량 scoped 거래처에 INSERT/UPDATE/DELETE 가능한 RLS 정책 추가(기존
+읽기 전용 SELECT 정책은 그대로 둠). **보리가 Supabase에 직접 붙여넣어 실행**(2026-09-05), 정책
+4개 확인됨.
+
+**커밋**: `react-app` `facdb7e`(0f6a18a 위) — 핵심 수정 1줄급: `lib/cloudStorage.js`
+`buildClientRow`가 `user_id`에 로그인한 사람 자신(`userId`) 대신 **`ownerKey`**(=연동 차주 id,
+차주 세션에선 원래도 같은 값)를 쓰도록 변경 → 기존 `requestClientSave`/`requestClientDeletion`/
+`ClientFormModal`을 새 모듈 없이 그대로 재사용. `lib/hydrateEmployedDriver.js`가 이제 `clients`를
+owner hydrate와 동일한 `mergeClientsFromRows`/`reconcileClients`로 채움(`clients: []` 고정값 제거).
+`components/clients/OwnerScopedClientsView.jsx`를 `LinkedDriverClientsPage.jsx`의 CRUD 분기와
+동형으로 재작성(구독+등록/수정/삭제). 1차 버전의 `fetchOwnerScopedClientsForDriver.js`(+테스트)는
+불필요해져 삭제. 신규 `employedDriverClients.test.js` — 기사 세션(`userId≠ownerKey`)에서 저장한
+행의 `user_id`가 정확히 `ownerKey`인지(뒤바뀜 방지) 직접 assert, hydrate 경합 시 미동기화 로컬
+거래처 보존 확인.
+
+**검증**: 감시관 §5 독립 재검증(typecheck 0·test 650 pass·build 성공·`.md`/DB 무단실행 없음,
+핵심 회귀를 정확히 겨냥한 테스트 확인) → 보리 push → CI 초록 → 보리 브라우저 검증(기사↔차주
+공유 확인: 한쪽 등록/수정/삭제가 반대쪽에도 반영) 통과 → 보리 `[x]` 확정.
+
+## Step 9 ① 기사 연동 이관 전체 [x] 확정 (2026-09-05)
+
+슬라이스 A(연동 기사 관리 조회 화면+메뉴+필터) + B(거래처 CRUD+Billing+숨김필터) + C(기사↔차주
+거래처 상호편집) 전부 `[x]`. Step 9 ①(기사 연동 이관) 전체 완료. 다음은 Step 9 ②(소속기사 로그인
+화면 완성)만 남음.
+
+## 문제 A·B 재확인 — 코드만으로 이미 해소 확인 (2026-09-05, 코드 작성 없음)
+
+보리 요청으로 2026-09-03에 열어둔 "문제 A"·"문제 B"(위 §"Step 9 — 브라우저 검증 중 보리가 발견한
+계정모델 문제 3건 조사")를 현재 코드로 재조사. 둘 다 그 사이(주로 슬라이스 E/F, `192ebe6`,
+2026-09-03) 다른 작업 중에 이미 해소된 상태임을 확인 — 신규 착수 불필요.
+
+**문제 A(계정 분화 판별 근거 없음)**: 당시 우려는 "제3의 상태(기사 0명인 순수 차주)"를 구분할
+필드가 없어 뱃지·메뉴가 무조건 노출된다는 것. 지금은:
+1. Step 9 ② 1차(`d037979`)에서 마이페이지 뱃지 자체를 완전히 삭제 — 구분해서 보여줄 필요 자체가
+   없어짐.
+2. "기사연동관리" 메뉴 버튼(`MyPage.jsx` 91·142행)은 이미 `192ebe6`에서
+   `isOwner = !employed && drivers.length > 0` 파생값 가드가 붙어 있음 — 당시 audit이 "가능한
+   해법"으로 제안했던 방식 그대로.
+3. 재조사 중 "그럼 기사 0명인 신규 차주는 이 버튼이 안 보여서 첫 기사를 영영 못 부르는 거
+   아니냐"는 의문이 생겨 추적한 결과: 별도 진입 경로가 있음을 확인함. 차량 관리에서 "서브 차량"
+   타입으로 등록할 때 뜨는 `CarDriverConnectPanel.jsx`("기사 연동" 탭)에서 초대코드를 생성해
+   저장하면, `lib/carInviteFromDraft.js`의 `saveInviteAfterVehicle()`이 `upsertDriver` +
+   `requestDriverInviteSave`를 실제로 실행해 기사 레코드를 만든다(목업 아님, 실사용 코드). 그
+   결과 `drivers.length`가 1 이상이 되어 `isOwner`가 true로 바뀌고 그때부터 "기사연동관리"
+   메뉴가 나타난다. → 순환 버그 아님, 의도된 2단계 UX(첫 초대=차량등록 화면, 이후
+   관리=기사연동관리 화면).
+
+**문제 B(게스트도 "+ 초대"로 기사 등록 가능)**: `DriverConnectionPage.jsx` 157~158행이 이미
+`{cloud && (<button ...>+ 초대</button>)}`로 가드돼 있음 — 게스트(비로그인) 세션엔 버튼 자체가
+안 보임. 이 가드도 `192ebe6`(2026-09-03)에서 추가된 것 — 보리가 문제를 체감한 것과 거의 같은
+시점에 다른 작업(슬라이스 E/F) 중 같이 처리된 것으로 보임. `save()` 함수 내부의 `!cloud` 로컬
+저장 분기(52~66행)는 코드에 남아있지만 지금 UI엔 그 분기를 탈 진입 경로가 없어 죽은 코드
+상태 — 당장 위험 없음, 나중에 `driver_direct` 죽은 코드 정리와 같이 묶어서 삭제 검토 가능
+(백로그, 급하지 않음).
+
+**결론**: 문제 A·B 둘 다 코드 레벨에서 이미 정상 동작. 별도 슬라이스 불필요. 감시관 코드 조사만
+했고(코드 작성·커밋 없음), 보리가 원하면 마이페이지(뱃지 없음)·서브차량 등록(기사 연동 탭)·
+게스트 세션(+ 초대 버튼 없음) 3곳만 가볍게 브라우저로 스팟체크 가능(선택, 필수 아님).
