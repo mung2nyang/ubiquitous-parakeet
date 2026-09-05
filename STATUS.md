@@ -16,31 +16,28 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 버그 수정·정합성 문제는 즉시 처리(위 슬라이스들처럼).
 
 ## 지금 하는 일
-**Step 10 1차 — 게스트 백업 내보내기/가져오기 + 백업 권장 알림 (착수, 2026-09-05).**
-Step 9(①+②) 전체 `[x]` 완료로 "기사 연동" 이관 끝남 — 상세 `docs/archive/audit.md`.
+**회원탈퇴 기능 구현 (필수, 착수 2026-09-05).**
+**Step 10(전체) `[x]` 완료** — 1차(백업+알림)~5차(고객센터) 전부, react-app `253198d`까지
+CI 초록·보리 `[x]`. 회원탈퇴는 "고객센터"와 별개지만 보리가 필수로 지정한 기능.
 
-**Step 10 범위 조사 결과** (감시관, 2026-09-05): 리포트 PDF(미리보기만 있고 PDF 저장 자체가
-"나중에 붙입니다"로 명시적 미구현) / 알림(연체·오늘일지는 있음, **백업 알림 전체 누락** +
-오늘일지 알림이 원본과 달리 저녁 6시 게이트 없음) / 온보딩(4단계 마법사 이미 구현+라우팅
-완료, 아마 대조만 필요) / 고객센터(**페이지 자체가 없음** — FAQ/1:1문의/내 문의확인 3탭,
-다행히 서버 테이블 `support_inquiries`는 원본에 이미 있어 DB 신규 설계 불필요). 보리가
-순서 승인: 알림(백업) → 리포트 PDF → 온보딩 대조 → 고객센터.
-
-착수지시서 = `docs/report.md` §1(리셋됨). 게스트 전용 백업 내보내기/가져오기(기존
-`replaceOwnerState` 재사용, 신규 저장소 없음) + 백업 권장 알림(게스트만, 로그인 세션은
-이번 스코프 아님 — 보리 결정). 대상 3~4파일: `lib/guestBackup.js`(신규)·
-`AppSettingsPage.jsx`·`lib/notifications.js`·신규 테스트. DB 무변경. 작업자 구현 대기.
+**설계**: 원본 `requestWithdrawal`/`executeAccountWithdrawal`(2단계 확인 →
+`delete_own_account` RPC → 성공 확인 후에만 로그아웃+정리) 이식. **새 로그아웃/정리
+로직을 만들지 않고 기존 `App.jsx`의 `handleLogout`(`onGoAuth` prop)을 그대로 재사용** —
+RPC 성공 후에만 호출, 실패하면 로컬/세션 절대 안 건드림. 확인 모달도 기존
+`ConfirmModal.jsx`를 2번 순차로 씀(신규 모달 없음). 착수지시서 = `docs/report.md` §1
+(리셋됨). 대상 3파일(`lib/accountWithdrawal.js` 신규·`PersonalInfoPage.jsx`·테스트).
+DB 변경 없음(기존 RPC 호출만). 작업자 구현 대기.
 
 ## 다음 할 일 (순서대로 — 이관 로드맵 본편)
-1. **Step 10 1차: 게스트 백업+알림** (위) — 작업자 구현 대기.
-2. Step 10 2차: 오늘일지 알림 저녁 6시 게이트 추가(원본과 사양 맞춤, 별도 작은 슬라이스).
-3. Step 10 3차: 리포트 PDF 저장(html2pdf.js 등 도입, `ReportPage.jsx`).
-4. Step 10 4차: 온보딩 원본 대조(문항 일치 확인, 손댈 것 있으면 그때 착수).
-5. Step 10 5차~: 고객센터(FAQ/1:1문의/내 문의확인) — 가장 큼, 여러 슬라이스로 재분할 예정.
-6. Step 11 — 200줄 강제 + JS→TS 전환 (Step 10 전체 끝난 뒤).
+1. **회원탈퇴 기능 구현** (위) — 작업자 구현 대기.
+2. Step 11 — 200줄 강제 + JS→TS 전환 (이관 로드맵 마지막 단계).
 
 ### 후속 nit (급하지 않음)
-(현재 없음)
+- **리포트 "세부 보고서(거래처별)" 뷰 자체가 없음** — 원본엔 월간 요약 외에 거래처별 세부
+  내역 뷰(`isDetailReportView`)가 있는데 react-app `report.js`/`ReportPage.jsx`엔 이
+  개념 자체가 없음(2026-09-05 Step 10 3차 착수 조사로 발견). 원본에 있던 기능이라 "이관
+  완료 후"가 아니라 이관 우선순위 대상 — Step 10 PDF 슬라이스와는 별개로 이 뷰 자체를
+  새로 만들지 여부·순서는 보리 결정 대기.
 
 ## 이관 완료 후 진행사항 (원본에 없던 새 방향 — 이관 끝난 뒤에만 착수)
 - **이중역할(기사+차주 동시)·다단계 역할전환 UI** — 원본에 없는 개념(react-app에서 처음
@@ -85,6 +82,14 @@ Step 9(①+②) 전체 `[x]` 완료로 "기사 연동" 이관 끝남 — 상세 
 - **Step 9 ② 1차 — 계정별 화면 권한 정리**: 마이페이지 "차주"/"소속 기사" 뱃지 삭제, 사이드 메뉴 정적 "기사 연동 관리" 버튼 삭제(동적 연동 기사 목록은 유지), 소속기사 차량 관리 조회전용(수정/삭제 버튼 숨김). — react-app `d037979`. 신규 `accountPermissionUi.test.js`(3케이스, 실제 DOM 렌더 검증). (CI 초록 확인·브라우저 통과·보리 `[x]` 2026-09-05). 상세 `docs/report.md` §4~5(작업자가 SideMenu 줄수 오기재한 건도 기록 — 재발 방지 지시).
 - **`fetchExpensesForAssignedVehicle` 단위 테스트 보강**: 소속기사 배정차량 비용 3종 조회(정상/배정 0대) + vehicle_id 필터 실제값 검증. — react-app `fcdc953`+`90689a7`(수정 1회, 감시관 §5 리뷰에서 필터 미검증 발견 → 수정 지시 → 탐지력 직접 증명). (CI 초록·보리 `[x]` 2026-09-05). ⚠️ 이 슬라이스 검증 중 감시관이 실수로 `git push` 직접 실행(AGENTS §3 위반, 재발 방지 기록됨). 상세 `docs/report.md` §4~6.
 - **한 기사, 차량 2대 이상 동시 배정 금지**: `domain/drivers.js` `upsertDriver`에 전화번호 기준 활성 배정 중복 체크 추가(148줄) + `drivers-cloud.test.js` 3케이스(172줄). — react-app `f1d25c6`. (CI 초록 run `33947661550`·보리 `[x]` 2026-09-05). 신규 저장소·DB 없음, 기존 "같은 차량은 한 기사에게만" 체크와 대칭 설계. 상세 `docs/report.md` §4~5.
+- **Step 10 1차 — 게스트 백업 내보내기/가져오기 + 백업 권장 알림**: 신규 `lib/guestBackup.js`(기존 `readPersistDomain`/`readLogWorkData`/`replaceOwnerState` 재사용, 신규 저장소 없음) + `AppSettingsPage.jsx` 백업 섹션(게스트 전용) + `notifications.js` 백업 권장 알림(게스트 전용, 14일 기준) + 테스트 3개. — react-app `8d0ea50`+`d988b14`+`0987658`(감시관 §5 리뷰에서 `any` 타입 2건 발견·수정 지시 2회, 두 번째는 감시관 자체 확인 오류 정정 포함). (CI 초록 run `33950653110`·브라우저 통과·보리 `[x]` 2026-09-05). `dismissedNotifications`/`workDataDeletedDates`는 가져오기로 복원 안 됨(기존 `replaceOwnerState` 구조적 한계, 핵심 데이터엔 영향 없음 — 알려진 이슈로 기록). 상세 `docs/report.md` §4~9.
+- **Step 10 2차 — 오늘일지 알림 원본 사양 맞춤**: "오늘 운행일지 미입력" 알림에 저녁 6시 이후에만 뜨는 시간 게이트 + `isOff`/`callDetails`/`fixedCount` 셋 다 없으면 여전히 미입력으로 보는 판정(원본 `hasEntry` 그대로) 추가. — react-app `5d564b1`(`notifications.js` 119줄+`notifications.test.js` 124줄, `mock.timers`로 시각 결정론적 통제). (CI 초록 run `33951700869`·감시관이 프로덕션 코드 버그 주입해 탐지력 직접 증명·브라우저 통과(저녁 6시 이후 실제 확인)·보리 `[x]` 2026-09-05). 상세 `docs/archive/audit.md` "Step 10 2차 — 오늘일지 알림 원본 사양 맞춤".
+- **Step 10 3차 — 리포트 PDF 저장**: `ReportPage.jsx`에 PDF 다운로드 버튼(html2pdf.js, 버튼 클릭 시 동적 import로 별도 청크 976KB 분리), `lib/report.js`에 `buildReportFileName` 순수함수 분리, `.pdf-export-mode` 인쇄용 CSS(`side-menu.css`), 실패 시 토스트. — react-app `40c5550`(7 files, `AppShellRoutes.jsx` 1줄 배선 포함). "세부 보고서(거래처별)" 뷰는 원본에 있지만 react-app 데이터 모델에 없어 스코프 밖(백로그 등재). (CI 초록 run `33957448600`·브라우저 통과(보리 본인 터미널)·보리 `[x]` 2026-09-05). 상세 `docs/report.md` §4.
+- **Step 10 4차 — 온보딩 완료 저장 배선 수정**: `App.jsx`의 `onFinish`가 `wizard` 인자를 안 받아 온보딩 4단계 답변(설정·차량)이 전부 버려지던 버그 수정. 신규 `lib/onboardingFinish.js`(`buildOnboardingSettingsPatch`+`applyOnboardingWizard`, 기존 `savePracticeSettings`/`requestVehicleSave` 재사용). 정산방식 스텝은 매출제/월급제로 대체된 옛 개념이라 이번엔 추가 안 함(보리 결정). — react-app `6ba08d6`. (CI 초록 run `33958459077`·감시관이 프로덕션 코드 버그 주입해 탐지력 직접 증명·브라우저 통과·보리 `[x]` 2026-09-05). 상세 `docs/archive/audit.md` "Step 10 4차 — 온보딩 완료 저장 배선 수정".
+- **Step 10 4차 후속 — 온보딩 1단계 파렛트 토글 삭제**: 저장 안 되는 죽은 UI 삭제(원본부터 있던 오류, 보리가 4차 브라우저 검증 중 발견). — react-app `a17220a`(1 file, +1/-15). (CI 초록 run `33958986627`·보리 `[x]` 2026-09-05). 상세 `docs/archive/audit.md` "Step 10 4차 후속".
+- **Step 10 5-1 — 고객센터 진입점 + FAQ 탭**: 신규 `CustomerCenterPage.jsx`(FAQ 4문항 원본 기반 각색, 1:1문의·내문의확인 placeholder만), `/app/support` 라우트, 사이드메뉴 진입 항목. — react-app `bf147c6`(6 files). (CI 초록 run `33959778962`·보리 `[x]` 2026-09-05). 상세 `docs/archive/audit.md` "Step 10 5-1".
+- **Step 10 5-2 — 고객센터 1:1 문의 작성**: 로그인 세션만 Fail-Fast로 `support_inquiries` insert(로컬 캐시 없음), 게스트는 폼 미마운트+로그인 안내. — react-app `6a44600`(6 files, `assertCloudWriteReady()` 추가로 지시보다 더 안전). (CI 초록 run `33960442746`·보리 `[x]` 2026-09-05). 상세 `docs/archive/audit.md` "Step 10 5-2".
+- **Step 10 5-3 — 고객센터 나의 문의·건의 확인**: `fetchMyInquiries`(로컬 캐시 없이 탭마다 직접 조회, 외부 응답 필드별 런타임 검증), 답변 대기/완료 배지. — react-app `253198d`(5 files, `CustomerCenterPage.jsx` 230줄 §6 응집 사유주석 포함). (CI 초록 run `33961129711`·보리 `[x]` 2026-09-05). **Step 10 전체 완료**. 상세 `docs/archive/audit.md` "Step 10 5-3".
 
 ## 아직 안 한 큰 것 (나중 Step)
 - **Step 10**: 리포트 PDF / 알림 / 온보딩 / 고객센터
@@ -107,10 +112,15 @@ Step 9(①+②) 전체 `[x]` 완료로 "기사 연동" 이관 끝남 — 상세 
   없음(수동 or 미기록 마이그레이션) — 필요 시 `0005`로 스냅샷화 검토(급하지 않음, `0004`는
   슬라이스 C의 clients 쓰기 정책으로 이미 씀).
 - ~~**MyPage 메뉴 가드 없음**(audit "문제 A")~~ → Step 9 ② 1차에서 해소(뱃지·정적 기사연동관리 버튼 삭제, 2026-09-05).
+- **게스트 백업 가져오기가 `dismissedNotifications`·`workDataDeletedDates` 복원 안 함** —
+  `store/owner-state.js`의 `OwnerSnapshot`/`replaceOwnerState`가 이 두 도메인을 아예
+  지원 안 해서(2026-09-05 Step 10 1차 리뷰로 확인). 차량·거래처·기사·정산·일지 등 핵심
+  데이터엔 영향 없음(정상 복원) — 영향은 "복원 후 예전에 닫았던 알림이 다시 뜰 수 있다"
+  정도. 필요해지면 `OwnerSnapshot` 확장 검토(지금은 급하지 않음).
 - `npm run typecheck` → 현재 **0 에러**(정상).
 
 ## 저장소 상태
-- **react-app**: `main` = origin/main = `f1d25c6`(한 기사 차량 다중배정 금지, CI 초록·보리 `[x]`). 미커밋 없음(작업트리 클린).
+- **react-app**: `main` = origin/main = `253198d`(Step 10 5-3: 고객센터 나의 문의 확인, CI 초록·보리 `[x]` — Step 10 전체 완료). 미커밋 없음(작업트리 클린).
 - **ubiquitous-parakeet**: `main` `97813a6`(미푸시) + 이번 세션 문서 갱신분 미커밋(`STATUS.md`·`docs/report.md`·`docs/archive/audit.md` — Step 9 ① 전체 `[x]` 기록).
 - 정확한 HEAD·미커밋 범위는 세션 시작 시 `git log`/`git status`로 직접 확인 (AGENTS.md §0-6).
 

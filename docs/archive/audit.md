@@ -3942,3 +3942,188 @@ owner hydrate와 동일한 `mergeClientsFromRows`/`reconcileClients`로 채움(`
 **결론**: 문제 A·B 둘 다 코드 레벨에서 이미 정상 동작. 별도 슬라이스 불필요. 감시관 코드 조사만
 했고(코드 작성·커밋 없음), 보리가 원하면 마이페이지(뱃지 없음)·서브차량 등록(기사 연동 탭)·
 게스트 세션(+ 초대 버튼 없음) 3곳만 가볍게 브라우저로 스팟체크 가능(선택, 필수 아님).
+
+
+---
+
+## Step 9 ② 1차 ~ Step 10 2차 — 문서화 관행 보완 메모 (2026-09-05)
+
+`docs/report.md`는 슬라이스마다 리셋되는데, Step 9 ② 1차부터 몇 슬라이스는(계정별 화면 권한
+정리, `fetchExpensesForAssignedVehicle` 테스트 보강, 한 기사 차량 다중배정 금지, Step 10
+1차 게스트 백업) STATUS.md 완료 목록에 "상세 `docs/report.md` §4~5"로만 적어두고 audit.md에
+따로 옮겨두지 않았다 — 그 뒤 report.md가 다음 슬라이스로 리셋되면서 그 상세 리뷰 내용
+(§5 체크리스트 세부 근거·발견한 이슈·탐지력 검증 등)이 사라졌다. **핵심 결과(커밋
+해시·CI 상태·`[x]` 여부)는 STATUS.md에 남아있어 추적엔 문제없지만, 리뷰 과정의 세부 근거는
+복구 불가.** 이 시점부터는 매 슬라이스 최종 `[x]` 확정(또는 확정 직전 report.md 리셋이
+필요한 시점) 시 핵심 요약을 이 아래처럼 audit.md에 옮겨 적은 뒤 report.md를 리셋한다.
+
+## Step 10 2차 — 오늘일지 알림 원본 사양 맞춤 (2026-09-05, 감시관 리뷰 통과·보리 승인 대기)
+
+**배경**: `notifications.js`의 "오늘 운행일지가 비어 있습니다" 알림이 원본과 2가지 달랐음
+— ① 원본은 저녁 6시 이후에만 뜨는데 react-app은 시간 무관 하루종일 ② 원본은 레코드가
+있어도 `isOff`/`callDetails.length>0`/`fixedCount>0` 셋 다 없으면 여전히 미입력으로 보는데
+react-app은 레코드 존재 여부만 봄(빈 객체가 저장돼 있으면 알림이 영영 안 뜨는 구멍).
+
+**커밋**: `react-app 5d564b1` (2 files: `notifications.js` 119줄, `notifications.test.js`
+124줄) — 시간 게이트(`TODAY_LOG_REMINDER_HOUR=18`) + `hasEntry` 판정(원본 그대로) 추가,
+외부 경계값(`todayRecord`) 런타임 타입 검증 포함. 신규 테스트 4케이스(18시 이전/이후×무기록/
+이후×빈객체/이후×실입력), `mock.timers.enable({ apis: ['Date'], now })`로 시각 결정론적
+통제.
+
+**검증**: 감시관 §5 리뷰 전항목 통과 — 범위(2파일만)·몰래증설 없음·타입꼼수 없음·200줄
+(119/124, 보고 정확)·문서정합(`.md` 없음)·요구사항 충족. 감시관이 프로덕션 코드에 버그
+주입(`TODAY_LOG_REMINDER_HOUR` 18→0)해 "18시 이전" 테스트가 정확히 실패로 잡는 것 확인
+(탐지력 증명) 후 원복. `typecheck` 0·`npm test` 545+125=670(보고 일치)·`npm run build`
+성공. push 완료(보리), CI "CI" run `33951700869` **success**(2026-09-05T07:07:55Z).
+
+**최종 승인**: 보리가 저녁 6시 이후 브라우저에서 알림이 실제로 뜨는 것 확인 → `[x]` 확정
+(2026-09-05). react-app `main` = origin/main = `5d564b1`.
+
+## Step 10 3차 — 리포트 PDF 저장 (2026-09-05, [x] 확정)
+
+**배경**: `ReportPage.jsx`는 미리보기만 있고 "PDF 저장은 나중에 붙입니다" 문구까지 있을
+정도로 PDF 저장 자체가 미구현. 원본 `downloadPDF()`(html2pdf.js) 그대로 이식.
+
+**커밋**: `react-app 40c5550` (7 files: `package.json`+lock(신규 의존성 `html2pdf.js`),
+`ReportPage.jsx`, `lib/report.js`(`buildReportFileName` 순수함수 추가), `report.test.js`
+신규, `side-menu.css`(`.pdf-export-mode` 인쇄용 스타일), `AppShellRoutes.jsx` 1줄(`showToast`
+prop 배선)). 버튼 클릭 시점에만 동적 `import('html2pdf.js')`(정적 import 아님 — 코드
+스플릿, `npm run build`로 `html2pdf-*.js` 976KB 별도 청크 분리 확인). 캡처 전후
+`pdf-export-mode` 클래스 try/finally 토글. "세부 보고서(거래처별)" 뷰는 원본에 있지만
+react-app 데이터 모델에 없어 스코프 밖(백로그 등재).
+
+**검증**: 감시관 §5 리뷰 전항목 통과 — 범위(지시서 없던 `AppShellRoutes.jsx` 1줄은 필요한
+배선이라 타당)·몰래증설 없음·타입꼼수 없음·200줄(`report.js` 51, 보고는 50 — 1줄 오차,
+3번째 반복). `typecheck` 0·`npm test` 547+125=672(보고 일치)·`npm run build` 성공(청크
+분리 확인). html2pdf ESM/CJS 상호운용 실제 동작은 감시관이 브라우저로 확인 시도하다
+실수로 기존 dev 서버를 정지시킴 — 보리가 본인 터미널의 `npm run dev`로 별도 확인 완료.
+push 완료, CI "CI" run `33957448600` **success**(2026-09-05T09:14:40Z).
+
+**최종 승인**: 보리 `[x]` 확정 (2026-09-05). react-app `main` = origin/main = `40c5550`.
+
+## Step 10 4차 — 온보딩 완료 저장 배선 수정 (2026-09-05, 감시관 §5 통과·보리 브라우저 검증 중)
+
+**배경**: 착수 전 조사에서 감시관이 "4차는 원본 대조만 하면 될 것"이라던 예상이 틀렸음을
+발견 — `App.jsx`의 `/onboarding` 라우트가 `onFinish={() => goHome(session, '설정을
+저장했어요.')}`로 **`wizard` 인자를 안 받아서**, 온보딩 4단계(운행방식·결제여부·세부
+항목·차량등록)를 다 채워도 설정·차량이 전혀 저장 안 되는데 거짓 성공 토스트만 뜨는 상태.
+`OnboardingPage.jsx`에 테스트가 없어서 지금까지 안 잡혔음. 아직 실제 가입자는 없음(보리
+확인) — 출시 전 필수 수정.
+
+원본(`script.js` `finishOnboardingWizard`)과 대조: react-app 회원가입은 항상
+`accountType:'owner_driver'`로만 생성되고 `/onboarding`은 가입 직후에만 진입해서, 원본의
+"소속기사/기존 메인차량 있으면 스텝 건너뜀" 동적 시퀀스 로직은 react-app엔 해당 안 됨(고정
+`STEP_SEQUENCE` 그대로 맞음). 원본 5번째 스텝(정산방식: company/driver_direct/employee)은
+매출제/월급제로 이미 대체된 옛 개념이라 **이번엔 추가 안 하기로 결정**(보리, 2026-09-05).
+
+**커밋**: `react-app 6ba08d6` (3 files): 신규 `lib/onboardingFinish.js`
+(`buildOnboardingSettingsPatch`(순수함수, `both`일 때 `callDetail:true` 명시 — 
+`normalizeSettings`가 `fixedOn===true`일 땐 자동으로 안 켜줌) + `applyOnboardingWizard`
+(기존 `savePracticeSettings`/`requestVehicleSave` 그대로 호출, 실패해도 throw 없이 toast
+문자열만 반환 — 온보딩을 막지 않음)), `App.jsx`(`onFinish`가 이제 `wizard`를 받아 저장 후
+`goHome`), 신규 `onboardingFinish.test.js`.
+
+**검증**: 감시관 §5 리뷰 전항목 통과. `App.jsx`는 이미 200줄 초과 상태였던 파일(229→239)
+— 착수지시서가 정확한 위치·최소 변경(라우트 1곳)만 명시했으므로 기존 감시관 선례(Step
+9① 슬라이스 재작업 때 확립: "§1 착수지시서가 정확한 위치·최소 변경을 사전에 명시하면 §3
+사전승인 요건 충족")에 따라 추가 분리설계안 불요로 판단. 줄수 보고 81/235/150 vs 실측
+81/**239**/150 — `App.jsx`만 4줄 오차(누적 4번째 유사 오차, 패턴으로 기록). 감시관이
+`buildOnboardingSettingsPatch`에 버그 주입(`both`일 때 `callDetail` 누락)해 관련 테스트
+2건이 정확히 실패로 잡는 것 확인(탐지력 증명) 후 원복. `typecheck` 0·`npm test`
+552+125=677(보고 일치)·`npm run build` 성공. push 완료, CI 확인 예정.
+
+**최종 승인**: 보리 브라우저 검증 완료(검증 중 파렛트 토글 죽은 UI 발견 → 아래 절에서
+별도 처리) + CI "CI" run `33958459077` **success**(2026-09-05T09:36:48Z) → `[x]` 확정
+(2026-09-05). react-app `main` = origin/main = `a17220a`(파렛트 삭제 포함, 아래 참고).
+
+## Step 10 4차 후속 — 온보딩 1단계 파렛트 토글 삭제 (2026-09-05, [x] 확정)
+
+보리가 Step 10 4차 브라우저 검증 중 발견: 온보딩 1단계 "파렛트 회수" 토글이 어디에도
+저장 안 되는 죽은 UI(파렛트는 이제 거래처 등록 화면에서 거래처별로 설정) — **원본부터
+있던 오류**(보리 확인, 원본 주석에도 명시돼 있음).
+
+**커밋**: `react-app a17220a` (1 file, +1/-15) — `OnboardingPage.jsx`에서
+`palletOn`/`showPallet`/토글 카드 JSX/리셋 코드 전부 삭제.
+
+**검증**: 감시관 §5 리뷰 전항목 통과 — 범위(1파일)·200줄(134, 보고 일치)·요구사항 충족
+(grep으로 완전 삭제 확인). `typecheck` 0·`npm test` 552+125=677(보고 일치)·`npm run build`
+성공. push 완료, CI "CI" run `33958986627` **success**(2026-09-05T09:48:47Z).
+
+**최종 승인**: 보리 `[x]` 확정 (2026-09-05). react-app `main` = origin/main = `a17220a`.
+
+## Step 10 5-1 — 고객센터 진입점 + FAQ 탭 (2026-09-05, [x] 확정)
+
+**배경**: react-app엔 "고객센터" 진입점 자체가 없었음(메뉴 링크·ComingSoon 자리조차 없음).
+원본 3탭(FAQ/1:1문의/내문의확인) 중 DB 없는 FAQ+진입점만 먼저 구현 — 1:1문의·내문의확인은
+DB 쓰기가 있어 별도 슬라이스(5-2/5-3, 아래).
+
+**커밋**: `react-app bf147c6` (6 files): 신규 `CustomerCenterPage.jsx`(98줄, FAQ 4문항 —
+원본 기반이되 클라우드/게스트 상황에 맞게 문구 각색, 1:1문의·내문의확인은 placeholder만) +
+신규 테스트(88줄) + `AppShellRoutes.jsx`(`/app/support` 라우트) + `lazyPages.js`(1줄,
+lazy-load 등록) + `SideMenu.jsx`(고객센터 메뉴 항목) + `side-menu.css`.
+
+**검증**: 감시관 §5 리뷰 전항목 통과 — 범위(지시서 없던 `lazyPages.js` 1줄은 필요한 배선)·
+몰래증설·타입꼼수 없음·200줄(`CustomerCenterPage.jsx`/테스트/`AppShellRoutes.jsx` 보고
+일치, `SideMenu.jsx`만 226 vs 보고 220 — 6줄 오차, ≤250 예외 범위라 위반 아님). placeholder
+탭에 저장 UI 없음을 테스트로 확인(`.inquiry-form`/`textarea` 부재). `typecheck` 0·
+`npm test` 552+128=680(보고 일치)·`npm run build` 성공. push 완료, CI "CI" run
+`33959778962` **success**(2026-09-05T10:06:56Z).
+
+**최종 승인**: 보리 `[x]` 확정 (2026-09-05). react-app `main` = origin/main = `bf147c6`.
+
+## Step 10 5차 DB 진단 완료 (2026-09-05)
+
+보리가 Supabase에서 진단 쿼리 실행·회신: `support_inquiries` 테이블·컬럼(`id`/`user_id`/
+`type`/`title`/`content`/`status`/`answer`/`answered_at`/`raw`/`created_at`)·RLS 활성화·
+`delete_own_account` RPC 전부 확인(`found: true`). 5-2(1:1 문의)·5-3(내 문의확인)·회원탈퇴
+착수 가능 상태.
+
+**게스트 문의 작성 여부 결정**: 원본은 게스트도 작성은 되지만 실제로는 로그인 안 되어있으면
+Supabase 동기화가 no-op이라 서버로 전혀 전달 안 되는 숨은 버그(`syncInquiryToSupabase`의
+`if (!user) return`). 보리 결정: **로그인한 사람만 허용**(게스트는 로그인 안내만, 원본의
+숨은 버그를 재현하지 않음) — 2026-09-05.
+
+## Step 10 5-2 — 고객센터 1:1 문의 작성 (2026-09-05, [x] 확정)
+
+**배경**: 원본의 "로컬 우선+백그라운드 동기화" 패턴을 안 옮기고 Fail-Fast로 각색 — 로그인
+세션만 즉시 서버 insert, 게스트는 폼 자체를 마운트 안 함(위 절 결정). 로컬 문의 캐시
+없음(신규 persist 도메인 안 만듦) — insert만 하고 끝, 목록 조회는 5-3에서 별도 처리.
+
+**커밋**: `react-app 6a44600` (6 files): 신규 `lib/supportInquiryMutations.js`(49줄,
+`requestSupportInquirySave` — `assertCloudWriteReady()`+`captureSession`/
+`assertSessionStillCurrent`+`StaleSessionError` 처리, row는 `user_id`/`type`/`title`/
+`content`/`status:'open'`만, `raw` 없음) + 신규 테스트(89줄) + `CustomerCenterPage.jsx`
+(183줄, `InquiryForm` 서브컴포넌트 — 로그인 세션에서만 마운트, 게스트는 "로그인 후
+이용해 주세요"+기존 `onGoAuth` prop 재사용한 로그인 버튼) + 테스트(115줄) +
+`AppShellRoutes.jsx`(`session`/`showToast`/`onGoAuth` 전달) + `side-menu.css`.
+
+**검증**: 감시관 §5 리뷰 전항목 통과 — 범위·몰래증설 없음(로컬 캐시 없음)·타입꼼수 없음
+(`assertCloudWriteReady()` 추가로 지시보다 더 안전)·200줄(49/89/183/115/95, 보고 정확)·
+요구사항 충족(게스트 폼 미마운트, row에 `raw` 없음까지 테스트로 확인). 감시관이
+`userId` 가드를 제거해 관련 테스트가 정확히 실패로 잡는 것 확인(탐지력 증명) 후 원복.
+`typecheck` 0·`npm test` 555+129=684(보고 일치)·`npm run build` 성공. push 완료, CI "CI"
+run `33960442746` **success**(2026-09-05T10:21:38Z).
+
+**최종 승인**: 보리 `[x]` 확정 (2026-09-05). react-app `main` = origin/main = `6a44600`.
+
+## Step 10 5-3 — 고객센터 나의 문의·건의 확인 (2026-09-05, [x] 확정) — Step 10 5차 전체 완료
+
+**배경**: 5-2와 같은 원칙 — 로컬 캐시 없이 탭 열릴 때마다 `support_inquiries` 직접
+재조회(RLS가 본인 것만 걸러줌). 게스트는 조회 자체를 안 하고 5-2와 동일한 로그인 안내
+재사용.
+
+**커밋**: `react-app 253198d` (5 files): `lib/supportInquiryMutations.js`(94줄,
+`fetchMyInquiries` 추가 — `normalizeInquiryRow`로 Supabase 응답 각 필드 개별 런타임
+검증) + 테스트(154줄) + `CustomerCenterPage.jsx`(230줄, `MyInquiriesList`+
+`GuestLoginPrompt` 서브컴포넌트, cleanup 플래그로 언마운트/재조회 경합 방지) + 테스트
+(193줄) + `side-menu.css`.
+
+**검증**: 감시관 §5 리뷰 전항목 통과. `CustomerCenterPage.jsx`가 230줄로 처음 200줄
+초과했지만 파일 상단에 필수 사유 주석("하위 패널을 파일 분리하면 같이 읽어야 해서 응집
+유지(§6)") 정확히 있고 230≤250 통과. 감시관이 `answer` 필드 정규화 로직을 깨뜨려 유닛+
+컴포넌트 테스트 양쪽에서 정확히 실패로 잡히는 것 확인(탐지력 이중 증명) 후 원복.
+`typecheck` 0·`npm test` 558+132=690(보고 일치)·`npm run build` 성공. push 완료, CI "CI"
+run `33961129711` **success**(2026-09-05T10:36:46Z).
+
+**최종 승인**: 보리 `[x]` 확정 (2026-09-05). react-app `main` = origin/main = `253198d`.
+**이걸로 Step 10 5차(고객센터: FAQ/1:1문의/내문의확인) 전체 완료.**
