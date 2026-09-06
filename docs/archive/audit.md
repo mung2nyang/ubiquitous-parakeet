@@ -4573,3 +4573,77 @@ CI에서 통과.
 
 **절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
 (다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 21 — lib/dirtyJournal.js (2026-09-06, [x] 확정)
+
+**대상**: owner별·슬라이스별 durable journal — "이 owner의 이 도메인은 아직 서버에 못
+보낸 로컬 변경이 있다"를 새로고침 후에도 남긴다(localStorage
+`reactPracticeDirtyJournal:<ownerKey>`, revision = commit마다 +1 카운터). 96줄,
+strict-inventory 4건.
+
+**§4 플레이북 / §133**: `lib/*` + durable journal + localStorage 직접 I/O → **§4 필수**
+(플레이북 §1 "durable journal" 명시). `readJournal`이 `JSON.parse(localStorage)` → §133
+대상. 이미 전 export 함수에 `@param`/`@returns` 완비 — 4건은 비export 헬퍼 3개
+(`journalKey`·`readJournal`·`writeJournal`)의 무타입 파라미터뿐.
+
+**§0-C 최소 보정 (보리 승인 2026-09-06)**: `readJournal` 값 정규화(1개 함수 ~4줄 교체).
+```
+// 전: return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+// 후: 최상위 가드 + Object.entries(parsed) 각 값 Number(revision) || 0 로 정규화
+```
+- **왜**: `@returns {Record<string, number>}`를 정직하게 하려면 §133상 값이 숫자임을
+  런타임 확인 필요. 기존 코드는 최상위 객체 여부만 검사.
+- **§133 준수**: JSON.parse 결과의 모든 value를 런타임 정규화 후에만 좁힘. JSDoc 스키마
+  (`Record<string, number>`)와 런타임 정규화 정확히 일치.
+- **§7 신규 레이어 아님**: 기존 `readJournal` try/catch·`return {}` fallback 그대로, 기존
+  top-level 가드의 완성. 새 모듈·큐·tombstone 0.
+- **동작**: 정상 데이터(revision 항상 숫자) 영향 0 — dirtyJournal 테스트 통과가 증명.
+  손상 데이터엔 버그 수정 — 기존엔 `planDirtyWrite`의 `(next[domain] || 0) + 1`이
+  `next[domain]`가 `"abc"`면 `"abc1"` 문자열 연결로 깨졌는데 이제 `0 + 1 = 1`.
+  `hasDirty`/`getDirtyDomains`의 `> 0` 판정은 정상·손상 모두 기존과 동일.
+- 이 정규화 덕에 `markDirty`/`planDirtyWrite`/`hasDirty`/`getDirtyDomains`/`clearDirty`/
+  `clearDirtyDomain` 본문은 **한 글자도 안 바꿔도** 타입 통과(반환이 숫자맵이라).
+
+**타입 소스**: 신규 typedef 0. `Record<string, number>`(도메인 타입 아님)·`string`뿐.
+
+**최종 커밋**: react-app `14ebe52`(작성자 `ya01na111`, co-author Cursor). 변경
+`src/lib/dirtyJournal.js`(+23/-1, 96→120줄). `// @ts-check`(1줄째) + 헬퍼 3개 JSDoc +
+`readJournal` 본문 마지막 `return`을 정규화 루프로 교체. 작업자가 `@ts-check` 뒤·주석블록
+앞뒤 빈 줄 추가(순수 스타일, `@ts-check` 여전히 1줄째·활성 — CI typecheck 확인).
+
+**감시관 §5 실사** (커밋 `14ebe52` diff 직접 대조 + typecheck·test·strict-inventory
+직접 재실행 — push 전 사전 실사, push 후 CI 재확인):
+1. 범위: 1파일 +23/-1 = §1-C. §1-D 전부 무변경(diff가 `writeJournal` JSDoc에서 끝남 —
+   `+ 1`·`revision > 0`·`journal[domain] > 0`·다른 함수·`writeJournal` setItem·소비처·
+   테스트 무변경). ✅
+2. 몰래 증설: 신규 파일·의존성·typedef·저장 키·durable/retry/tombstone **레이어 0**.
+   `readJournal` 정규화는 기존 함수 안 ~4줄. ✅
+3. 타입 꼼수: diff `^+` grep — `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 0줄.
+   `/** @type {Record<string, number>} */ const journal = {}`는 빈 객체 초기화 주석
+   (단언 아님). ✅
+4. 200줄: 120줄. ✅
+5. 테스트 진실성: 테스트 파일 변경 0. dirtyJournal 관련(markDirty/clearDirty·
+   failed→retry→flush·single-flight·commitBatch journal 실패) 전부 통과 — 정규화가 정상
+   경로 동작 유지 확인. ✅
+6. 문서 정합: react-app diff에 `.md` 0. ✅
+7. 요구사항: diff가 §1-G와 일치(빈 줄 추가 제외 byte 동일, 감시관 사전검증본과도 동일). ✅
+
+**감시관 직접 재실행** (커밋된 상태 = `14ebe52`):
+- `npm run typecheck` → **0 에러**
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **391**
+  (395 → −4, 착수지시서 예측치 정확히 일치 = 파일 진단 4건).
+  `grep -E "dirtyJournal\.js\("` → **0줄**.
+- `npm test` → unit **561/561** · app **135/135** (fail 0)
+→ 작업자 보고 숫자와 완전 일치.
+
+**CI 확인**: 보리 push → react-app `main` = origin/main = `14ebe52`. CI "verify" run
+`34029126603` **conclusion=success**, headSha 일치, job "verify" 스텝 테스트·타입검사·
+빌드 **3게이트 전부 success**.
+
+**브라우저 검증**: durable journal I/O 유틸이라 단독 검증은 "실패 → 로컬 편집 →
+새로고침 → 재시도 → 정확히 1회 flush" 시나리오 — `dirtyJournal 통합` 테스트가 CI에서 커버.
+
+**보리 `[x]` 2026-09-06.** react-app `main` = origin/main = `14ebe52`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).

@@ -3,7 +3,7 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-06 (JS→TS 슬라이스 20 `[x]` 확정)
+> 최종 갱신: 2026-09-06 (JS→TS 슬라이스 21 `[x]` 확정)
 
 ---
 
@@ -16,6 +16,23 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 버그 수정·정합성 문제는 즉시 처리(위 슬라이스들처럼).
 
 ## 지금 하는 일
+**Step 11 JS→TS 전환 슬라이스 21 완료·`[x]` 확정 (2026-09-06).**
+`src/lib/dirtyJournal.js` — 작업자 `14ebe52`·보리 push·CI "verify" 초록(run
+`34029126603`, conclusion=success, headSha 일치, test·typecheck·build 3게이트 green)·
+감시관 §5 7항목 통과(diff가 §1-G와 일치 + 감시관이 typecheck·test·strict-inventory 직접
+재실행해 391·`dirtyJournal.js(` 0줄·561/135 확인)·보리 최종 `[x]`.
+- `// @ts-check` + 비export 헬퍼 3개(`journalKey`·`readJournal`·`writeJournal`) `@param` +
+  `readJournal` 값 정규화(`Number(revision)||0`).
+- §4 필수(durable journal + localStorage)·§133 대상 → `readJournal`이 JSON.parse 결과의
+  모든 value를 런타임 정규화 후 `Record<string, number>`로 좁힘(별도 검증기 모듈 0,
+  §7 회피). 정상 데이터 영향 0, 손상 데이터엔 `planDirtyWrite` `"abc"+1` 버그 수정.
+- 다른 함수(`markDirty`·`planDirtyWrite`·`hasDirty`·`getDirtyDomains`·`clearDirty`·
+  `clearDirtyDomain`) 본문 무변경. strict-inventory 395→391(−4). 96→120줄.
+※ `taxInvoices.js`(19)는 test 커플링으로 production-only 불가 → 뒤로 미룸.
+※ `ubiquitous-parakeet` `4bfbf28`(슬라이스 20) = origin, 슬라이스 21 기록분 미커밋.
+
+---
+
 **Step 11 JS→TS 전환 슬라이스 20 완료·`[x]` 확정 (2026-09-06).**
 `src/lib/syncExpenseRecords.js` — 작업자 `fc7980f`·보리 push·CI "verify" 초록(run
 `34027848750`, conclusion=success, headSha 일치, test·typecheck·build 3게이트 green)·
@@ -26,9 +43,8 @@ strict-inventory 직접 재실행해 395·`syncExpenseRecords.js(` 0줄·`lib/ex
   캐스팅 1(`Array<ExpenseItem>` — Store/deduped 데이터, JSON 경계 아님) + `vehicleId` const
   캡처 3(`await` 뒤 좁힘 유지, 동작 무변경).
 - §4 필수 대상이나 페이로드·호출 순서·에러 분기 무변경, §133 검증기 없음(`readJson` 안 씀,
-  `item`은 슬라이스 1에서 이미 타입됨). **`lib/expenses.js`(슬라이스 21) 오염 0.**
+  `item`은 슬라이스 1에서 이미 타입됨). **`lib/expenses.js` 오염 0**(슬라이스 22~ 예정).
 - strict-inventory 420→395(−25). 115→152줄.
-※ `ubiquitous-parakeet` — `b8d4d62`(슬라이스 16~19) + 슬라이스 20 기록분(이 갱신) 미push.
 
 ---
 
@@ -71,16 +87,18 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 - 원시 helper 계층이라 단독 브라우저 검증 대상 없음 — 소비처 6파일이 CI `npm test`
   통과로 회귀 없음. strict-inventory 503→465(−38).
 
-최근 완료: 20(syncExpenseRecords.js) `fc7980f` · 19(syncWorkData.js) `cc286bd` ·
-18(receivables.js) `f161361` — 전부 CI 초록·보리 `[x]` 2026-09-06.
+최근 완료: 21(dirtyJournal.js) `14ebe52` · 20(syncExpenseRecords.js) `fc7980f` ·
+19(syncWorkData.js) `cc286bd` — 전부 CI 초록·보리 `[x]` 2026-09-06.
 슬라이스별 이력은 아래 "완료" 절.
 
 ## 다음 할 일 (순서대로 — 이관 로드맵 본편)
-1. **슬라이스 21~**: `domain/taxInvoices.js`(19)·`lib/outboxReconcile.js`(13)·
-   `lib/expenses.js`(5)·`lib/dirtyJournal.js`(4) — 파일당 1슬라이스, §4 필수·§133 판단
-   착수지시서에서 파일별로. "타입 주석만"으로 안 끝나면 보리와 범위 확인 후 진행.
-   `lib/expenses.js`(5)는 `saveExpenses`/`loadExpenses` param + `readJsonKey` 반환 +
-   기존 `dedupeExpensesById` TS2345 2건 — 착수 시 재조사.
+1. **슬라이스 22~**: `lib/outboxReconcile.js`(13)·`lib/expenses.js`(5)·`domain/taxInvoices.js`(19).
+   - `outboxReconcile.js`(13): `Array<object>` param + driver mutation 페이로드 shape — 중간.
+   - `expenses.js`(5): `saveExpenses`/`loadExpenses` param + `readJsonKey` 반환 + 기존
+     `dedupeExpensesById` TS2345 2건 — 슬라이스 20 직접 호출자, 착수 시 재조사.
+   - `taxInvoices.js`(19): §4 트리거 아님(순수 계산)이나 `taxInvoices.test.js`가 부분
+     fixture + `row.daily_log_id` 회귀검증이라 **production-only 불가** — test 파일 번들
+     필요. 보리 결정으로 뒤로 미룸(2026-09-06).
 
 ### 후속 nit (급하지 않음)
 - **캘린더 날짜 아래 지출 칩이 안 보임**[확인: 2026-09-05] — 보리가 Step 11 슬라이스 4
@@ -160,6 +178,19 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 - **Step 11 JS→TS 전환 슬라이스 8 — MaintFuelPage·ExpenseFormModal**: `@ts-check`+JSDoc, `ExpenseItem`/`ExpenseDraft` 재사용, `lib/expenses.js`는 지시대로 무변경(별도 슬라이스로 남김). `(item.mileage||0)`/`(item.subsidy||0)` 보정(동작 동일 확인). — react-app `5e5fd06`. (CI 초록·감시관이 `wc -l`·`npm run typecheck`·`npm test` 직접 재실행해 §5 전 항목 통과 확인·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 569→553건. 상세 `docs/report.md` §3~4.
 - **Step 11 JS→TS 전환 슬라이스 9 — MyPage·ConfirmModal·RequireSession**: `@ts-check`+JSDoc props, `AppSession` 재사용. `RequireSession` `session ?? null` 최소 보정. — react-app `4aa0869`(amend, 되돌림 1회). **1차 커밋 `29bc1e8`에서 작업자가 `MyPage.onOpen`을 지시서 1-B의 `label?: string` 대신 `label: string`으로 선언하고 그 때문에 JSX 6줄(`onOpen('x')`→`onOpen('x','')`)을 바꿈 — 1-D "JSX 무변경" 위반. 감시관 §5에서 적발(동작은 동일·작업자가 공개함, but 절차상 "막히면 멈추고 보고" 미준수). 보리 (B) 결정 → 감시관이 지시서대로 경로 로컬 검증(`AppShellRoutes.jsx:78` `title` 캐스팅 `string`→`string|undefined` 1줄 승인 확장) → 작업자 amend로 JSX byte-identical 원복.** (CI 초록 run `34011251979`·감시관 §6 재실사 전 항목 통과·브라우저 스모크·보리 `[x]` 2026-09-06). strict-inventory 553→544건. 상세 `docs/archive/audit.md` "슬라이스 9".
 - **Step 11 JS→TS 전환 슬라이스 10 — formatPhone·ComingSoonPage·BottomNav**: `@ts-check`+JSDoc, 순수 표시·변환 전용(플레이북 비대상). 순수 additive(+19/-0). — react-app `857319d`. (CI 초록 run `34011936455`·감시관 §5 전 항목 통과·브라우저 스모크·보리 `[x]` 2026-09-06). strict-inventory 544→539건. 상세 `docs/report.md`(슬라이스 11로 리셋됨).
+- **Step 11 JS→TS 전환 슬라이스 21 — lib/dirtyJournal.js**: `// @ts-check` + 비export
+  헬퍼 3개(`journalKey`·`readJournal`·`writeJournal`) `@param`/`@returns`. owner별 durable
+  journal(revision 카운터, localStorage `reactPracticeDirtyJournal:<ownerKey>`) — §4 필수·
+  §133 대상. export 함수는 이미 JSDoc 완비, 4건은 헬퍼 파라미터뿐. **§0-C 최소 보정(보리
+  승인)**: `readJournal`이 기존 최상위 객체 가드를 확장해 `Object.entries(parsed)` 각 값을
+  `Number(revision)||0`으로 런타임 정규화 후 `Record<string, number>` 반환 — §133 준수
+  (별도 검증기 모듈 0, 기존 함수 안 ~4줄, §7 회피). 정상 데이터 영향 0(테스트 통과 증명),
+  손상 데이터엔 `planDirtyWrite` `"abc"+1` 문자열연결 버그 수정. `hasDirty`/`getDirtyDomains`/
+  `planDirtyWrite`/`clearDirtyDomain` 본문 무변경(반환이 숫자맵이라 자연 통과). 96→120줄.
+  — react-app `14ebe52`. (CI "verify" 초록 run `34029126603` conclusion=success·headSha
+  일치·3게이트 green·감시관 §5 7항목 통과 + 감시관이 typecheck·test·strict-inventory 직접
+  재실행(diff가 §1-G와 일치)·`dirtyJournal.js(` 0줄 근거 첨부(`docs/report.md` §5)·보리
+  `[x]` 2026-09-06). strict-inventory 395→391(−4). 상세 `docs/report.md` §4~5.
 - **Step 11 JS→TS 전환 슬라이스 20 — lib/syncExpenseRecords.js**: `// @ts-check` +
   `CarLike`/`ExpenseItem` 재사용(import) + 함수 5개 JSDoc. 정비/주유/기타 비용 Supabase
   delete+insert — §4 필수. `readJson` 안 쓰고 `item`은 슬라이스 1(`a7cd9ef`)에서 이미
@@ -235,16 +266,18 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 
 ## 아직 안 한 큰 것 (나중 Step)
 - **Step 11 — 200줄 강제**: 전체 완료(슬라이스 1~4, 2026-09-05).
-- **Step 11 — JS→TS 전환**: 진행 중(슬라이스 1~20 완료, strict-inventory 775→395건).
+- **Step 11 — JS→TS 전환**: 진행 중(슬라이스 1~21 완료, strict-inventory 775→391건).
   지금은 JS + JSDoc 주석 타입(`.js` 확장자 유지, 보리 결정 2026-09-05) — 실제
   `.ts`/`.tsx` 확장자 전환은 이 작업 끝난 뒤 별도 단계.
-  **잔여 395건 = 프로덕션/testSupport ~46건 + `.test.js` 349건.**
-  프로덕션 ~46건 내역:
-  - 클라우드/동기화 본진(~41): `domain/taxInvoices.js`(19)·`lib/outboxReconcile.js`(13)·
-    `lib/expenses.js`(5)·`lib/dirtyJournal.js`(4) — AGENTS §4 필수, 신중히. 보리 결정:
-    `record`/`item`은 `Record<string,unknown>`+기존 가드, 신규 검증기 0.
-    (`cloudStorage.js` 38 슬17, `receivables.js` 27 슬18, `syncWorkData.js` 14 슬19,
-    `syncExpenseRecords.js` 25 슬20 완료.)
+  **잔여 391건 = 프로덕션/testSupport ~42건 + `.test.js` 349건.**
+  프로덕션 ~42건 내역:
+  - `lib/outboxReconcile.js`(13)·`lib/expenses.js`(5) — §4 필수. 보리 결정: `record`/`item`은
+    `Record<string,unknown>`+기존 가드, 신규 검증기 0.
+  - `domain/taxInvoices.js`(19) — §4 트리거 아님(순수 계산)이나 `taxInvoices.test.js` 커플링
+    (부분 fixture + `row.daily_log_id` 회귀검증)으로 **production-only 불가**, test 파일 번들
+    필요 → 뒤로 미룸(2026-09-06 보리 결정).
+  (`cloudStorage.js` 38 슬17, `receivables.js` 27 슬18, `syncWorkData.js` 14 슬19,
+  `syncExpenseRecords.js` 25 슬20, `dirtyJournal.js` 4 슬21 완료.)
   - 얇은 배럴/기타: `lib/originalWindow.js`(3, 테스트 헬퍼)는 슬라이스 16에서 완료,
     `store/batchWrites.js`(2)는 슬라이스 15에서 완료.
   - 자잘 UI(4): `main.jsx`·`ReportPage.jsx`·`ForgotPasswordModal.jsx`·
@@ -277,11 +310,10 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 - `npm run typecheck` → 현재 **0 에러**(정상).
 
 ## 저장소 상태 (2026-09-06)
-- **react-app**: `main` = origin/main = `fc7980f`(JS→TS 슬라이스 20, CI "verify" 초록
-  run `34027848750`·감시관 §5 통과·**보리 `[x]` 확정 2026-09-06**). 작업트리 클린.
-- **ubiquitous-parakeet**: `main` `b8d4d62`(슬라이스 16~19 기록, **origin보다 ahead 1 —
-  push 대기**) + 이번 갱신분(슬라이스 20 `[x]` 기록: `STATUS.md`·`docs/report.md`·
-  `docs/archive/audit.md`) 미커밋.
+- **react-app**: `main` = origin/main = `14ebe52`(JS→TS 슬라이스 21, CI "verify" 초록
+  run `34029126603`·감시관 §5 통과·**보리 `[x]` 확정 2026-09-06**). 작업트리 클린.
+- **ubiquitous-parakeet**: `main` = origin/main = `4bfbf28`(슬라이스 20 기록) + 이번
+  갱신분(슬라이스 21 `[x]` 기록) 미커밋.
 - 정확한 HEAD·미커밋 범위는 세션 시작 시 `git log`/`git status`로 직접 확인 (AGENTS.md §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)

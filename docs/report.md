@@ -1,284 +1,257 @@
-# docs/report.md — Step 11 JS→TS 전환 슬라이스 20: lib/syncExpenseRecords.js
+# docs/report.md — Step 11 JS→TS 전환 슬라이스 21: lib/dirtyJournal.js
 
 > 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12).
-> **슬라이스 20 전체 `[x]` 확정 완료** — react-app `fc7980f`, CI "verify" 초록 run
-> `34027848750`(conclusion=success), 감시관 §5 7항목 통과 + 감시관 직접 재실행
-> (`syncExpenseRecords.js(` 0줄·`lib/expenses.js(` 5줄 불변), 보리 `[x]` 2026-09-06.
-> strict-inventory 420→395(−25). 상세는 `docs/archive/audit.md` "슬라이스 20".
-> 다음 슬라이스(21 — `domain/taxInvoices.js` 등) 착수지시서 작성 시 리셋.
+> **슬라이스 21 전체 `[x]` 확정 완료** — react-app `14ebe52`, CI "verify" 초록 run
+> `34029126603`(conclusion=success), 감시관 §5 7항목 통과 + 감시관 직접 재실행
+> (`dirtyJournal.js(` 0줄), 보리 `[x]` 2026-09-06. strict-inventory 395→391(−4).
+> 상세는 `docs/archive/audit.md` "슬라이스 21". 다음 슬라이스(22 — `outboxReconcile.js`
+> 13 등) 착수지시서 작성 시 리셋.
 >
-> ※ `ubiquitous-parakeet` `b8d4d62`(슬라이스 16~19) + 슬라이스 20 기록분 — 보리 push 대기.
+> ※ `taxInvoices.js`(19)는 `taxInvoices.test.js` 커플링(부분 fixture + `row.daily_log_id`
+>   회귀검증)으로 production-only 불가 → test 파일 번들 필요, 보리 결정으로 뒤로 미룸.
 
 ## 0. 조사 메모
 
-**`src/lib/syncExpenseRecords.js`** (115줄, strict-inventory 25건 — 전부 TS7006 파라미터).
-`cloudSync.js` 분리 조각 — `syncAll`이 부르는 일반 동기화 큐의 정비/주유/기타 비용
-(`fuel_records`/`maintenance_records`/`misc_expense_records`) delete+insert. 구조 동일한
-async 함수 3개 + 헬퍼 2개(`expenseSyncInputs`·`dailyLogIdsByDate`).
+**`src/lib/dirtyJournal.js`** (96줄, strict-inventory 4건). owner별·슬라이스별 durable
+journal — "이 owner의 이 도메인은 아직 서버에 못 보낸 로컬 변경이 있다"를 새로고침 후에도
+남긴다(localStorage `reactPracticeDirtyJournal:<ownerKey>`). revision = commit마다 +1
+카운터.
 
 ### 0-A. §4 플레이북 / §133 판단
 
-- 경로 `lib/sync*` + Supabase 원격 mutation → **§4 필수**. 플레이북 재정독.
-- 이 파일의 입력: `cars`/`expenses`/`workData`(호출자 `expenses.js`가 넘김) + `getState()`
-  (타입 있는 메모리 Store) + Supabase `daily_logs` id 조회(`.select('id, work_date')`).
-  **`JSON.parse`(localStorage) → 도메인 좁히기 지점 없음** — `readJson` 안 씀.
-- `item`(비용)은 슬라이스 1(`a7cd9ef`)에서 이미 타입된 `groupFuelExpensesByDate`
-  (→`Record<string, Array<ExpenseItem|JsonRecord>>`)·`buildFuelRecordRow`
-  (`item: ExpenseItem|Record<string, unknown>`)로 흐름 → 이 슬라이스는 그 위에 param 타입만.
-- **§133 런타임 검증기 불필요** — 슬라이스 11·12(Supabase 원격 mutation은 §4 트리거지만
-  타입 주석만)·19 선례. Supabase id 조회 결과(`row.id`/`row.work_date`)는 `Map` 키/값으로만
-  쓰이고 도메인 타입 단언 안 함.
+- `lib/*` + **durable journal** + `localStorage` 직접 읽기·쓰기 → **§4 필수**(플레이북 §1
+  "durable journal" 명시). 재정독 완료.
+- `readJournal`이 `JSON.parse(localStorage)` → revision 카운터로 사용 → **§133 대상**.
+- 이미 전 export 함수에 `@param`/`@returns` JSDoc 완비. strict-inventory 4건은 **비export
+  헬퍼 3개**(`journalKey`·`readJournal`·`writeJournal`)의 무타입 파라미터뿐.
+- **§133 처리**: `readJournal` 반환을 `Record<string, number>`로 정직하게 하되, 기존
+  최상위 객체 가드(`typeof parsed === 'object' && !Array.isArray`)를 **각 domain 값을
+  `Number(revision) || 0`으로 정규화**하는 데까지 확장한다(§0-C). 신규 모듈·레이어·검증기
+  파일 0 — 같은 함수 안 ~4줄. §133 "모든 중첩 value/field를 런타임에서 검증한 뒤에만
+  좁혀라"를 그대로 만족.
 
-### 0-B. 슬라이스 19 의존
-슬라이스 19에서 `upsertDailyLog`가 `@returns {Promise<string>}`를 받았으므로
-`dailyLogId = await upsertDailyLog(...)` 흐름이 `string`으로 깨끗하게 정리됨(슬라이스 20이
-슬라이스 19 뒤인 이유).
+### 0-B. 소비처 (전부 `@ts-check`)
+- `lib/hydrate.js` — `clearDirty` (동기화 성공 후)
+- `store/batchWrites.js` — `planDirtyWrite` (commitBatch가 도메인 값+저널을 원자적으로 씀)
+- (`markDirty`·`hasDirty`·`getDirtyDomains`·`clearDirtyDomain`은 재시도/배너 경로)
+- 타입 변경이 소비처에 **영향 없음**(export 시그니처의 JSDoc은 이미 있었고 그대로).
 
-### 0-C. 감시관 사전검증 중 발견한 마찰 + 해결 (보리 확인 대상)
+### 0-C. 지시서 밖 최소 보정 (보리 승인 대상 — §1-B 포함)
 
-`syncFuelRecords(userId, ownerKey, cars, expenses, workData)`의 `expenses` 파라미터를
-`Array<ExpenseItem>`로 달면, **유일 호출자 `lib/expenses.js:34~36`이 `dedupeExpensesById(items)`
-(items 무타입 → `{ id?: string }[]`)를 넘겨서** `expenses.js`에 신규 TS2345 3건이 생김
-(slice 21 파일에 오염).
+**`readJournal` 값 정규화** (1개 함수, ~4줄 교체):
+```
+// 전
+return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+// 후
+if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+/** @type {Record<string, number>} */
+const journal = {}
+for (const [domain, revision] of Object.entries(parsed)) {
+  journal[domain] = Number(revision) || 0
+}
+return journal
+```
+- **왜**: `@ts-check` + `@returns {Record<string, number>}`를 정직하게 하려면 값이 숫자임을
+  런타임에서 확인해야 함(§133). 기존 코드는 최상위 객체 여부만 봤다.
+- **동작**: 정상 데이터(revision은 항상 숫자)엔 영향 0. 손상 데이터엔 오히려 **버그 수정** —
+  기존엔 `planDirtyWrite`의 `(next[domain] || 0) + 1`이 `next[domain]`가 `"abc"`면
+  `"abc1"` 문자열 연결로 깨졌는데, 이제 `Number("abc") || 0 = 0` → `1`. `hasDirty`/
+  `getDirtyDomains`의 `> 0` 판정 결과는 정상·손상 모두 기존과 동일.
+- **신규 레이어 아님**(§7): 기존 `readJournal` 함수 안의 가드 완성. 새 모듈·큐·tombstone 0.
+- 이 정규화 덕에 `hasDirty`/`getDirtyDomains`/`planDirtyWrite`/`clearDirtyDomain` 본문은
+  **한 글자도 안 바꿔도** 타입 통과(반환이 `Record<string, number>`라).
 
-**해결(감시관 판단 — 보리 승인 대상)**:
-- `expenses` 파라미터를 `Array<{ id?: string }>`(느슨 — 호출자 실제형과 일치)로 선언.
-- `expenseSyncInputs` 내부에서 `expenses || getState().expenses[ownerKey] || []` 결과에
-  `/** @type {Array<ExpenseItem>} */` 캐스팅 1곳 → 이하 `groupFuelExpensesByDate` 등에
-  깨끗하게 흐름. 이건 **Store 데이터/`dedupeExpensesById` 출력(실제 비용 배열)을 도메인
-  타입으로 보는 캐스팅**이지 `JSON.parse` 경계가 아님(§133 무관). 슬라이스 13
-  `dedupeCarsById` 인자 캐스팅과 같은 범주.
-- 결과: `expenses.js`(슬라이스 21) **오염 0**, `syncExpenseRecords.js` 25건 전부 해소.
-
-대안(**보리가 원하면**): 슬라이스 20 = `syncExpenseRecords.js` + `lib/expenses.js`(5건,
-직접 호출자) 묶음 — `saveExpenses(items: ExpenseItem[])`로 달면 캐스팅 없이 깨끗. 단
-`loadExpenses`/`readJsonKey`가 슬라이스 21쪽으로 번질 수 있어 파일 2개+α. 감시관 권장은
-**단독 + 캐스팅 1곳**(슬라이스 경계 유지, 보리 "묶지 말 것" 방침과 일치).
-
-### 0-D. 그 외 최소 보정
-
-- `const vehicleId = mainCar.supabaseId` — `if (!mainCar?.supabaseId) return` 가드 **직후**
-  `const`로 캡처. `mainCar.supabaseId`(`CarLike.supabaseId` = `string|number|undefined`)는
-  프로퍼티 접근이라 `await` 뒤 for-loop 안에서 TS 좁힘이 풀림 → `const`가 `string|number`로
-  고정. **런타임 동작 0 변화**(단언 아님, 좁힘 캡처). 3개 함수 각 1줄 + 이하
-  `mainCar.supabaseId` 3곳(`dailyLogIdsByDate` 인자·`upsertDailyLog` 인자·row builder)을
-  `vehicleId`로. row builder는 `vehicleId: mainCar.supabaseId` → `vehicleId` (shorthand).
-- `dailyLogIdsByDate` `@returns {Promise<Map<string, string>>}`.
-- `expenseSyncInputs` `@returns {{ expenses: Array<ExpenseItem>, workData: Record<string, unknown> }}`.
-
-### 0-E. 감시관 사전검증 결과 (적용→검증→원복 완료)
+### 0-D. 감시관 사전검증 결과 (적용→검증→원복 완료)
 
 - `npm run typecheck` → **0 에러**
-- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **420 → 395 (−25)**.
-  `syncExpenseRecords.js(` grep **0줄**. `lib/expenses.js(` grep **5줄(불변 — 오염 0)**.
-- `npm test` → unit **561/561** · app **135/135** (fail 0)
-- 파일 115 → 152줄(200 이하).
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **395 → 391 (−4)**.
+  `dirtyJournal.js(` grep **0줄**.
+- `npm test` → unit **561/561** · app **135/135** (fail 0). dirtyJournal 관련 테스트
+  (markDirty/clearDirty·failed→retry→flush·single-flight·commitBatch journal 실패) 전부 통과.
+- 파일 96 → 120줄(200 이하).
 
 ## 1. 착수지시서
 
 ### 1-A. 배경
-로직 정상 — **타입 주석 + 캐스팅 1곳(`expenseSyncInputs`) + `vehicleId` const 캡처 3곳.**
-새 의존성·새 typedef·**런타임 검증기 0**. `CarLike`/`ExpenseItem` 재사용. §4 필수 대상이나
-§1-F 검증기 없음(도메인 단언은 Store/deduped 데이터에 대한 것, JSON 경계 아님).
+로직 정상(revision 카운터) — **비export 헬퍼 3개 `@param` + `readJournal` 값 정규화(§0-C).**
+새 의존성·새 typedef·**신규 검증기 모듈 0**. `Record<string, number>`는 도메인 타입 아님.
 
-### 1-B. 설계 — `src/lib/syncExpenseRecords.js`
+### 1-B. 설계 — `src/lib/dirtyJournal.js`
 
-1. 1줄째 `// @ts-check`.
-2. import 아래:
+1. 파일 **맨 첫 줄**에 `// @ts-check`.
+2. `journalKey`: `@param {string} ownerKey` / `@returns {string}`.
+3. `readJournal`: `@param {string} ownerKey` / `@returns {Record<string, number>}` +
+   본문을 §0-C대로:
    ```
-   /** @typedef {import('../domain/financeTypes.js').CarLike} CarLike */
-   /** @typedef {import('../domain/expenseTypes.js').ExpenseItem} ExpenseItem */
+   function readJournal(ownerKey) {
+     try {
+       const raw = localStorage.getItem(journalKey(ownerKey))
+       const parsed = raw ? JSON.parse(raw) : {}
+       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+       /** @type {Record<string, number>} */
+       const journal = {}
+       for (const [domain, revision] of Object.entries(parsed)) {
+         journal[domain] = Number(revision) || 0
+       }
+       return journal
+     } catch {
+       return {}
+     }
+   }
    ```
-3. `expenseSyncInputs`:
-   ```
-   /**
-    * @param {string} ownerKey
-    * @param {Array<{ id?: string }>|null|undefined} expenses
-    * @param {Record<string, unknown>|null|undefined} workData
-    * @returns {{ expenses: Array<ExpenseItem>, workData: Record<string, unknown> }}
-    */
-   ```
-   `expenses: expenses || getState().expenses[ownerKey] || [],` →
-   `expenses: /** @type {Array<ExpenseItem>} */ (expenses || getState().expenses[ownerKey] || []),`
-4. `dailyLogIdsByDate`: `@param {string|number} vehicleSupabaseId` · `@returns {Promise<Map<string, string>>}`.
-   본문 무변경.
-5. `syncFuelRecords`/`syncMaintenanceRecords`/`syncMiscExpenseRecords` 3개 전부:
-   ```
-   /**
-    * @param {string} userId
-    * @param {string} ownerKey
-    * @param {Array<CarLike>} cars
-    * @param {Array<{ id?: string }>} [expenses]
-    * @param {Record<string, unknown>} [workData]
-    */
-   ```
-   본문: `if (!mainCar?.supabaseId) return` **다음 줄**에 `const vehicleId = mainCar.supabaseId` 추가.
-   이후 `dailyLogIdsByDate(mainCar.supabaseId)` → `dailyLogIdsByDate(vehicleId)`,
-   `upsertDailyLog(userId, mainCar.supabaseId, ...)` → `upsertDailyLog(userId, vehicleId, ...)`,
-   `vehicleId: mainCar.supabaseId,`(row builder 인자) → `vehicleId,`.
-   그 외 본문(루프·정규식·`fuelItems`/`record` 로직·delete/insert·`throw`) **전부 무변경**.
+   (기존 주석 위에 "각 domain revision을 `Number()||0`으로 정규화" 한 줄 사유 주석 추가 가능.)
+4. `writeJournal`: `@param {string} ownerKey` / `@param {Record<string, number>} journal`.
+
+**그 외 함수(`markDirty`·`planDirtyWrite`·`hasDirty`·`getDirtyDomains`·`clearDirty`·
+`clearDirtyDomain`) 본문·JSDoc 무변경.** (이미 `@param`/`@returns` 있고, `readJournal`
+반환이 `Record<string, number>`라 자연 통과.)
 
 ### 1-C. 파일
 | 파일 | 내용 |
 |---|---|
-| `src/lib/syncExpenseRecords.js` (수정) | `// @ts-check` + typedef 2 + 함수 5개 JSDoc + `expenseSyncInputs` 캐스팅 1 + `vehicleId` const 3 (+사용처 치환) |
+| `src/lib/dirtyJournal.js` (수정) | `// @ts-check` + 헬퍼 3개 JSDoc + `readJournal` 값 정규화(§0-C) |
 
 ### 1-D. 건드리지 않을 것
-- Supabase `.select`/`.delete`/`.insert` 페이로드·`.eq` 인자(`dailyLogId` 등)·`throw` 분기.
-- `groupFuelExpensesByDate`/`buildFuelRecordRow` 등 도메인 헬퍼(이미 타입됨, import만).
-- 루프 정규식 `/^\d{4}-\d{2}-\d{2}$/`, `fuelItems`/`record`/`dailyLogId` 판정 로직.
-- `lib/expenses.js`(슬라이스 21), `lib/syncWorkData.js`(슬라이스 19 완료), 테스트.
-- `mainCar` 계산식(`cars.find(...)`), `if (!mainCar?.supabaseId) return` 가드.
+- `JOURNAL_PREFIX` 상수, `journalKey` 반환식.
+- `markDirty`/`planDirtyWrite`/`hasDirty`/`getDirtyDomains`/`clearDirty`/`clearDirtyDomain`
+  본문·기존 JSDoc.
+- `planDirtyWrite`의 `next[domain] = (next[domain] || 0) + 1`, `hasDirty`의
+  `.some((revision) => revision > 0)`, `getDirtyDomains`의 `.filter((domain) => journal[domain] > 0)`.
+- `writeJournal`의 `localStorage.setItem(...)` 호출.
+- 소비처(`hydrate.js`·`batchWrites.js`), 테스트.
 
 ### 1-E. 실패 처리 (§7)
-신규 상태 저장소·레이어·큐·검증기 0. `expenseSyncInputs` 캐스팅은 Store/deduped
-데이터를 도메인 타입으로 보는 것(신규 fallback 로직 아님). `vehicleId` const는 좁힘 캡처
-(단언 아님).
+`readJournal` try/catch·`return {}` fallback **그대로**(기존 동작). 값 정규화는 기존 가드의
+완성 — 신규 durable/retry/tombstone/journal **레이어 0**. 읽기 실패를 빈 객체로 오인해
+cleanup하는 경로 없음(`readJournal`은 순수 읽기, 쓰기는 별도).
 
-### 1-F. 플레이북 §8 / 4대 질문
-§0-A·§3 참조. §4 필수 대상(Supabase 원격 mutation)이나 타입 주석 + 캐스팅 1곳 +
-`vehicleId` const뿐 — `JSON.parse` 경계 없음, 신규 durable/retry/tombstone/검증기 0,
-Supabase 페이로드·호출 순서·에러 분기 무변경. hydrate·세션 epoch는 이 파일 밖.
+### 1-F. 플레이북 §8 / §133
+- §4 필수(durable journal + localStorage). §133 대상(`JSON.parse` → 카운터).
+- **§133 준수**: `readJournal`이 최상위 객체 + **각 값을 `Number()||0`으로 런타임 정규화**
+  후에만 `Record<string, number>`로 좁힌다. JSDoc 스키마(`Record<string, number>`)와
+  런타임 정규화가 정확히 일치. 별도 검증기 모듈 없음(§7 "이름만 바꾼 같은 패턴" 회피 —
+  기존 함수 안에서 처리).
+- durable journal cleanup 방어(§1): 이 슬라이스는 `clearDirty`/`clearDirtyDomain` 본문
+  무변경 — cleanup 로직 안 건드림.
 
 ### 1-G. 작업자 전달문 (보리 착수 승인 완료 2026-09-06 — 이 절만 읽고 그대로 실행)
 
 > **AGENTS.md §1 작업자 규칙을 준수하라. `.md` 파일은 수정하지 말고 지시된 코드 작업만
 > 하라. DB 변경 없음.**
 >
-> **범위 = 1파일**: `src/lib/syncExpenseRecords.js`. **`lib/expenses.js`·`syncWorkData.js`는 손대지 마라.**
+> **범위 = 1파일**: `src/lib/dirtyJournal.js`.
 >
-> **① `// @ts-check`** 파일 맨 첫 줄.
+> **① `// @ts-check`** 를 파일 **맨 첫 줄**에.
 >
-> **② import 아래 typedef 2개**:
-> ```
-> /** @typedef {import('../domain/financeTypes.js').CarLike} CarLike */
-> /** @typedef {import('../domain/expenseTypes.js').ExpenseItem} ExpenseItem */
-> ```
+> **② `journalKey`** JSDoc: `@param {string} ownerKey` / `@returns {string}`.
 >
-> **③ `expenseSyncInputs`** JSDoc:
+> **③ `readJournal`** JSDoc: `@param {string} ownerKey` / `@returns {Record<string, number>}`.
+> 본문 마지막 `return` 한 줄을 다음으로 교체:
 > ```
-> /**
->  * @param {string} ownerKey
->  * @param {Array<{ id?: string }>|null|undefined} expenses
->  * @param {Record<string, unknown>|null|undefined} workData
->  * @returns {{ expenses: Array<ExpenseItem>, workData: Record<string, unknown> }}
->  */
+>     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+>     /** @type {Record<string, number>} */
+>     const journal = {}
+>     for (const [domain, revision] of Object.entries(parsed)) {
+>       journal[domain] = Number(revision) || 0
+>     }
+>     return journal
 > ```
-> 그리고 return 객체의 `expenses:` 줄만:
-> `expenses: expenses || getState().expenses[ownerKey] || [],` →
-> `expenses: /** @type {Array<ExpenseItem>} */ (expenses || getState().expenses[ownerKey] || []),`
+> (`const parsed = raw ? JSON.parse(raw) : {}` 줄과 `try`/`catch { return {} }`는 그대로.)
 >
-> **④ `dailyLogIdsByDate`** JSDoc: `@param {string|number} vehicleSupabaseId` /
-> `@returns {Promise<Map<string, string>>}`. 본문 무변경.
+> **④ `writeJournal`** JSDoc: `@param {string} ownerKey` / `@param {Record<string, number>} journal`.
 >
-> **⑤ `syncFuelRecords`·`syncMaintenanceRecords`·`syncMiscExpenseRecords` 3개 전부**:
-> JSDoc:
-> ```
-> /**
->  * @param {string} userId
->  * @param {string} ownerKey
->  * @param {Array<CarLike>} cars
->  * @param {Array<{ id?: string }>} [expenses]
->  * @param {Record<string, unknown>} [workData]
->  */
-> ```
-> 본문에서 `if (!mainCar?.supabaseId) return` 바로 다음 줄에:
-> `const vehicleId = mainCar.supabaseId`
-> 그리고 그 함수 안의 `mainCar.supabaseId` 3곳을 `vehicleId`로:
-> - `dailyLogIdsByDate(mainCar.supabaseId)` → `dailyLogIdsByDate(vehicleId)`
-> - `upsertDailyLog(userId, mainCar.supabaseId, workDate, record)` → `upsertDailyLog(userId, vehicleId, workDate, record)`
-> - row builder 인자 `dailyLogId, userId, vehicleId: mainCar.supabaseId, workDate,` →
->   `dailyLogId, userId, vehicleId, workDate,`
->
-> **그 외 전부 무변경.** 루프·정규식·`fuelItems`/`record`/`dailyLogId` 판정·delete/insert·
-> `throw` 분기·Supabase 페이로드 그대로. `any`/`unknown` 파라미터 새로 넣지 마라
-> (`expenses`는 `Array<{ id?: string }>`, `workData`는 `Record<string, unknown>`).
-> 새 typedef·`@ts-ignore`·`DayRecordLike` 단언 금지. 타입 에러 나면 우회 말고 멈추고 보고.
+> **그 외 함수(`markDirty`·`planDirtyWrite`·`hasDirty`·`getDirtyDomains`·`clearDirty`·
+> `clearDirtyDomain`)는 본문·JSDoc 전부 무변경.** `planDirtyWrite`의 `+ 1`, `hasDirty`의
+> `revision > 0`, `getDirtyDomains`의 `journal[domain] > 0` 손대지 마라 —
+> `readJournal` 반환이 `Record<string, number>`라 그대로 통과한다.
+> `any`/`unknown` 파라미터·새 typedef·`@ts-ignore` 금지. 타입 에러 나면 우회 말고 멈추고 보고.
 >
 > **완료 후 필수**:
 > 1. `npm run typecheck` → **전체 0 에러**. 숫자 보고.
 > 2. `npm test` → unit + app 전체 통과. 숫자(예: unit 561 / app 135) 보고.
-> 3. `npx tsc -p tsconfig.strict-inventory.json --noEmit 2>&1 | grep -cE "error TS"` → **395**
->    (착수 전 420 → −25). 다음 2개 grep 출력을 **보고에 붙여라**(보리 지시):
->    - `grep -E "syncExpenseRecords\.js\("` → **0줄**
->    - `grep -E "lib/expenses\.js\("` → **5줄**(불변 — 오염 0 확인용)
-> 4. `wc -l src/lib/syncExpenseRecords.js` → **152줄** 보고.
+>    특히 dirtyJournal 관련(markDirty/clearDirty·failed→retry→flush·commitBatch journal
+>    실패) 통과 확인.
+> 3. `npx tsc -p tsconfig.strict-inventory.json --noEmit 2>&1 | grep -cE "error TS"` → **391**
+>    (착수 전 395 → −4). `grep -E "dirtyJournal\.js\("` → **0줄**(출력 보고에 붙여라 — 보리 지시).
+> 4. `wc -l src/lib/dirtyJournal.js` → **120줄** 보고.
 > 5. 한국어 커밋 메시지로 **커밋 1개**. **push 하지 마라**.
 
 ## 2. 착수 전 상태 (2026-09-06)
-- `react-app` HEAD = origin/main = `cc286bd`(JS→TS 슬라이스 19, CI 초록·보리 `[x]`). 미커밋 없음.
-- `ubiquitous-parakeet`: `main` `b8d4d62`(슬라이스 16~19 기록, 보리 push 대기) + 이번
-  갱신분(슬라이스 20 착수지시서·사전검증) 미커밋.
-- strict-inventory 착수 전 420건. 이 슬라이스로 **−25 예상(→395)**.
+- `react-app` HEAD = origin/main = `fc7980f`(JS→TS 슬라이스 20, CI 초록·보리 `[x]`). 미커밋 없음.
+- `ubiquitous-parakeet`: `main` `4bfbf28`(슬라이스 20 기록, **push 대기**) + 이번 갱신분
+  (슬라이스 21 착수지시서·사전검증) 미커밋.
+- strict-inventory 착수 전 395건. 이 슬라이스로 **−4 예상(→391)**.
 
 ## 3. AGENTS §8 4대 질문 (착수 전)
-1. **구독 vs 스냅샷**: 둘 다 아님 — `syncAll`/`saveExpenses`가 부르는 동기화 실행 함수.
-2. **보이는 값 출처**: `expenses`/`cars`/`workData`는 호출자(`lib/expenses.js`)가 넘김.
-   `getState()`는 메모리 Store. Supabase `daily_logs`는 id 조회용.
-3. **쓰기 창구**: Supabase 원격 `delete`+`insert`(`*_records` 3테이블). 이 슬라이스는
-   페이로드·호출 순서·에러 분기 **무변경**(타입 주석만).
-4. **hydrate·디바운스·동시편집**: 이 파일 밖(`syncAll` + `cloudSession`).
+1. **구독 vs 스냅샷**: 둘 다 아님 — durable journal I/O 유틸(순수 read/write).
+2. **보이는 값 출처**: `localStorage[reactPracticeDirtyJournal:<ownerKey>]` (JSON, revision
+   카운터 맵).
+3. **쓰기 창구**: `writeJournal`(단독) + `planDirtyWrite`(값만 계산, 쓰기는 commitBatch가
+   `writeAllOrNothing`으로). 이 슬라이스는 쓰기 경로·호출자 **무변경**.
+4. **hydrate·디바운스·동시편집**: `hydrate.js`가 `clearDirty`를 부르지만 그 본문은 이
+   슬라이스가 안 건드림. 정규화는 read 시점이라 경합 무관.
 
-→ 현재/목표: `@ts-check` + JSDoc + `expenseSyncInputs` 캐스팅 1(§133 무관) + `vehicleId`
-const 캡처 3(좁힘 유지, 동작 무변경) / 건드릴 파일 §1-C 1개 / 안 건드릴 것 §1-D /
-실패 시 **신규 레이어·검증기 없음**(§1-E).
+→ 현재/목표: `@ts-check` + 헬퍼 3개 `@param` + `readJournal` 값 정규화(§133 준수, 동작
+무변경/버그수정) / 건드릴 파일 §1-C 1개 / 안 건드릴 것 §1-D / 실패 시 **신규 레이어·검증기
+모듈 없음**(§1-E).
 
 ## 4. 작업자 구현 완료 보고
 
-- react-app `fc7980f` "types: syncExpenseRecords.js에 @ts-check·JSDoc과 vehicleId 좁힘
+- react-app `14ebe52` "types: dirtyJournal.js에 @ts-check·헬퍼 JSDoc과 revision 정규화
   추가" (작성자 `ya01na111`, co-author Cursor, 2026-09-06). **push 전(ahead 1)** — 보리 push 대기.
-- 변경: `src/lib/syncExpenseRecords.js` (+48/-10, 115→152줄). `// @ts-check` + typedef 2
-  (`CarLike`·`ExpenseItem`) + 함수 5개 JSDoc + `expenseSyncInputs` 캐스팅 1
-  (`/** @type {Array<ExpenseItem>} */`) + `const vehicleId = mainCar.supabaseId` 3곳
-  (+사용처 각 3곳 치환).
+- 변경: `src/lib/dirtyJournal.js` (+23/-1, 96→120줄). `// @ts-check`(1줄째) + 헬퍼 3개
+  (`journalKey`·`readJournal`·`writeJournal`) JSDoc + `readJournal` 본문 마지막 `return`을
+  §0-C 정규화 루프로 교체. 그 외 함수 무변경(diff는 `writeJournal`에서 끝).
+  ※ 작업자가 `// @ts-check` 뒤·주석블록 앞뒤에 빈 줄 추가(순수 스타일, `@ts-check`는
+  여전히 1줄째라 활성 — CI typecheck가 확인).
 - 작업자 보고 숫자: typecheck 0 · npm test unit 561/561 app 135/135 fail 0 ·
-  strict-inventory `error TS` 395 · `syncExpenseRecords.js(` grep 0줄 ·
-  `lib/expenses.js(` grep 5줄(불변, 같은 5건) · 줄 수 152.
+  strict-inventory `error TS` 391 · `dirtyJournal.js(` grep 0줄 · 줄 수 120.
 
 ## 5. 감시관 실사 (push 전 사전 실사 — CI 초록 확인은 push 후)
 
-**감시관이 커밋 `fc7980f` diff 직접 대조 + typecheck·test·strict-inventory 직접 재실행**:
+**감시관이 커밋 `14ebe52` diff 직접 대조 + typecheck·test·strict-inventory 직접 재실행**:
 
 | # | 확인 | 결과 |
 |---|---|---|
-| 1 | 범위 준수 | ✅ 1파일 +48/-10 = §1-C. §1-D "안 건드릴 것"(Supabase 페이로드·`.eq` 인자·`throw` 분기·`groupX`/`buildX` 도메인 헬퍼·루프 정규식·`fuelItems`/`record`/`dailyLogId` 판정·`mainCar` 계산·가드) 전부 무변경. `lib/expenses.js`·`syncWorkData.js` 손 안 댐 |
-| 2 | 몰래 증설 없음 | ✅ 신규 파일·의존성·저장 키·**런타임 검증기 0**. 캐스팅 1곳은 `Array<ExpenseItem>`(Store/deduped 데이터 → 도메인, `JSON.parse` 경계 아님). `vehicleId` const는 좁힘 캡처(단언 아님) |
-| 3 | 타입 꼼수 없음 | ✅ diff `^+` grep: `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as`/`DayRecordLike` 0줄. `expenses`는 `Array<{ id?: string }>`(느슨, 호출자 실제형), `workData`는 `Record<string, unknown>` |
-| 4 | 200줄 | ✅ 152줄 |
-| 5 | 테스트 진실성 | ✅ 테스트 파일 변경 0. `cloudMemorySave.test.js`(`syncFuelRecords` 도달) CI 통과. 기존 테스트 약화 0 |
+| 1 | 범위 준수 | ✅ 1파일 +23/-1 = §1-C. §1-D "안 건드릴 것"(`JOURNAL_PREFIX`·`markDirty`·`planDirtyWrite`·`hasDirty`·`getDirtyDomains`·`clearDirty`·`clearDirtyDomain` 본문·`+ 1`·`revision > 0`·`journal[domain] > 0`·`writeJournal` setItem·소비처·테스트) 전부 무변경. diff가 `writeJournal` JSDoc에서 끝남 |
+| 2 | 몰래 증설 없음 | ✅ 신규 파일·의존성·typedef·저장 키·durable/retry/tombstone **레이어 0**. `readJournal` 정규화는 기존 함수 안 ~4줄(별도 검증기 모듈 아님) |
+| 3 | 타입 꼼수 없음 | ✅ diff `^+` grep: `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 0줄. `Record<string, number>`는 도메인 타입 아님. `/** @type {Record<string, number>} */ const journal = {}`는 빈 객체 초기화 주석(단언 아님) |
+| 4 | 200줄 | ✅ 120줄 |
+| 5 | 테스트 진실성 | ✅ 테스트 파일 변경 0. dirtyJournal 관련 테스트(markDirty/clearDirty·failed→retry→flush·single-flight·commitBatch journal 실패) 전부 통과 — 정규화가 정상 경로 동작 유지 확인 |
 | 6 | 문서 정합 | ✅ react-app diff에 `.md` 0 |
-| 7 | 요구사항 충족 | ✅ diff가 §1-G와 **byte 단위 일치**(감시관 사전검증본과도 동일). ①~⑤ 전부 |
+| 7 | 요구사항 충족 | ✅ diff가 §1-G와 일치(빈 줄 추가 제외 byte 동일, 감시관 사전검증본과도 동일). ①~④ 전부 |
 
-**핵심: `lib/expenses.js`(슬라이스 21) 오염 0 확인** — `grep -E "lib/expenses\.js\("` →
-착수 전과 동일한 5건(2×TS7006 params, 1×TS7005 parsed, 2×TS2345 `dedupeExpensesById`
-기존 이슈). 감시관 판단(§0-C)대로 `expenseSyncInputs` 캐스팅으로 격리 성공.
+**§0-C `readJournal` 값 정규화 확인**:
+- 기존 `parsed && typeof === 'object' && !Array.isArray ? parsed : {}` (최상위만) →
+  최상위 가드 + `Object.entries(parsed)` 각 값 `Number(revision) || 0`.
+- **§133 준수**: JSON.parse 결과의 모든 value를 런타임 정규화 후에만
+  `Record<string, number>`로 좁힘. JSDoc 스키마와 런타임 정규화 정확히 일치.
+- **동작**: 정상 데이터(revision 항상 숫자) 영향 0 — dirtyJournal 테스트 통과가 증명.
+  손상 데이터엔 버그 수정(`planDirtyWrite`의 `"abc" + 1` → `0 + 1`). `hasDirty`/
+  `getDirtyDomains`의 `> 0` 판정은 정상·손상 모두 기존과 동일.
+- **§7 신규 레이어 아님**: 기존 `readJournal` try/catch·`return {}` fallback 그대로,
+  기존 top-level 가드의 완성. cleanup(`clearDirty`/`clearDirtyDomain`) 본문 안 건드림.
 
-**§0-D `vehicleId` const 확인**: `if (!mainCar?.supabaseId) return` 직후
-`const vehicleId = mainCar.supabaseId` — `CarLike.supabaseId`(`string|number|undefined`)가
-프로퍼티 접근이라 `await` 뒤 for-loop에서 TS 좁힘이 풀리는 걸 `const`로 고정. 런타임
-동작 0 변화(단언 아님). row builder는 `vehicleId: mainCar.supabaseId` → `vehicleId`
-(shorthand).
-
-**감시관 직접 재실행** (커밋된 상태 = `fc7980f`):
+**감시관 직접 재실행** (커밋된 상태 = `14ebe52`):
 - `npm run typecheck` → **0 에러**
-- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **395**
-  (420 → **−25**, 착수지시서 예측치 정확히 일치 = 파일 진단 25건).
-  `grep -E "syncExpenseRecords\.js\("` → **0줄** · `grep -E "lib/expenses\.js\("` → **5줄**(불변).
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **391**
+  (395 → **−4**, 착수지시서 예측치 정확히 일치 = 파일 진단 4건).
+  `grep -E "dirtyJournal\.js\("` → **0줄**.
 - `npm test` → unit **561/561** · app **135/135** (fail 0)
 → 작업자 보고 숫자와 완전 일치.
 
-**§4 플레이북**: `lib/sync*` + Supabase 원격 mutation이라 §4 필수. 이 슬라이스는 타입
-주석 + 캐스팅 1곳 + `vehicleId` const뿐 — `JSON.parse` 경계 없음(`readJson` 안 씀),
-`item`은 슬라이스 1에서 이미 타입됨, 신규 durable/retry/tombstone/검증기 0. Supabase
-페이로드·호출 순서·에러 분기 무변경. §1-F 런타임 검증기 없음.
+**§4 플레이북**: `lib/*` + durable journal + localStorage → §4 필수. §133 대상이었으나
+`readJournal` 값 정규화로 준수(별도 검증기 모듈 없음, §7 회피). durable journal cleanup
+방어(§1)는 이 슬라이스가 `clearDirty*` 본문 안 건드려 무영향.
 
-**§5 사전 실사 전 항목 통과.** 이 파일은 **동기화 실행 함수라 단독 검증은 "비용 입력 →
-Supabase *_records 반영" 스모크** 정도. `syncFuelRecords` 도달 테스트가 CI에서 통과.
+**§5 사전 실사 전 항목 통과.** 이 파일은 **durable journal I/O 유틸이라 단독 브라우저
+검증은 "실패 → 로컬 편집 → 새로고침 → 재시도 → 정확히 1회 flush"** 시나리오 —
+`dirtyJournal 통합` 테스트가 CI에서 커버.
 
-**CI 확인 (push 후, 2026-09-06):** 보리 push → react-app `main` = origin/main = `fc7980f`.
-CI "verify" run `34027848750` **conclusion=success**, headSha `fc7980f…` 일치. job "verify"
+**CI 확인 (push 후, 2026-09-06):** 보리 push → react-app `main` = origin/main = `14ebe52`.
+CI "verify" run `34029126603` **conclusion=success**, headSha `14ebe52…` 일치. job "verify"
 스텝 테스트·타입 검사·빌드 **3게이트 전부 success**. → **보리 최종 `[x]` 확정 2026-09-06.**
 
 ### 브라우저 테스트 (선택 — 스모크)
-> 로그인 후 정비/주유/기타 비용 1건씩 입력·저장 → 새로고침 후 유지되는지(= `*_records`
-> delete+insert 경로). 타입 주석 변경이라 동작 영향 없어야 정상. CI `npm test` 커버.
+> 로그인 실패 상태에서 차량/거래처 1건 수정 → 새로고침 → 재시도 배너에서 재시도 →
+> 딱 한 번만 서버 반영되는지. 정규화는 read 시점이라 revision이 정상 숫자면 동작 동일.
