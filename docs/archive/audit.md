@@ -4491,3 +4491,85 @@ Supabase 페이로드 필드·`throw` 분기·`onConflict`·`.select('id').singl
 
 **절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
 (다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 20 — lib/syncExpenseRecords.js (2026-09-06, [x] 확정)
+
+**대상**: `cloudSync.js` 분리 조각 — `syncAll`이 부르는 일반 동기화 큐의 정비/주유/기타
+비용(`fuel_records`/`maintenance_records`/`misc_expense_records`) delete+insert. 115줄,
+strict-inventory 25건(전부 TS7006 파라미터). 구조 동일 async 함수 3개 + 헬퍼 2개.
+
+**§4 플레이북 / §133**: 경로 `lib/sync*` + Supabase 원격 mutation → §4 필수. 그러나
+`readJson`(localStorage JSON) 안 씀 — 입력은 호출자(`lib/expenses.js`)가 넘긴
+`cars`/`expenses`/`workData` + 타입 있는 메모리 `getState()` + Supabase `daily_logs` id
+조회. `item`(비용)은 슬라이스 1(`a7cd9ef`)에서 이미 타입된 `groupFuelExpensesByDate`
+(→`Record<string, Array<ExpenseItem|JsonRecord>>`)·`buildFuelRecordRow`
+(`item: ExpenseItem|Record<string, unknown>`)로 흐름. Supabase id 조회 결과(`row.id`/
+`row.work_date`)는 `Map` 키/값으로만 사용, 도메인 단언 없음. → **§133 런타임 검증기
+불필요**(슬라이스 11·12·19 선례).
+
+**슬라이스 19 의존**: 슬라이스 19에서 `upsertDailyLog` `@returns {Promise<string>}`를
+받았으므로 `dailyLogId = await upsertDailyLog(...)` 흐름이 `string`으로 정리됨(슬라이스
+20이 19 뒤인 이유).
+
+**감시관 사전검증 중 발견한 마찰 + 해결 (§0-C, 보리 승인 대상 → 착수 승인에 포함)**:
+`syncFuelRecords`의 `expenses` param을 `Array<ExpenseItem>`로 달면, 유일 호출자
+`lib/expenses.js:34~36`이 `dedupeExpensesById(items)`(items 무타입 → `{ id?: string }[]`)를
+넘겨서 `expenses.js`(슬라이스 21)에 신규 TS2345 3건 발생.
+- **해결**: `expenses` param을 `Array<{ id?: string }>`(호출자 실제형과 일치)로 선언 +
+  `expenseSyncInputs` 내부 `expenses || getState().expenses[ownerKey] || []` 결과에
+  `/** @type {Array<ExpenseItem>} */` 캐스팅 1곳. Store 데이터/`dedupeExpensesById` 출력
+  (실제 비용 배열)을 도메인 타입으로 보는 캐스팅이지 `JSON.parse` 경계가 아님(§133 무관,
+  슬라이스 13 `dedupeCarsById` 인자 캐스팅과 같은 범주).
+- **결과**: `lib/expenses.js` 오염 0(5건 불변 — 착수 전과 동일), `syncExpenseRecords.js`
+  25건 전부 해소.
+- 감시관 권장 = 단독 슬라이스 + 캐스팅 1곳(보리 "묶지 말 것" 방침 일치). 대안(=expenses.js
+  묶기)은 감시관이 보리에게 제시 → 보리 "승인"(단독 채택).
+
+**§0-D `vehicleId` const**: `if (!mainCar?.supabaseId) return` 가드 직후
+`const vehicleId = mainCar.supabaseId` 3개 함수 각 1줄. `CarLike.supabaseId`
+(`string|number|undefined`)가 프로퍼티 접근이라 `await` 뒤 for-loop 안에서 TS 좁힘이
+풀림 → `const`가 `string|number`로 고정. 런타임 동작 0 변화(단언 아님, 좁힘 캡처).
+이하 `mainCar.supabaseId` 3곳(`dailyLogIdsByDate` 인자·`upsertDailyLog` 인자·row builder
+`vehicleId: mainCar.supabaseId` → `vehicleId` shorthand)을 `vehicleId`로.
+
+**최종 커밋**: react-app `fc7980f`(작성자 `ya01na111`, co-author Cursor). 변경
+`src/lib/syncExpenseRecords.js`(+48/-10, 115→152줄). `// @ts-check` + typedef 2 + 함수 5개
+JSDoc + `expenseSyncInputs` 캐스팅 1 + `vehicleId` const 3(+사용처 치환). Supabase
+페이로드·`.eq` 인자·`throw` 분기·루프 로직·`groupX`/`buildX` 도메인 헬퍼 무변경.
+
+**감시관 §5 실사** (커밋 `fc7980f` diff 직접 대조 + typecheck·test·strict-inventory
+직접 재실행 — push 전 사전 실사, push 후 CI 재확인):
+1. 범위: 1파일 +48/-10 = §1-C. §1-D 전부 무변경. `expenses.js`·`syncWorkData.js` 손 안 댐. ✅
+2. 몰래 증설: 신규 파일·의존성·저장 키·**런타임 검증기 0**. 캐스팅 1(Store/deduped →
+   도메인, JSON 경계 아님), `vehicleId` const는 좁힘 캡처(단언 아님). ✅
+3. 타입 꼼수: diff `^+` grep — `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as`/
+   `DayRecordLike` 0줄. `expenses`는 `Array<{ id?: string }>`, `workData`는
+   `Record<string, unknown>`. ✅
+4. 200줄: 152줄. ✅
+5. 테스트 진실성: 테스트 파일 변경 0. `cloudMemorySave.test.js`(`syncFuelRecords` 도달)
+   CI 통과. ✅
+6. 문서 정합: react-app diff에 `.md` 0. ✅
+7. 요구사항: diff가 §1-G와 **byte 단위 일치**(감시관 사전검증본과도 동일). ✅
+
+**감시관 직접 재실행** (커밋된 상태 = `fc7980f`):
+- `npm run typecheck` → **0 에러**
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **395**
+  (420 → −25, 착수지시서 예측치 정확히 일치 = 파일 진단 25건).
+  `grep -E "syncExpenseRecords\.js\("` → **0줄** · `grep -E "lib/expenses\.js\("` → **5줄**
+  (착수 전과 동일 — 2×TS7006 params, 1×TS7005 parsed, 2×TS2345 `dedupeExpensesById`
+  기존 이슈. 오염 0).
+- `npm test` → unit **561/561** · app **135/135** (fail 0)
+→ 작업자 보고 숫자와 완전 일치.
+
+**CI 확인**: 보리 push → react-app `main` = origin/main = `fc7980f`. CI "verify" run
+`34027848750` **conclusion=success**, headSha 일치, job "verify" 스텝 테스트·타입검사·
+빌드 **3게이트 전부 success**.
+
+**브라우저 검증**: 동기화 실행 함수라 단독 검증은 "비용 입력 → Supabase *_records 반영"
+스모크 정도. 타입 주석 + 캐스팅이라 동작 영향 없음. `syncFuelRecords` 도달 테스트가
+CI에서 통과.
+
+**보리 `[x]` 2026-09-06.** react-app `main` = origin/main = `fc7980f`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).
