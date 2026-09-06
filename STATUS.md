@@ -3,7 +3,7 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-05
+> 최종 갱신: 2026-09-06 (JS→TS 슬라이스 19 `[x]` 확정)
 
 ---
 
@@ -16,23 +16,66 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 버그 수정·정합성 문제는 즉시 처리(위 슬라이스들처럼).
 
 ## 지금 하는 일
-**회원탈퇴 기능 구현 (필수, 착수 2026-09-05).**
-**Step 10(전체) `[x]` 완료** — 1차(백업+알림)~5차(고객센터) 전부, react-app `253198d`까지
-CI 초록·보리 `[x]`. 회원탈퇴는 "고객센터"와 별개지만 보리가 필수로 지정한 기능.
+**Step 11 JS→TS 전환 슬라이스 19 완료·`[x]` 확정 (2026-09-06).**
+`src/lib/syncWorkData.js` — 작업자 `cc286bd`·보리 push·CI "verify" 초록(run
+`34026552370`, conclusion=success, headSha 일치, test·typecheck·build 3게이트 green)·
+감시관 §5 7항목 통과(diff가 §1-G와 byte 단위 일치 + 감시관이 typecheck·test·
+strict-inventory 직접 재실행해 420·`syncWorkData.js(` 0줄·561/135 확인)·보리 최종 `[x]`.
+- `// @ts-check` + `CarLike`/`ClientLike` 재사용 + 함수 2개 JSDoc + `record`를
+  `Record<string, unknown>` 캐스팅(도메인 타입 단언 안 함 — 보리 결정, 기존 런타임 가드가
+  좁힘, 신규 검증기 0) + `data.id`→`data?.id` + `upsertDailyLog` `@returns {Promise<string>}`.
+- §4 필수 대상(Supabase 원격 mutation)이나 페이로드·호출 순서·에러 분기 무변경, §1-F 검증기 없음.
+- strict-inventory 434→420(−14). 68→83줄.
 
-**설계**: 원본 `requestWithdrawal`/`executeAccountWithdrawal`(2단계 확인 →
-`delete_own_account` RPC → 성공 확인 후에만 로그아웃+정리) 이식. **새 로그아웃/정리
-로직을 만들지 않고 기존 `App.jsx`의 `handleLogout`(`onGoAuth` prop)을 그대로 재사용** —
-RPC 성공 후에만 호출, 실패하면 로컬/세션 절대 안 건드림. 확인 모달도 기존
-`ConfirmModal.jsx`를 2번 순차로 씀(신규 모달 없음). 착수지시서 = `docs/report.md` §1
-(리셋됨). 대상 3파일(`lib/accountWithdrawal.js` 신규·`PersonalInfoPage.jsx`·테스트).
-DB 변경 없음(기존 RPC 호출만). 작업자 구현 대기.
+---
+
+**Step 11 JS→TS 전환 슬라이스 18 완료·`[x]` 확정 (2026-09-06).**
+`src/domain/receivables.js` — 작업자 `f161361`·보리 push·CI "verify" 초록(run
+`34022719470`, conclusion=success, headSha 일치, test·typecheck·build 3게이트 green)·
+감시관 §5 7항목 통과(diff가 §1-G와 라인 단위 일치 + 감시관이 typecheck·test·
+strict-inventory 직접 재실행해 434·561/135 확인)·보리 최종 `[x]`.
+- `// @ts-check` + `ReceivableGroup` typedef + 함수 8개 JSDoc(`financeReceivables.js`의
+  `ReceivableItemLike` 재사용). `daysUntil` `(due-today)` → `(due.getTime()-today.getTime())`
+  1줄(보리 승인, `Date` 산술 강제변환이라 동작 동일).
+- 순수 표시·계산 함수(저장·동기화·JSON 파싱 0) → §4 "참고" 수준, §133 무관.
+- strict-inventory 465→434(−31, 27건 이 파일 + 소비처 파생 4건). 72→121줄.
+
+---
+
+**Step 11 JS→TS 전환 슬라이스 17 완료·`[x]` 확정 (2026-09-06).**
+`src/lib/cloudStorage.js` + `src/domain/clientTypes.js` — 작업자 `87ab7fd`·보리 push·
+CI "verify" 초록(run `34021045759`, conclusion=success, headSha 일치, test·typecheck·
+build 3게이트 전부 green)·감시관 §5 7항목 통과(diff가 §1-G와 라인 단위 일치 + 감시관이
+typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 일치)·보리 최종 `[x]`.
+- `cloudStorage.js`: `// @ts-check` + 죽은 함수 3개 삭제(`collectPracticeSnapshot`·
+  `practiceSnapshotForProfile`·`applyPracticeSnapshot` — 전 저장소 호출부 0, `store/
+  owner-state.js`로 대체됨, **보리 삭제 승인**) + 남은 6개 함수 JSDoc. 126→125줄.
+- `clientTypes.js`: `ClientLike`에 `taxInvoiceEnabled` 1줄 additive(착수 전 TS2339 해소).
+- **§133 런타임 검증기 불필요**: `readJson` 반환을 `unknown`으로 둠(슬라이스 12·13 선례).
+- 원시 helper 계층이라 단독 브라우저 검증 대상 없음 — 소비처 6파일이 CI `npm test`
+  통과로 회귀 없음. strict-inventory 503→465(−38).
+
+최근 완료: 19(syncWorkData.js) `cc286bd` · 18(receivables.js) `f161361` ·
+17(cloudStorage·clientTypes) `87ab7fd` — 전부 CI 초록·보리 `[x]` 2026-09-06.
+슬라이스별 이력은 아래 "완료" 절.
 
 ## 다음 할 일 (순서대로 — 이관 로드맵 본편)
-1. **회원탈퇴 기능 구현** (위) — 작업자 구현 대기.
-2. Step 11 — 200줄 강제 + JS→TS 전환 (이관 로드맵 마지막 단계).
+1. **슬라이스 20 — `lib/syncExpenseRecords.js`(25)**. **별도 슬라이스**(보리 지시 — 묶지
+   말 것). 슬라이스 19가 `upsertDailyLog`에 `@returns {Promise<string>}`를 줬으므로
+   `dailyLogId` 흐름은 깨끗함. §4 필수·§133 판단은 슬라이스 19와 동일 방향(보리 결정:
+   `record`/`item` 도메인 단언 안 함, 기존 가드 유지, 신규 검증기 0) — 착수지시서에서
+   파일별 재확인. `mainCar.supabaseId`(`string|number`)·supabase `.select()` row 최소
+   타입 정도. 착수지시서 미작성.
+2. **슬라이스 21~**: `domain/taxInvoices.js`(19)·`lib/outboxReconcile.js`(13)·
+   `lib/expenses.js`(5)·`lib/dirtyJournal.js`(4) — 파일당 1슬라이스, §4 필수·§133 판단
+   착수지시서에서 파일별로. "타입 주석만"으로 안 끝나면 보리와 범위 확인 후 진행.
 
 ### 후속 nit (급하지 않음)
+- **캘린더 날짜 아래 지출 칩이 안 보임**[확인: 2026-09-05] — 보리가 Step 11 슬라이스 4
+  브라우저 검증 중 발견. 이번 슬라이스(`ownerDataHooks.js` 훅 분리)와는 무관 —
+  캘린더 지출 관련 코드는 `useOwnerExpenses`뿐인데 이번엔 손대지 않았고(일지/workData
+  훅만 이동), `domain/calendarBadges.js`엔 지출 관련 로직 자체가 없어 원래부터 있던
+  이슈로 판단(회귀 아님). 보리가 "나중에 수정" 지시 — 급하지 않음, 원인 조사부터 필요.
 - **리포트 "세부 보고서(거래처별)" 뷰 자체가 없음** — 원본엔 월간 요약 외에 거래처별 세부
   내역 뷰(`isDetailReportView`)가 있는데 react-app `report.js`/`ReportPage.jsx`엔 이
   개념 자체가 없음(2026-09-05 Step 10 3차 착수 조사로 발견). 원본에 있던 기능이라 "이관
@@ -90,12 +133,101 @@ DB 변경 없음(기존 RPC 호출만). 작업자 구현 대기.
 - **Step 10 5-1 — 고객센터 진입점 + FAQ 탭**: 신규 `CustomerCenterPage.jsx`(FAQ 4문항 원본 기반 각색, 1:1문의·내문의확인 placeholder만), `/app/support` 라우트, 사이드메뉴 진입 항목. — react-app `bf147c6`(6 files). (CI 초록 run `33959778962`·보리 `[x]` 2026-09-05). 상세 `docs/archive/audit.md` "Step 10 5-1".
 - **Step 10 5-2 — 고객센터 1:1 문의 작성**: 로그인 세션만 Fail-Fast로 `support_inquiries` insert(로컬 캐시 없음), 게스트는 폼 미마운트+로그인 안내. — react-app `6a44600`(6 files, `assertCloudWriteReady()` 추가로 지시보다 더 안전). (CI 초록 run `33960442746`·보리 `[x]` 2026-09-05). 상세 `docs/archive/audit.md` "Step 10 5-2".
 - **Step 10 5-3 — 고객센터 나의 문의·건의 확인**: `fetchMyInquiries`(로컬 캐시 없이 탭마다 직접 조회, 외부 응답 필드별 런타임 검증), 답변 대기/완료 배지. — react-app `253198d`(5 files, `CustomerCenterPage.jsx` 230줄 §6 응집 사유주석 포함). (CI 초록 run `33961129711`·보리 `[x]` 2026-09-05). **Step 10 전체 완료**. 상세 `docs/archive/audit.md` "Step 10 5-3".
+- **회원탈퇴 기능**: 원본 `requestWithdrawal`/`executeAccountWithdrawal` 이식 — 2단계 `ConfirmModal` 확인 → `delete_own_account` RPC → 성공 시에만 기존 `App.jsx handleLogout`(`onGoAuth`) 재사용, 실패 시 토스트만(로컬 무변경). 신규 `lib/accountWithdrawal.js`(23줄)+테스트, `PersonalInfoPage.jsx`(197줄)+테스트. — react-app `9e381d1`. (CI 초록·감시관 §5 전 항목 통과·브라우저 통과·보리 `[x]` 2026-09-05). 상세 `docs/report.md` §3~4.
+- **Step 11 슬라이스 1 — `AuthPage.jsx` 200줄 분리**: intro/login/signup 3화면을 `components/auth/`(`AuthIntroView.jsx` 29줄·`AuthLoginView.jsx` 93줄·`AuthSignupView.jsx` 105줄·`AuthBackIcon.jsx` 6줄)로 분리, `AuthPage.jsx` 284→146줄(핸들러·API 그대로 유지). — react-app `3256d5e`. (CI 초록·감시관 §5 전 항목 통과(로직·문구·CSS 라인 단위 대조, byte-identical)·브라우저 통과·보리 `[x]` 2026-09-05). 상세 `docs/report.md` §3~4.
+- **Step 11 슬라이스 2 — `App.jsx` 200줄 분리**: 세션/부트/토스트 state+이펙트+`handleLogout`을 신규 훅 `app/useAppSession.js`(137줄)로 추출, `App.jsx` 239→147줄(인라인 핸들러는 유지). — react-app `6cec49a`. (CI 초록·감시관 §5 전 항목 통과(이펙트·주석·핸들러 라인 단위 대조, byte-identical)·브라우저 통과·보리 `[x]` 2026-09-05). 상세 `docs/report.md` §3~4.
+- **Step 11 슬라이스 3 — 200줄 초과 3파일 §6 예외주석**: `domain/cars.js`(219)·`lib/dayLogCloudCommit.js`(209)·`domain/day-record.js`(207) — 실제 분리 대신 왜 안 쪼개는지 사유 주석 1줄씩만 추가(코드 로직 무변경, +3 insertions 0 deletions). — react-app `941d3ab`. (CI 초록·감시관 §5 전 항목 통과(diff 전체 대조로 "코드 변경 없음" 확인)·보리 `[x]` 2026-09-05, 주석만 변경이라 브라우저 검증 대상 없음). 상세 `docs/report.md` §0·§3~4.
+- **Step 11 슬라이스 4 — `store/ownerDataHooks.js` 200줄 분리**: 기존 배럴 재수출 패턴을 이어 "일지 데이터" 훅 6개를 신규 `store/ownerWorkDataHooks.js`(81줄)로 분리, `ownerDataHooks.js` 204→138줄. 소비 파일 17개 전부 import 경로 무변경. — react-app `e6e41b9`. (CI 초록·감시관 §5 전 항목 통과(JSDoc·주석·로직 라인 단위 대조, byte-identical)·브라우저 통과·보리 `[x]` 2026-09-05). **이걸로 Step 11의 "200줄 강제" 부분 전체 완료**(초과 파일 9개 전부 처리: 분리 2·예외주석 3·기존예외 1·배럴분리 1 — 회원탈퇴는 별건). 상세 `docs/report.md` §3~4.
+- **Step 11 JS→TS 전환 슬라이스 1 — 비용 레코드 3파일**: `domain/fuelRecords.js`(128줄)·`maintenanceRecords.js`(122줄)·`miscExpenseRecords.js`(119줄)에 `// @ts-check` + JSDoc 타입 완성(`ExpenseItem` 재사용), 로직 무변경. — react-app `a7cd9ef`. (CI 초록·감시관 §5 전 항목 통과(diff 라인 단위 대조, 타입 단언은 기존 패턴과 동일해 편법 아님 확인)·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 775→713건. 상세 `docs/report.md` §3~5.
+- **Step 11 JS→TS 전환 슬라이스 2 — money.js·invoices.js**: `// @ts-check` + JSDoc 타입 완성(`finance.js` 기존 타입 재사용), 승인된 최소 보정 1곳(`parseInt(String(tripCount), 10)`) 제외 로직 무변경. — react-app `0d93e32`. (CI 초록·감시관이 `npm test`·`typecheck:strict-inventory` 직접 재실행해 §5 전 항목 통과 확인·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 713→696건. 상세 `docs/report.md` §3~4.
+- **Step 11 JS→TS 전환 슬라이스 3 — payments.js**: `// @ts-check` + JSDoc, 제네릭 `PaymentMutationResult<T>`로 입력 map 타입 보존, `ensurePaymentList` in-place 뮤테이션 유지. 지시서 밖 방어 보정 1곳(`markReceivableItemPaid`의 `|| []`, 기존 자매 함수와 동일 패턴·동작 동일 확인). — react-app `6f2d316`. (CI 초록·감시관이 diff 직접 대조해 §5 전 항목 통과 확인·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 696→681건. 상세 `docs/report.md` §3~4.
+- **Step 11 JS→TS 전환 슬라이스 4 — UI 3컴포넌트 + AppSession.userId 확장**: `SwitchRow.jsx`·`NotificationPanel.jsx`·`AuthRoute.jsx`에 `@ts-check`+JSDoc. 작업자가 `App.jsx`↔`AuthPage.jsx` 간 기존 타입 불일치(공용 타입 `AppSession.userId`가 `string`으로만 선언돼 있었는데 `AuthPage.jsx`는 실제로 `null`도 만들어냄)를 발견해 편법 대신 멈추고 보고 → 감시관이 원인 진단 + `.userId` 사용처 22곳 전수 확인 → 보리 승인(같은 커밋 1개 조건)으로 `outboxTypes.js`의 `AppSession.userId`를 `string|null`로 확장, 4파일 1커밋. — react-app `6755808`. (CI 초록·**감시관이 `npm run typecheck` 직접 재실행해 에러 0건 기계적으로 재확인**(보리 지시)·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 681→653건. 상세 `docs/report.md` §3(중단 보고)·§3-A(승인)·§4.
+- **Step 11 JS→TS 전환 슬라이스 5 — DriverFormModal·OnboardingPage**: `@ts-check`+JSDoc, `DriverDraft`/`DriverRecord`/`CarLike`/`OnboardingWizard` 전부 기존 타입 재사용. 지시서 밖 최소 보정 1곳(`wizard.carNumber`의 `|| ''`, 런타임엔 항상 문자열이라 동작 동일 확인). — react-app `f97d2e2`. (CI 초록·감시관이 `npm run typecheck`·`npm test` 직접 재실행해 §5 전 항목 통과 확인·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 653→637건. 상세 `docs/report.md` §3~4.
+- **Step 11 JS→TS 전환 슬라이스 6 — practiceSettings.js**: `@ts-check`+JSDoc, `FinanceSettings` 재사용, scope 동적 키는 트릭 없이 자연 통과, `parseInt` 보정 2곳(케이스별 동일 결과 직접 검증). **1차 리뷰에서 200줄 초과(203줄) 발견 → 수정 지시 → §6 예외주석 1줄 추가(수정 커밋 분리, 204줄)로 해소.** — react-app `24505d0`+`46a40dc`(2커밋). (CI 초록·감시관이 최종 `npm run typecheck`·`npm test` 재실행해 §5 전 항목 통과 확인·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 637→596건. 상세 `docs/report.md` §3~4.
+- **Step 11 JS→TS 전환 슬라이스 7 — 설정 화면 컴포넌트 패밀리**: `AppSettingsPage.jsx`(189)·`FixedRouteBlock.jsx`(50)·`RoutePresetEditor.jsx`(55)·`RunCountChips.jsx`(58) 4파일 1커밋, `@ts-check`+JSDoc, `FinanceSettings` 재사용. `!!` 보정 여러 곳(원본 값이 `normalizeSettings`로 항상 실제 boolean이라 동작 동일), `useRef` 타입 캐스팅. — react-app `8d8c59a`. (CI 초록·감시관이 `wc -l`·`npm run typecheck`·`npm test` 직접 재실행해 §5 전 항목 통과 확인·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 596→569건. 상세 `docs/report.md` §3~4.
+- **Step 11 JS→TS 전환 슬라이스 8 — MaintFuelPage·ExpenseFormModal**: `@ts-check`+JSDoc, `ExpenseItem`/`ExpenseDraft` 재사용, `lib/expenses.js`는 지시대로 무변경(별도 슬라이스로 남김). `(item.mileage||0)`/`(item.subsidy||0)` 보정(동작 동일 확인). — react-app `5e5fd06`. (CI 초록·감시관이 `wc -l`·`npm run typecheck`·`npm test` 직접 재실행해 §5 전 항목 통과 확인·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 569→553건. 상세 `docs/report.md` §3~4.
+- **Step 11 JS→TS 전환 슬라이스 9 — MyPage·ConfirmModal·RequireSession**: `@ts-check`+JSDoc props, `AppSession` 재사용. `RequireSession` `session ?? null` 최소 보정. — react-app `4aa0869`(amend, 되돌림 1회). **1차 커밋 `29bc1e8`에서 작업자가 `MyPage.onOpen`을 지시서 1-B의 `label?: string` 대신 `label: string`으로 선언하고 그 때문에 JSX 6줄(`onOpen('x')`→`onOpen('x','')`)을 바꿈 — 1-D "JSX 무변경" 위반. 감시관 §5에서 적발(동작은 동일·작업자가 공개함, but 절차상 "막히면 멈추고 보고" 미준수). 보리 (B) 결정 → 감시관이 지시서대로 경로 로컬 검증(`AppShellRoutes.jsx:78` `title` 캐스팅 `string`→`string|undefined` 1줄 승인 확장) → 작업자 amend로 JSX byte-identical 원복.** (CI 초록 run `34011251979`·감시관 §6 재실사 전 항목 통과·브라우저 스모크·보리 `[x]` 2026-09-06). strict-inventory 553→544건. 상세 `docs/archive/audit.md` "슬라이스 9".
+- **Step 11 JS→TS 전환 슬라이스 10 — formatPhone·ComingSoonPage·BottomNav**: `@ts-check`+JSDoc, 순수 표시·변환 전용(플레이북 비대상). 순수 additive(+19/-0). — react-app `857319d`. (CI 초록 run `34011936455`·감시관 §5 전 항목 통과·브라우저 스모크·보리 `[x]` 2026-09-06). strict-inventory 544→539건. 상세 `docs/report.md`(슬라이스 11로 리셋됨).
+- **Step 11 JS→TS 전환 슬라이스 19 — lib/syncWorkData.js**: `// @ts-check` +
+  `CarLike`/`ClientLike` 재사용(import만) + `syncWorkData`/`upsertDailyLog` JSDoc.
+  운행기록 Supabase upsert(`daily_logs`+`transport_details`) — §4 필수. `readJson`(slice
+  17에서 `unknown` 반환)으로 읽은 workData를 필드 접근 → §133 쟁점을 **보리 결정
+  (2026-09-06 AskUserQuestion)**대로 `record`를 `DayRecordLike` 단언 없이
+  `Record<string, unknown>` 캐스팅(3곳: workData·loop record·safeRecord)으로 처리 —
+  기존 런타임 가드(`typeof`/`Array.isArray`/`parseEntityNumber(value:unknown)`/`!!`)가
+  좁힘, **신규 검증기 0**(§7 준수). 보리 승인 최소 보정: `data.id`→`data?.id`(2곳,
+  `.single()` null 이론상 가능)·`upsertDailyLog` 반환 `/** @type {string} */ (data?.id)`
+  +`.single()` 계약 주석. Supabase 페이로드·호출 순서·에러 분기·`onConflict` 무변경.
+  루프 바인딩 `record`→`rawRecord`(가드 뒤 캐스팅으로 `record` 재도입, 본문 무변경).
+  68→83줄. — react-app `cc286bd`. (CI "verify" 초록 run `34026552370` conclusion=success·
+  headSha 일치·test/typecheck/build 3게이트 green·감시관 §5 7항목 통과 + 감시관이
+  typecheck·test·strict-inventory 직접 재실행(diff가 §1-G와 byte 일치)·`syncWorkData.js(`
+  grep 0줄 근거 첨부(`docs/report.md` §5)·보리 `[x]` 2026-09-06). strict-inventory
+  434→420(−14). 상세 `docs/report.md` §4~5.
+- **Step 11 JS→TS 전환 슬라이스 18 — domain/receivables.js**: `// @ts-check` +
+  `ReceivableGroup` typedef(그룹 반환 모양) + 함수 8개 JSDoc. `financeReceivables.js`의
+  기존 `ReceivableItemLike` 재사용(신규 도메인 타입 0). 미수금 목록 그룹핑·정렬·D-day
+  라벨 **순수 함수만**(저장·동기화·JSON 파싱 0) → `domain/receivables*` 경로가 §4 목록에
+  형식상 걸리나 "참고" 수준, §133 런타임 검증기 무관. 지시서 밖 최소 보정 1건(보리 승인):
+  `daysUntil` `(due - today)` → `(due.getTime() - today.getTime())` — `Date` 뺄셈은 JS가
+  `valueOf()`로 강제변환하므로 결과 동일, `@ts-check`가 TS2362/2363으로 막아 명시 필요.
+  `groupItems`는 뒤에 required 파라미터가 있어 `items` optional 불가(TS1016). 72→121줄.
+  — react-app `f161361`. (CI "verify" 초록 run `34022719470` conclusion=success·headSha
+  일치·test/typecheck/build 3게이트 green·감시관 §5 7항목 통과 + 감시관이
+  typecheck·test·strict-inventory 직접 재실행해 숫자 완전 일치·순수 계산 함수라 브라우저
+  검증 얕음(소비처 CI 테스트 통과)·보리 `[x]` 2026-09-06). strict-inventory 465→434(−31,
+  27건 이 파일 + 소비처 파생 4건). 상세 `docs/report.md` §4~5.
+- **Step 11 JS→TS 전환 슬라이스 17 — lib/cloudStorage.js + domain/clientTypes.js**:
+  `// @ts-check` + `readJson`/`writeJson`/`keyFor`/`parseEntityNumber`/`rangesOverlap`/
+  `buildVehicleRow` JSDoc 6블록. `readJson` 반환은 `unknown`(도메인 좁히기 없음 —
+  호출부 `outboxFlush`/`outboxRollback`가 이미 `/** @type */` 단언, 슬라이스 12·13 선례).
+  **죽은 함수 3개(`collectPracticeSnapshot`·`practiceSnapshotForProfile`·
+  `applyPracticeSnapshot`) 통째 삭제** — 전 저장소 호출부 0, `store/owner-state.js`
+  `replaceOwnerState`로 대체됨, 보리 삭제 승인(§10 대상 특정 재확인 충족). `KEYS`·함수
+  본문·`buildClientRow` 기존 주석 무변경. `clientTypes.js`는 `ClientLike`에
+  `taxInvoiceEnabled` 1줄 additive(착수 전부터 있던 TS2339 해소). `lib/cloud*`라 §4
+  플레이북 트리거였으나 원시 I/O 함수 타입 주석 + 죽은 코드 삭제뿐, §133 검증기 없음.
+  126→125줄. — react-app `87ab7fd`. (CI "verify" 초록 run `34021045759`
+  conclusion=success·headSha 일치·test/typecheck/build 3게이트 green·감시관 §5 7항목
+  통과 + 감시관이 typecheck·test·strict-inventory 직접 재실행해 숫자 완전 일치·원시 helper
+  계층이라 단독 브라우저 검증 대상 없음(소비처 6파일 CI 테스트 통과로 회귀 없음)·보리
+  `[x]` 2026-09-06). strict-inventory 503→465(−38). 상세 `docs/report.md` §4~5.
+- **Step 11 JS→TS 전환 슬라이스 16 — lib/originalWindow.js**: `@ts-check` 1줄 +
+  `applyOriginalFixture` `@param` 3곳(`win`은 `{ localStorage: { setItem(key,value):void } }`
+  최소 구조만 — `@types/jsdom` 의존성 회피, `any`/캐스팅 0). 본문 무변경. 호출부는
+  `finance.test.js`·`receivables-invoices.test.js` 2곳뿐(둘 다 `loadOriginalWindow()`
+  결과를 `win`으로 전달 — DOMWindow가 구조적으로 호환). 테스트 전용 헬퍼라 §4 플레이북
+  비대상, 브라우저 검증 대상 없음. — react-app `a54dd1e`. (CI 초록 run `34016176226`
+  conclusion=success·headSha 일치·감시관 §5 7항목 재실사 통과(diff +6/-0, 착수지시서와
+  라인 단위 일치)·CI 561/135 통과로 회귀 없음·보리 `[x]` 2026-09-06). strict-inventory
+  506→503(-3). 상세 `docs/archive/audit.md` "슬라이스 16".
+- **Step 11 JS→TS 전환 슬라이스 15 — store/batchWrites.js**: `@ts-check` 1줄 + `buildBatchWrites` 지역변수 `const writes`에 `@type {Array<KeyedWrite>}`(이미 선언된 `@returns`와 동일) 1줄만(+2/-0). 순수 계산 함수(실제 저장은 `writeAllOrNothing`), `src/store/**`라 §4 트리거지만 저장·동기화 로직 무변경. — react-app `83c1fbc`. (CI 초록 run `34015545300`·감시관 §5 7항목 통과(diff가 §1-G와 정확히 일치)·브라우저 스모크·보리 `[x]` 2026-09-06). strict-inventory 508→506건. 상세 `docs/archive/audit.md` "슬라이스 15".
+- **Step 11 JS→TS 전환 슬라이스 14 — practiceSettings.js·profile.js**: `@ts-check`+`@param`만(각 본문 무변경). `practiceSettings.js` 3건(`applyTheme`은 `'light'|'dark'`), `profile.js` 2건(`saveProfile profile:LocalProfile`). 두 `save*`가 `upsertProfileOnSupabase` 원격+epoch 가드 → §4 트리거였으나 원격 경로·가드·`{}`/`EMPTY_PROFILE` fallback 무변경, 신규 캐스팅 0. — react-app `82ea3ac`. (CI 초록 run `34014946741`·감시관 §5 7항목 통과(diff가 §1-G와 라인 단위 일치)·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 513→508건. 상세 `docs/archive/audit.md` "슬라이스 14".
+- **Step 11 JS→TS 전환 슬라이스 13 — cars.js·clients.js·drivers.js 배럴**: `@ts-check`+`@param`, `load*` fallback `unknown[]` 캐스팅(요소 단언 없음)·`save*` items는 `CarLike[]`/`ClientLike[]`/`DriverRecord[]`. `cars.js`만 `loadCars` return의 `dedupeCarsById` 인자에 `{ id?: string|number }[]` 최소 구조 캐스팅 1곳(dedupe 내부 런타임 가드 유지). 위임 로직 무변경, 원격 mutation 없어 §4 트리거 아님. — react-app `3c43481`. (CI 초록 run `34014374350`·감시관 §5 7항목 전부 통과(diff가 §1-G와 라인 단위 일치·사전검증본과 byte 동일)·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 522→513건. 상세 `docs/archive/audit.md` "슬라이스 13".
+- **Step 11 JS→TS 전환 슬라이스 12 — invoices.js·report.js**: `@ts-check`+`@param`, `loadInvoices` fallback `unknown[]` 캐스팅(요소 타입 단언 없음)·`saveInvoices` items `InvoiceLike[]`·`report.js`는 `dash`(`@param {unknown}`)/`buildMonthReport`에 `@param`만. 로직·세션 epoch 가드 무변경. `saveInvoices` 원격 mutation으로 §4 플레이북 트리거였으나 타입 주석만이라 §1-F 검증기 추가 없음. — react-app `d2ac4be`. (CI 초록 run `34013535405`·감시관 §5 7항목 전부 통과(diff가 착수지시서 §1-B와 라인 단위 일치)·브라우저 통과·보리 `[x]` 2026-09-06). strict-inventory 529→522건. 상세 `docs/archive/audit.md` "슬라이스 12".
+- **Step 11 JS→TS 전환 슬라이스 11 — supabaseClient.js + AuthPage catch 2줄**: `@ts-check`+`@param` 10곳(9곳 `{string}`, `error` 1곳 `{ message?: string }|null|undefined`). `error` 좁히기가 `AuthPage.jsx` `catch (error)`(strict `unknown`) 2곳을 깨서 보리 (a) 승인으로 catch 2줄(`error instanceof Error ? error : null`)만 범위 포함 — `if (error)` 분기·본문·쿼리 무변경. AGENTS §4 플레이북 트리거였으나 §1-F 검증기 없어 해당 없음. 작업자 멈춤 1회(감시관 grep 패턴이 `testSupport/fakeSupabaseClient.js` 오매칭 — 실블로커 아님, 작업자 대응은 정확). — react-app `bda5933`. (CI 초록 run `34012796950`·감시관 §5 전 항목 통과(로컬 end-to-end 사전검증도 완료)·브라우저 스모크(auth 에러 토스트)·보리 `[x]` 2026-09-06). strict-inventory 539→529건. 상세 `docs/report.md` §4~5.
 
 ## 아직 안 한 큰 것 (나중 Step)
-- **Step 10**: 리포트 PDF / 알림 / 온보딩 / 고객센터
-- **Step 11**: 모든 파일 200줄 강제 + JS→TS 전환
-  ← **진짜 TypeScript는 여기서.** 지금은 JS + JSDoc 주석 타입.
-  strict-inventory 타입 부채 약 1,333건은 Step 11 몫(지금 통과조건 아님).
+- **Step 11 — 200줄 강제**: 전체 완료(슬라이스 1~4, 2026-09-05).
+- **Step 11 — JS→TS 전환**: 진행 중(슬라이스 1~19 완료, strict-inventory 775→420건).
+  지금은 JS + JSDoc 주석 타입(`.js` 확장자 유지, 보리 결정 2026-09-05) — 실제
+  `.ts`/`.tsx` 확장자 전환은 이 작업 끝난 뒤 별도 단계.
+  **잔여 420건 = 프로덕션/testSupport ~71건 + `.test.js` 349건.**
+  프로덕션 ~71건 내역:
+  - 클라우드/동기화 본진(~66): `lib/syncExpenseRecords.js`(25, 슬라이스 20)·
+    `domain/taxInvoices.js`(19)·`lib/outboxReconcile.js`(13)·`lib/expenses.js`(5)·
+    `lib/dirtyJournal.js`(4) — AGENTS §4 필수, 신중히(실제 저장·동기화 로직). 보리 결정:
+    `record`/`item`은 `Record<string,unknown>`+기존 가드, 신규 검증기 0.
+    (`cloudStorage.js` 38 슬라이스 17, `receivables.js` 27 슬라이스 18, `syncWorkData.js` 14
+    슬라이스 19 완료.)
+  - 얇은 배럴/기타: `lib/originalWindow.js`(3, 테스트 헬퍼)는 슬라이스 16에서 완료,
+    `store/batchWrites.js`(2)는 슬라이스 15에서 완료.
+  - 자잘 UI(4): `main.jsx`·`ReportPage.jsx`·`ForgotPasswordModal.jsx`·
+    `HydrationRetryBanner.jsx`(각 1).
+  - `testSupport/fakeSupabaseClient.js`(1, TS2322) — `@ts-check` 없어 CI 게이트
+    밖, strict-inventory에서만. 착수 전부터 있던 것.
+  - `.test.js` 349건: 테스트 파일은 200줄·strict 면제(migration 원칙 3·13 —
+    "증가 금지"이지 "전부 수정"은 아님). 별도로 다룰지는 보리 결정.
 
 ## 알려진 이슈 (당장 안 고쳐도 되지만 잊으면 안 됨)
 - ~~**기사 초대 동시성(TOCTOU) 레이스**: `0001_driver_links_idempotency_key.sql` 미적용~~ →
@@ -119,9 +251,12 @@ DB 변경 없음(기존 RPC 호출만). 작업자 구현 대기.
   정도. 필요해지면 `OwnerSnapshot` 확장 검토(지금은 급하지 않음).
 - `npm run typecheck` → 현재 **0 에러**(정상).
 
-## 저장소 상태
-- **react-app**: `main` = origin/main = `253198d`(Step 10 5-3: 고객센터 나의 문의 확인, CI 초록·보리 `[x]` — Step 10 전체 완료). 미커밋 없음(작업트리 클린).
-- **ubiquitous-parakeet**: `main` `97813a6`(미푸시) + 이번 세션 문서 갱신분 미커밋(`STATUS.md`·`docs/report.md`·`docs/archive/audit.md` — Step 9 ① 전체 `[x]` 기록).
+## 저장소 상태 (2026-09-06)
+- **react-app**: `main` = origin/main = `cc286bd`(JS→TS 슬라이스 19, CI "verify" 초록
+  run `34026552370`·감시관 §5 통과·**보리 `[x]` 확정 2026-09-06**). 작업트리 클린.
+- **ubiquitous-parakeet**: `main` `057b6e5`(origin/main과 동일) + 이번 세션
+  `STATUS.md`·`docs/report.md`·`docs/archive/audit.md` 갱신분 미커밋(JS→TS 슬라이스
+  9~15 완료 기록 + 슬라이스 16·17·18·19 `[x]` 확정 기록).
 - 정확한 HEAD·미커밋 범위는 세션 시작 시 `git log`/`git status`로 직접 확인 (AGENTS.md §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)

@@ -4127,3 +4127,367 @@ run `33961129711` **success**(2026-09-05T10:36:46Z).
 
 **최종 승인**: 보리 `[x]` 확정 (2026-09-05). react-app `main` = origin/main = `253198d`.
 **이걸로 Step 10 5차(고객센터: FAQ/1:1문의/내문의확인) 전체 완료.**
+
+## Step 11 JS→TS 전환 슬라이스 9 — MyPage·ConfirmModal·RequireSession (2026-09-06, [x] 확정)
+
+**대상**: `src/components/MyPage.jsx`·`src/components/ConfirmModal.jsx`·
+`src/app/RequireSession.jsx` — `@ts-check` + JSDoc props 타입만. 셋 다 클라우드/
+localStorage 직접 미접촉(플레이북 비대상).
+
+**최종 커밋**: `react-app 4aa0869` (amend). CI "CI" run `34011251979` **success**
+(2026-09-06T04:20:29Z). strict-inventory 553→544건(-9). `npm run typecheck` 0.
+브라우저 스모크 보리 통과. 보리 `[x]` 2026-09-06. react-app `main` = origin/main = `4aa0869`.
+
+**되돌림 1회 — 작업자 프로세스 이탈**:
+- 1차 커밋 `29bc1e8`: 작업자가 착수지시서 1-B의 `@param {(page: string, label?: string)}`
+  대신 `label: string`(필수)로 선언하고, 그 결과 `MyPage` 안의 1인자 `onOpen('x')` 호출
+  6곳을 `onOpen('x', '')`로 바꿈 → 지시서 1-D "JSX 무변경" 위반.
+- 원인: 지시서대로 `label?: string`을 쓰면 범위 밖 상위 `AppShellRoutes.jsx:78`이
+  `onOpen` 화살표 함수의 `title`을 `string`으로 캐스팅해 둔 탓에 타입 에러(2인자 필수
+  함수 → 옵셔널 2인자 타입 대입 불가). 작업자는 이 충돌을 멈추고 보고("막히면 멈추고
+  보고", 슬라이스 4 선례)하지 않고 독자 우회. 동작 자체는 동일(`goToPage`는 `'soon'`
+  외엔 `title` 무시)했고 보고서에 공개는 함.
+- 감시관 §5에서 적발 → 보리 (B) "지시서대로 되돌림" 결정 → 감시관이 (B) 경로를 로컬에서
+  적용·검증(`npm run typecheck` exit 0) 후 수정 지시문 작성 → 작업자 amend `4aa0869`로
+  `MyPage.jsx` JSX를 `5e5fd06` 기준 byte-identical 원복 + `onOpen` = `label?: string` +
+  `AppShellRoutes.jsx:78` `title` 캐스팅 `string`→`string | undefined`(보리 승인 범위
+  확장 1줄).
+- **교훈**: 타입 충돌로 지시서 시그니처를 못 쓰면 → 멈추고 보고. 우회 금지.
+
+## Step 11 JS→TS 전환 슬라이스 12 — lib/invoices.js·lib/report.js (2026-09-06, [x] 확정)
+
+**대상**: `src/lib/invoices.js`(3건)·`src/lib/report.js`(4건) — `@ts-check` + `@param` +
+`loadInvoices` fallback `unknown[]` 캐스팅. 로직 무변경. `invoices.js`는 `saveInvoices`
+원격 mutation(`syncTaxInvoices`)이 있어 §4 플레이북 트리거였으나 이 슬라이스는 타입
+주석만이라 §1-F대로 요소별 검증기 추가 안 함(`loadInvoices`는 최상위 배열 여부만 확인,
+`unknown[]` 그대로 반환 — 런타임 동작 100% 동일). `report.js`는 읽기 전용 리포트 빌더
+(플레이북 비대상).
+
+**최종 커밋**: react-app `d2ac4be`(작성자 `ya01na111`). CI "verify" run `34013535405`
+**success**(57s, 2026-09-06T05:15:33Z — `npm test`+`typecheck`+`build`). strict-inventory
+529→522건(-7, 착수지시서 예측치 일치). 감시관 §5 7항목 전부 통과(범위·몰래증설·타입꼼수
+·200줄·테스트진실성·문서정합·요구사항충족 — diff가 착수지시서 §1-B 설계와 라인 단위 일치).
+브라우저 실검증 보리 통과(리포트 렌더·PDF 파일명·세금계산서 발급 저장·콘솔 에러 0).
+보리 `[x]` 2026-09-06. react-app `main` = origin/main = `d2ac4be`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(슬라이스 13으로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 13 — lib/cars.js·lib/clients.js·lib/drivers.js (2026-09-06, [x] 확정)
+
+**대상**: Step 4 얇은 배럴 3개(`domain/*.js` 재수출 + `load*`(localStorage 읽기+`Array.isArray`
+가드) + `save*`(→`commit*` 위임)). 각 3건, 총 9건. `@ts-check` + `@param` + fallback
+`unknown[]` 캐스팅. `cars.js`만 `loadCars` return의 `dedupeCarsById` 인자에
+`{ id?: string|number }[]` 최소 구조 캐스팅 1곳(도메인 타입·중첩 필드 단언 아님 —
+`dedupeCarsById`의 `@template {{ id?: string|number }}` 제약을 맞추기 위한 것이고,
+dedupe 내부에 `typeof !== 'object'` 런타임 가드가 있어 방어는 유지). 위임 로직 무변경.
+세 `save*`는 원격 mutation·세션 가드 없는 로컬 `commit*` 위임뿐 → §4 플레이북 트리거 아님.
+
+**최종 커밋**: react-app `3c43481`(작성자 `ya01na111`, co-author Cursor). CI "verify"
+run `34014374350` **success**(59s, 2026-09-06T05:35:41Z). strict-inventory 522→513건(-9,
+착수지시서 예측치 정확히 일치). 감시관 §5 7항목 전부 통과(diff가 착수지시서 §1-G와
+라인 단위 일치, 감시관 사전검증본과 byte 동일). 브라우저 실검증 보리 통과(차량·거래처·
+기사 관리 CRUD 저장·유지·콘솔 에러 0). 보리 `[x]` 2026-09-06. react-app `main` =
+origin/main = `3c43481`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 14 — lib/practiceSettings.js·lib/profile.js (2026-09-06, [x] 확정)
+
+**대상**: 설정·프로필 저장 배럴 2개. `@ts-check` + `@param`만(각 본문 무변경).
+`practiceSettings.js` 3건(`loadPracticeSettings [ownerKey]`·`savePracticeSettings
+ownerKey/patch:FinanceSettings`·`applyTheme theme:'light'|'dark'`), `profile.js` 2건
+(`loadProfile [ownerKey]`·`saveProfile ownerKey/profile:LocalProfile`). 두 `save*`가
+로그인 시 `upsertProfileOnSupabase`(Supabase 원격) + `captureSession`/
+`assertSessionStillCurrent` epoch 가드 → §4 플레이북 트리거(슬라이스 12 `saveInvoices`와
+동일 구조)였으나 타입 주석만이라 원격 경로·가드·`{}`/`EMPTY_PROFILE` fallback 전부
+무변경, 신규 캐스팅 0(기존 `/** @type {string} */ (userId)` 2곳 유지). fallback `{}`는
+`normalizeSettings`/`EMPTY_PROFILE` 병합이 런타임 방어라 캐스팅 불필요.
+
+**최종 커밋**: react-app `82ea3ac`(작성자 `ya01na111`, co-author Cursor). CI "verify"
+run `34014946741` **success**(45s, 2026-09-06T05:49:42Z). strict-inventory 513→508건(-5,
+착수지시서 예측치 정확히 일치). 감시관 §5 7항목 전부 통과(diff가 §1-G와 라인 단위 일치,
+사전검증본과 byte 동일). 브라우저 실검증 보리 통과(설정 저장·테마 전환·개인정보 저장·
+정산 설정·온보딩·콘솔 에러 0). 보리 `[x]` 2026-09-06. react-app `main` = origin/main = `82ea3ac`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 15 — store/batchWrites.js (2026-09-06, [x] 확정)
+
+**대상**: `buildBatchWrites`(commitBatch가 쓸 localStorage 목록을 계산만 하는 순수 함수 —
+실제 저장은 `atomicPersist.js` `writeAllOrNothing`). 이미 typedef 3개 + 전 export 함수
+`@param`/`@returns` 완비 → `// @ts-check` 1줄 + 지역변수 `const writes` 앞
+`/** @type {Array<import('./atomicPersist.js').KeyedWrite>} */` 1줄만(+2/-0). `@type`은
+이미 선언된 `@returns`와 동일이라 새 스키마 아님. `src/store/**`라 §4 플레이북 트리거지만
+persist/settings-theme/syncToCloud 분기·`planDirtyWrite` 호출·런타임 가드 전부 무변경.
+
+**최종 커밋**: react-app `83c1fbc`(작성자 `ya01na111`, co-author Cursor). CI "verify"
+run `34015545300` **success**(53s, 2026-09-06T06:04:14Z). strict-inventory 508→506건(-2,
+착수지시서 예측치 정확히 일치). 감시관 §5 7항목 전부 통과(diff가 §1-G와 정확히 일치,
+사전검증본과 byte 동일). 브라우저 스모크 보리 통과(게스트 차량·로그인 테마·거래처 저장·
+콘솔 에러 0). 보리 `[x]` 2026-09-06. react-app `main` = origin/main = `83c1fbc`.
+
+**이걸로 Step 11 JS→TS의 "얇은 배럴/기타" 그룹 사실상 완료** — 남은 프로덕션 미전환은
+`lib/originalWindow.js`(3, 테스트 헬퍼) + 클라우드/동기화 본진 ~150건.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 16 — lib/originalWindow.js (2026-09-06, [x] 확정)
+
+**대상**: 원본 스크립트를 jsdom 창에 로드하는 테스트 헬퍼. strict-inventory 3건 =
+`applyOriginalFixture(win, settings, workDataByLogId)`의 무타입 파라미터 3개.
+`// @ts-check` 1줄 + `@param` 3줄(+6/-0):
+- `win`: `{ localStorage: { setItem(key: string, value: string): void } }` — 실제 쓰는
+  멤버만 최소 구조 선언. `@types/jsdom` 의존성을 새로 끌어오지 않으려는 의도적 선택
+  (`DOMWindow` 전체 타입 대신). `any`·캐스팅 0.
+- `settings`: `import('../domain/financeTypes.js').FinanceSettings` (기존 typedef 재사용)
+- `workDataByLogId`: `import('../domain/financeTypes.js').WorkDataByLogId` (기존 typedef 재사용)
+
+함수 본문 무변경. `loadOriginalWindow`는 이미 무파라미터라 대상 아님(반환 타입 주석도
+추가 안 함 — jsdom 추론에 맡김, strict-inventory 비대상).
+
+**호출부 확인**: `applyOriginalFixture`/`loadOriginalWindow` 사용처는 `src/domain/
+finance.test.js:27-28`·`src/domain/receivables-invoices.test.js:37-38` 2곳뿐. 둘 다
+`loadOriginalWindow()`(jsdom `DOMWindow`) 결과를 `win`으로 그대로 전달 → `DOMWindow`에
+`localStorage.setItem`이 있어 구조적으로 호환, 타입 에러 없음. 프로덕션 코드 경로엔
+전혀 등장하지 않음(테스트 전용).
+
+**§4 플레이북**: `win.localStorage.setItem`을 호출하지만 이건 jsdom 가짜 창에 픽스처를
+심는 테스트 셋업이지 앱의 저장·동기화 경로가 아님 → 플레이북 비대상. 브라우저 실검증
+대상 없음(테스트 헬퍼).
+
+**감시관 §5 재실사 (커밋 `a54dd1e` 직접 대조)**:
+1. 범위: `src/lib/originalWindow.js` 1파일 +6/-0. 착수지시서 일치. ✓
+2. 몰래 증설: 신규 파일·저장 키·큐·fallback 0. ✓
+3. 타입 꼼수: `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 0. `win` 최소구조
+   선언은 편법이 아니라 의존성 회피 목적의 정당한 좁은 타입. ✓
+4. 200줄: 39줄. ✓
+5. 테스트 진실성: `.test.*` 변경 0(호출부 무변경으로 호환 확인). ✓
+6. 문서 정합: react-app diff에 `.md` 0. ✓
+7. 요구사항: strict-inventory 3건(파라미터 3개) 전부 `@param` 부여. ✓
+
+**최종 커밋**: react-app `a54dd1e`(작성자 `ya01na111`, co-author Cursor). CI "verify"
+run `34016176226` **success**(conclusion=success, headSha `a54dd1e…` 일치). CI 561/135
+통과로 회귀 없음. strict-inventory 506→503건(-3, 착수지시서 예측치 정확히 일치).
+보리 `[x]` 2026-09-06. react-app `main` = origin/main = `a54dd1e`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md`
+(다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 17 — lib/cloudStorage.js + domain/clientTypes.js (2026-09-06, [x] 확정)
+
+**대상**: `cloudSync.js`(구 920줄) 분리 조각 — practice 스냅샷 localStorage I/O 원시함수
++ Supabase row 빌더. strict-inventory 38건.
+
+**감시관 사전 조사 (전 저장소 grep)**: 함수 9개 중 실사용 6개
+(`parseEntityNumber`·`readJson`·`keyFor`·`KEYS`·`rangesOverlap`·`buildVehicleRow`·
+`buildClientRow`), **죽은 함수 3개**(`collectPracticeSnapshot`·`practiceSnapshotForProfile`·
+`applyPracticeSnapshot`) — 전 저장소·테스트에서 호출부 0. `cloudSync.js` 분리 잔재이며
+`store/owner-state.js`의 `OwnerSnapshot` typedef + `replaceOwnerState`("각 필드 있을 때만
+반영 + `typeof==='object'`/`Array.isArray` 가드" 동일 패턴)로 완전 대체됨. 38건 중 ~23건이
+이 죽은 블록.
+
+**보리 결정 (2026-09-06 세션 대화창, AskUserQuestion)**:
+- Q1 죽은 함수 3개 → **삭제**(동작 변화 0, migration 삭제금지 원칙 명시 예외 승인,
+  §10 "대상 특정 위험 요약 → 사용자 지목 재확인" 절차 충족 — 함수명·라인범위·대체재
+  제시 후 승인).
+- Q2 `clientTypes.js` `taxInvoiceEnabled` 1줄 additive → **포함**(원본·react 둘 다 쓰는
+  실제 필드인데 typedef에서 누락된 것, `buildClientRow` 진단 해소, §3 1~3파일 이내).
+
+**§4 플레이북 / §133**: 경로가 `lib/cloud*`라 §4 트리거 → 정독. 그러나 이 파일은 원시
+localStorage I/O + 순수 row 빌더뿐이고 hydrate·세션 epoch 가드·outbox 실행·durable
+journal은 전부 소비처(무변경)에 있음. **§133 런타임 검증기 불필요** — `readJson` 반환을
+도메인 타입으로 좁히지 않고 `unknown`으로 둠(좁히는 책임은 이미 호출부:
+`outboxFlush.js:50`·`outboxRollback.js:17`이 `/** @type {Array<X>} */` 단언). JSON→도메인
+단언이 이 파일에서 일어나지 않으므로 §133 대상 아님. 슬라이스 12(`loadInvoices` fallback
+`unknown[]`)·13(`load*` 배럴) 승인 패턴과 동일. §133 대상이 될 뻔한 `applyPracticeSnapshot`은
+삭제되므로 무관.
+
+**최종 커밋**: react-app `87ab7fd`(작성자 `ya01na111`, co-author Cursor). 변경
+`cloudStorage.js`(+33/-32, 126→125줄) + `clientTypes.js`(+1). `// @ts-check` 1줄 +
+6블록 JSDoc(`readJson` storageKey:string/fallback:unknown/→unknown, `writeJson`,
+`keyFor`, `parseEntityNumber` value:unknown/→number, `rangesOverlap` 4×string/→boolean,
+`buildVehicleRow` userId:string/car:CarLike/index:number) + 죽은 함수 3개 삭제.
+`KEYS` 8항목·함수 본문·`buildClientRow` 기존 `@param {ClientLike}` 주석 무변경.
+
+**감시관 §5 실사** (커밋 `87ab7fd` diff 직접 대조 + typecheck·test·strict-inventory
+직접 재실행 — push 전 사전 실사, push 후 CI 재확인):
+1. 범위: 2파일 = §1-C. §1-D "안 건드릴 것" 전부 무변경(diff·`sed` 확인). ✅
+2. 몰래 증설: 신규 파일·의존성·typedef·저장 키·durable/큐/fallback 0. 죽은 코드 삭제로
+   표면 감소. `KEYS` 8항목 유지. ✅
+3. 타입 꼼수: diff `^+` grep — `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as`
+   0줄. `unknown`은 §1-G 명시 허용 3함수뿐, `rangesOverlap`은 `string`,
+   `car`/`client`은 기존 도메인 타입 재사용. ✅
+4. 200줄: `cloudStorage.js` 125줄·`clientTypes.js` 59줄. ✅
+5. 테스트 진실성: 테스트 파일 변경 0. 삭제된 3함수는 호출부·테스트 0(커버리지 손실
+   없음). 기존 테스트 약화 0. ✅
+6. 문서 정합: react-app diff에 `.md` 0. ✅
+7. 요구사항: diff가 §1-G와 **라인 단위 일치**. `readJson` 반환 `unknown`(도메인 좁히기
+   없음) 확인. ✅
+
+**감시관 직접 재실행** (커밋된 상태 = `87ab7fd`):
+- `npm run typecheck` → **0 에러**
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` →
+  **465** (503 → −38, 착수지시서 예측치 정확히 일치). `cloudStorage.js(`·`clientTypes.js(`
+  grep **0줄**.
+- `npm test` → unit **561/561** · app **135/135** (fail 0)
+→ 작업자 보고 숫자와 완전 일치.
+
+**CI 확인**: 보리 push → react-app `main` = origin/main = `87ab7fd`. CI "verify" run
+`34021045759` **conclusion=success**, headSha 일치, job "verify" 스텝
+테스트·타입검사·빌드 **3게이트 전부 success**.
+
+**브라우저 검증**: 원시 helper·row 빌더 계층이라 단독 브라우저 검증 대상 없음 —
+소비처 6파일(`syncVehiclesClients`·`outboxFlush`·`outboxRollback`·`syncWorkData`·
+`directMutations`·`dayLogCloudCommit`)이 CI `npm test`에서 통과한 것으로 회귀 없음 확인.
+
+**보리 `[x]` 2026-09-06.** react-app `main` = origin/main = `87ab7fd`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 18 — domain/receivables.js (2026-09-06, [x] 확정)
+
+**대상**: 미수금(receivables) 목록의 그룹핑·정렬·D-day 라벨·운행월 표기 함수(72줄,
+strict-inventory 27건). `lib/receivables.js`가 얇게 재수출.
+
+**§4 플레이북 / §133 판단**: 경로가 `domain/receivables*`라 AGENTS §4 트리거 목록에
+형식상 걸리나, **저장·삭제·동기화·JSON 파싱이 전혀 없다** — 전부 인자로 받은 `items`
+배열을 `filter`/`sort`하고 `Date` 계산으로 D-day 문자열 만드는 순수 함수. 플레이북 본문
+"순수 UI·표시·계산만 바꾸는 작업은 이 문서 대상이 아니다" + AGENTS §4 판별 한 줄
+"화면에 보여주기만? → 참고" → **참고 수준, §133 런타임 검증기 무관**(JSON→도메인 좁히기
+지점 없음).
+
+**타입 소스**: 기존 `domain/financeReceivables.js`(`@ts-check` 완비)에 `ReceivableItemLike`
+typedef가 이미 존재 — 이 파일 함수가 쓰는 필드 전부 포함(`dateKey`·`detailId`·`logId`·
+`client`·`remainingAmount`·`paymentDueDate`·`workDate`). `getReceivableItems`가 이 타입으로
+만들어 넘기고 소비처도 동일 타입 사용 → 재사용, 신규 도메인 타입 0.
+
+**지시서 밖 최소 보정 2건 (보리 승인 2026-09-06 세션 대화창)**:
+1. `daysUntil` line 34 `(due - today)` → `(due.getTime() - today.getTime())`. `due`/`today`는
+   `Date` 객체 — JS는 `Date - Date`를 `valueOf()`(=`getTime()`)로 강제변환하므로 런타임
+   동작 100% 동일. `@ts-check`가 `Date` 산술을 TS2362/2363으로 막아 `.getTime()` 명시 필요.
+   (슬라이스 2·6·8의 `parseInt(String(x))`·`|| ''` 류와 같은 범주.) `Math.round(.../86400000)`
+   계산식 무변경.
+2. 신규 `@typedef ReceivableGroup`(client·monthKey·total·count·items) — `groupByClientMonth`가
+   만들어 반환하는 그룹 객체(거래처×월 묶음) 모양. `grouped` 레코드 타입 + `@returns`에 사용.
+   새 "저장 스키마"가 아니라 함수 반환 모양 서술. 파일 로컬 1개 shape.
+
+**추가 사항**: `groupItems(items, clientName, monthKey)` — `items`를 optional(`[items]`)로
+달면 뒤의 required 파라미터 때문에 TS1016("required cannot follow optional") → `items`는
+대괄호 없이 required로. 런타임 `(items || [])` 가드는 그대로.
+
+**최종 커밋**: react-app `f161361`(작성자 `ya01na111`, co-author Cursor). 변경
+`src/domain/receivables.js`(+51/-1, 72→121줄). `// @ts-check` + typedef 2개
+(`ReceivableItemLike` import, `ReceivableGroup`) + 함수 8개 JSDoc + `daysUntil` 1줄 보정.
+본문 로직은 `daysUntil` `.getTime()` 2곳 외 무변경(`currentMonthKey`는 무인자·무변경).
+
+**감시관 §5 실사** (커밋 `f161361` diff 직접 대조 + typecheck·test·strict-inventory
+직접 재실행 — push 전 사전 실사, push 후 CI 재확인):
+1. 범위: 1파일 +51/-1 = §1-C. §1-D 전부 무변경(본문 변경 `daysUntil` 1줄뿐). ✅
+2. 몰래 증설: 신규 파일·의존성·저장 키·durable/큐 0. 새 typedef 2개는 §0-E·§1-B 사전
+   문서화 + 보리 승인. `financeReceivables.js` 기존 타입 재사용. ✅
+3. 타입 꼼수: diff `^+` grep — `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as`
+   0줄. 전 파라미터 `ReceivableItemLike`/`string`/`Date`/`Pick<...>`. ✅
+4. 200줄: 121줄. ✅
+5. 테스트 진실성: 테스트 파일 변경 0. `callDetailIds.test.js`(`receivableItemKey` 사용)
+   CI 통과. 기존 테스트 약화 0. ✅
+6. 문서 정합: react-app diff에 `.md` 0. ✅
+7. 요구사항: diff가 §1-G와 라인 단위 일치. ✅
+
+**감시관 직접 재실행** (커밋된 상태 = `f161361`):
+- `npm run typecheck` → **0 에러**
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **434**
+  (465 → −31). `receivables.js(`·`financeReceivables.js(` grep **0줄**. 착수지시서 예측
+  −31 정확히 일치(27건 이 파일 + 소비처가 `any` 대신 타입 받으며 파생 4건 해소).
+- `npm test` → unit **561/561** · app **135/135** (fail 0)
+→ 작업자 보고 숫자와 완전 일치.
+
+**CI 확인**: 보리 push → react-app `main` = origin/main = `f161361`. CI "verify" run
+`34022719470` **conclusion=success**, headSha 일치, job "verify" 스텝 테스트·타입검사·
+빌드 **3게이트 전부 success**.
+
+**브라우저 검증**: 순수 표시·계산 함수라 단독 브라우저 검증 대상 얕음 — 소비처
+(`useReceivablesData`·`notifications`·`components/receivables/*`)가 CI `npm test`에서 통과한
+것으로 회귀 없음 확인. 스모크(미수금 목록/상세 렌더·D-day 배지)는 선택.
+
+**보리 `[x]` 2026-09-06.** react-app `main` = origin/main = `f161361`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).
+
+## Step 11 JS→TS 전환 슬라이스 19 — lib/syncWorkData.js (2026-09-06, [x] 확정)
+
+**대상**: `cloudSync.js` 분리 조각 — `syncAll`이 부르는 일반 동기화 큐의 운행기록
+(`daily_logs` + `transport_details`) Supabase upsert. 68줄, strict-inventory 14건
+(전부 TS7006 파라미터).
+
+**§4 플레이북 / §133 — 보리 결정 (2026-09-06 AskUserQuestion)**:
+- 경로 `lib/sync*` + 실제 Supabase 원격 mutation → §4 **필수**. 플레이북 재정독.
+- `readJson`(슬라이스 17에서 반환이 `unknown`)으로 localStorage workData를 읽어
+  `record.isOff`·`record.callDetails`·`record.fixedCount` 등 필드 접근 → §133 쟁점.
+- 감시관이 3가지 선택지 제시(A: `Record<string,unknown>`+기존 가드 / B: 신규 런타임
+  검증기 / C: 쉬운 파일 먼저). **보리 = A**. 추가 조건:
+  - `syncWorkData.js`(14) 먼저 = 이 슬라이스, `syncExpenseRecords.js`(25)는 슬라이스 20
+    별도(묶지 말 것).
+  - `data.id` → `data?.id` (`.select('id').single()` 이론상 null 가능).
+  - 감시관은 완료 후 strict-inventory 해당 파일 0줄 출력을 근거로 첨부.
+- `record`를 `DayRecordLike` 등 도메인 타입으로 **단언 안 함** → §133 위반 아님.
+  신규 검증기 0(§7 "이름만 바꾼 같은 패턴 금지" 준수).
+
+**타입 소스**: `CarLike`(`domain/financeTypes.js`)·`ClientLike`(`domain/clientTypes.js`,
+슬라이스 17에서 `taxInvoiceEnabled` 추가된 그 타입) 재사용. 신규 typedef 0.
+
+**지시서 밖 최소 보정 4건 (보리 승인)**:
+1. `data.id` → `data?.id` (transport_details delete `.eq` + insert map, 2곳). `.single()`
+   성공 시 정확히 1행 보장이라 런타임 사실상 동일(null이면 원래도 TypeError).
+2. `upsertDailyLog` 반환 `return data.id` → `return /** @type {string} */ (data?.id)` +
+   위 주석 `// .single()은 성공 시 정확히 1행을 보장 — error가 없으면 data는 non-null.`
+   `@returns {Promise<string>}` 충족용. 도메인 타입 아님(`string`).
+3. 루프 바인딩 `[workDate, record]` → `[workDate, rawRecord]` + 가드 뒤
+   `const record = /** @type {Record<string, unknown>} */ (rawRecord)`. 본문 `record.*` 무변경.
+4. `workData` = `readJson(...) || {}` 결과에 `/** @type {Record<string, unknown>} */` 캐스팅
+   (`Object.entries` 호출용, 도메인 타입 아님 — 슬라이스 12·13 `unknown[]` 선례).
+
+**최종 커밋**: react-app `cc286bd`(작성자 `ya01na111`, co-author Cursor). 변경
+`src/lib/syncWorkData.js`(+26/-7, 68→83줄). `// @ts-check` + typedef 2(import) + 함수 2개
+JSDoc + `Record<string, unknown>` 캐스팅 3곳 + `data?.id` 2곳 + 반환 캐스팅 1곳(+주석).
+Supabase 페이로드 필드·`throw` 분기·`onConflict`·`.select('id').single()`·`Array.isArray`
+로직·`clientIdByName` Map·`parseEntityNumber` 호출·정규식 전부 무변경.
+
+**감시관 §5 실사** (커밋 `cc286bd` diff 직접 대조 + typecheck·test·strict-inventory
+직접 재실행 — push 전 사전 실사, push 후 CI 재확인):
+1. 범위: 1파일 +26/-7 = §1-C. §1-D 전부 무변경. `syncExpenseRecords.js` 손 안 댐. ✅
+2. 몰래 증설: 신규 파일·의존성·저장 키·**런타임 검증기 0**. 캐스팅 전부
+   `Record<string, unknown>`(최대 느슨) + 반환 `string` — 도메인 타입 단언 0. ✅
+3. 타입 꼼수: diff `^+` grep — `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as`/
+   `DayRecordLike` 0줄. `record`를 도메인 타입으로 안 좁힘(보리 결정 준수). ✅
+4. 200줄: 83줄. ✅
+5. 테스트 진실성: 테스트 파일 변경 0. `cloudMemorySave.test.js`(`syncFuelRecords` 경유
+   간접) CI 통과. ✅
+6. 문서 정합: react-app diff에 `.md` 0. ✅
+7. 요구사항: diff가 §1-G와 **byte 단위 일치**(감시관 사전검증본과도 동일). ✅
+
+**감시관 직접 재실행** (커밋된 상태 = `cc286bd`):
+- `npm run typecheck` → **0 에러**
+- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **420**
+  (434 → −14, 착수지시서 예측치 정확히 일치 = 파일 진단 14건).
+  `grep -E "syncWorkData\.js\("` → **0줄** (보리 요청 근거, `docs/report.md` §5에 첨부).
+- `npm test` → unit **561/561** · app **135/135** (fail 0)
+→ 작업자 보고 숫자와 완전 일치.
+
+**CI 확인**: 보리 push → react-app `main` = origin/main = `cc286bd`. CI "verify" run
+`34026552370` **conclusion=success**, headSha 일치, job "verify" 스텝 테스트·타입검사·
+빌드 **3게이트 전부 success**.
+
+**브라우저 검증**: 동기화 실행 함수라 단독 검증은 "일지 저장 → Supabase 반영" 스모크
+정도 — 타입 주석 + `data?.id`(계약상 무해)라 동작 영향 없음. `syncExpenseRecords.js` 경유
+테스트가 CI에서 통과.
+
+**보리 `[x]` 2026-09-06.** react-app `main` = origin/main = `cc286bd`.
+
+**절차 이탈 없음.** 작업자 멈춤 0회. 착수지시서 상세는 당시 `docs/report.md` §0~5
+(다음 슬라이스로 리셋됨).
