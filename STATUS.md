@@ -16,24 +16,38 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 버그 수정·정합성 문제는 즉시 처리(위 슬라이스들처럼).
 
 ## 지금 하는 일
-**캘린더 지출 칩(maint-badge) 복원 — 작업자 구현 완료·CI 초록, 브라우저 검증만 남음
-(2026-09-07).** 범위 질문("메인 캘린더 전용") 승인 → 작업자 구현 → react-app `39b9677`
-(7파일 1커밋: `domain/calendarBadges.js`+테스트·`CalendarCell.jsx`+테스트·`CalendarGrid.jsx`·
-`CalendarPage.jsx`·`main-calendar.css`). **작업자는 "push 안 함"으로 보고했으나 감시관이
-`git fetch`로 확인한 결과 이미 `origin/main`에 반영돼 있었고 CI "verify" run `34074679875`
-conclusion=success(test·typecheck·build 3게이트 green)까지 끝난 상태.** 감시관 §5 7항목
-통과(diff가 착수지시서 §1과 정확히 일치 + typecheck·test 직접 재실행해 0에러·565/137 확인).
-- 신규 `dayExpenseBadgeLabel(expenses, dateKey)`(기존 `expenses.js`의 `filterByDate` 재사용,
-  신규 저장소 0) — 메인 캘린더만 `expenses` 전달, 서브 차량 캘린더는 칩 없음(승인 범위 그대로).
-- 4파일 전부 200줄 이하(56/53/137/101줄). 상세 `docs/report.md` §4~5.
-- **남은 것: 보리 브라우저 실검증**(`/app`에서 지출 있는 날짜에 빨간 칩 확인) **→ 최종 `[x]`**.
+
+**A) 메인 캘린더 지출 칩 — CI 초록, 브라우저 검증만 남음.** react-app `39b9677`(7파일
+1커밋). 감시관 §5 7항목 통과(typecheck 0·565/137). **남은 것: 보리 브라우저 실검증
+(`/app`에서 지출 있는 날짜에 빨간 칩 확인) → 최종 `[x]`.** 상세 이전 판(git 이력)·
+`docs/archive/audit.md` 이관 예정.
+
+**B) [신규 착수지시서, 작업자 전달 대기] 서브 차량 지출 칩 이관 — 1단계 (2026-09-07).**
+보리 지적("서브차량도 원본에 있는거 아냐? 확인하고 이관해") → 감시관 확인: **맞음,
+원본은 로그별 저장소 분리라 서브도 원래 됐음.** react-app은 지출에 "어느 차량"
+개념 자체가 없어서(A)는 메인 전용으로만 나갔던 것.
+- **처음엔 2단계(로컬 태깅 / Supabase 동기화 루프 수정)로 나누려 했으나, 재조사로
+  Supabase 위험이 훨씬 작다는 걸 확인해 계획 축소**: `fuel_records` 등 테이블은
+  아이템 전체를 `raw`(jsonb)로 통째로 저장하므로, 새 필드(`vehicleNumber`)도 이미
+  자동으로 서버에 실린다 — hydrate 쪽 3함수(`expenseFromFuelRecord` 등)에 그 필드를
+  다시 읽어오는 1줄씩만 추가하면 **화면 기능이 100% 완성**되고 sync 쓰기 루프·
+  hydrate 조회 쿼리(`vehicle_id` 필터)는 안 건드려도 됨(0-C~0-D, `docs/report.md`).
+- **1단계(이 지시서, 10파일 1커밋 — §6 예외, 응집도상 안 쪼갬)**: `ExpenseItem`에
+  `vehicleNumber` 필드 + 일지 상세 인라인 입력(`useExpenseForm.js`)이 보고 있는
+  로그를 자동 태그 + 캘린더 칩이 메인/서브 구분해서 필터링 + hydrate 3곳 1줄씩
+  (raw 필드 복원). **Supabase 쓰기 루프·`vehicle_id` 값 자체는 무변경.**
+- **2단계(백로그, 안 급함)**: `syncFuelRecords` 등이 지금 "무조건 메인 차량의
+  `vehicle_id`로만 저장"하는 걸 실제 차량별로 고치는 DB 내부 정합성 개선 — 화면엔
+  영향 없어서 서두를 이유 없음(아래 "알려진 이슈"에 등재).
+- **감시관은 코드 작성 안 함**(사용자 지시) — 착수지시서만 작성, 작업자 전달 대기.
+  상세 `docs/report.md`.
 ※ 최근 완료: 25(잔여 UI 4파일) `62640d8` · 24(taxInvoices) `3352601` — 전부 CI 초록·
   보리 `[x]`. 슬라이스별 상세는 "완료" 절. 남은 후보 `.test.js` 정책 / `.ts` 실전환 / 이관
   로드맵 나머지(거래처별 세부 보고서 뷰)는 이 작업 이후 보리 결정 대기.
-※ **저장소 상태 (2026-09-07)**: react-app `origin/main`=`39b9677`(캘린더 지출 칩, CI 초록
-  확인 완료, 브라우저 검증 대기). ubiquitous-parakeet `origin/main`=`53a8e46`, 로컬은 그
-  위에 `e0a9d31`(슬라이스 25 `[x]` 문서, 1커밋 앞섬)+이번 캘린더 지출 칩 기록(미커밋) —
-  **보리가 커밋 확인 후 push 필요**(감시관 push 금지, AGENTS §3).
+※ **저장소 상태 (2026-09-07)**: react-app `origin/main`=`39b9677`(A, CI 초록, 브라우저
+  검증 대기). ubiquitous-parakeet `origin/main`=`53a8e46`, 로컬은 그 위에 `e0a9d31`+
+  `b801ce2`(2커밋 앞섬, 미push)+이번 서브 차량 지출 칩 1단계 기록(미커밋) — **보리가
+  커밋 확인 후 push 필요**(감시관 push 금지, AGENTS §3).
 
 ---
 
@@ -323,6 +337,12 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
   `originalWindow.js` 3 슬16, `batchWrites.js` 2 슬15. 후속: UI 4파일 4 슬25.)
 
 ## 알려진 이슈 (당장 안 고쳐도 되지만 잊으면 안 됨)
+- **정비/주유/기타 Supabase 동기화가 항상 "메인" 차량 `vehicle_id`로만 저장됨**
+  (`lib/syncExpenseRecords.js` 51·88·125번 줄, `lib/hydrate.js` 142-144번 줄도
+  동일하게 메인만 조회) — 서브 차량 지출 칩 이관 1단계(2026-09-07) 조사로 발견.
+  1단계는 로컬 태깅 + `raw` jsonb 왕복만으로 화면 기능을 완성해 이 문제를 안 건드림
+  (0-C, `docs/report.md`). DB에 어느 차량 row로 남는지만의 정합성 문제라 화면엔
+  영향 없음 — 2단계(백로그, 안 급함)에서 sync 루프를 차량별로 고칠 때 같이 처리.
 - ~~**기사 초대 동시성(TOCTOU) 레이스**: `0001_driver_links_idempotency_key.sql` 미적용~~ →
   **정정(2026-09-05)**: 낡은 기록이었음. 보리가 Supabase에서 진단 쿼리 3종(컬럼·유니크
   인덱스·함수) 직접 실행 — 전부 `true`, **이미 적용·검증된 상태**(2026-09-01 슬라이스 A 때
