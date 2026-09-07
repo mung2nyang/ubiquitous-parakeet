@@ -167,3 +167,49 @@ react-app `0c0ffd1`(6 files, 로컬 커밋만·미push) — **감시관이 직�
 
 **커밋**: 이 슬라이스(`0c0ffd1`)에 대한 수정 커밋이므로 AGENTS §3대로 별도
 1커밋(`reset`/`amend` 아님) — 작업자가 로컬 커밋까지, push는 보리.
+
+## 8. [착수지시서, 승인됨] 서브 차량 일지 지출 목록이 차량별로 안 걸러짐 (987be18 재오픈)
+
+**배경**: §7 관련 브라우저 검증 중 보리가 "서브차량 일지가 메인일지를 보고 있다"고
+발견. 조사 결과 987be18(서브 차량 지출 칩, 이미 `[x]` 확정됐던 슬라이스)의 계획
+누락으로 확인 — STATUS.md "지금 하는 일 C)" 참고. 보리 착수 승인 완료(2026-09-07).
+
+**원인**: `src/components/day-log/DayLogPage.jsx:53`
+```js
+const dayExpenses = expenseForm.expenses.filter((item) => item.date === dateKey)
+```
+날짜만 거르고 차량은 안 거른다. 캘린더 칩(`dayExpenseBadgeLabel`,
+`calendarBadges.js:96-101`)은 `(item.vehicleNumber||undefined)===target` 비교로
+이미 정확히 거르는데, 987be18 지시서의 `DayLogPage.jsx` 항목엔 "logId 파라미터
+전달만"이라고만 적혀 있었고 이 목록 자체를 거르는 건 계획에 없었다.
+
+**수정 방향**: `dayExpenseBadgeLabel`과 같은 매칭 규칙을 재사용하는 순수 함수를
+`calendarBadges.js`에 추가하고(이미 `filterByDate`를 이 파일이 import해서 씀,
+102줄이라 여유 충분), `DayLogPage.jsx`는 그 함수를 호출하도록 1줄만 바꾼다.
+새 렌더 테스트 대신 순수 함수 유닛 테스트로 검증(가볍고, `dayExpenseBadgeLabel`
+테스트와 같은 스타일 재사용).
+
+**건드릴 파일 2개, 1커밋**:
+
+| 파일 | 변경 |
+|---|---|
+| `src/domain/calendarBadges.js` | `dayExpenseBadgeLabel` 바로 아래에 신규 export 함수 추가: `export function expensesForVehicleDay(expenses, dateKey, vehicleNumber) { const target = String(vehicleNumber \|\| '').trim() \|\| undefined; return filterByDate(expenses \|\| [], dateKey).filter((item) => (String(item.vehicleNumber \|\| '').trim() \|\| undefined) === target) }` (JSDoc 포함, `dayExpenseBadgeLabel`과 동일한 인자 순서·의미). |
+| `src/components/day-log/DayLogPage.jsx` | import에 `expensesForVehicleDay` 추가, 53번 줄을 `const dayExpenses = expensesForVehicleDay(expenseForm.expenses, dateKey, logId !== 'main' ? logId : undefined)`로 교체. |
+
+**안 건드릴 것**: `dayExpenseBadgeLabel` 본문(무변경, 신규 함수가 별도)·
+`useExpenseForm.js`·`CalendarPage.jsx`·`CalendarGrid.jsx`·Supabase/hydrate 경로 전부.
+
+**테스트 계획** — `calendarBadges.test.js`에 `describe('expensesForVehicleDay ...')`
+블록 추가, `dayExpenseBadgeLabel` 테스트와 같은 fixture 재사용 가능:
+1. 태그 없는 항목만 메인(인자 없음)에 걸러짐 — 서브 태그 항목 제외 확인.
+2. 특정 차량 태그 항목만 그 서브(인자 있음)에 걸러짐 — 메인·다른 서브 항목 제외 확인.
+3. **핵심 회귀 케이스(원래 빠졌던 것)**: 같은 날짜에 메인 항목 1개 + 서브 항목 1개가
+   동시에 있을 때, 메인 인자로 호출하면 메인 것만, 서브 인자로 호출하면 서브 것만
+   나오는지 — 둘이 섞이지 않는지 명시적으로 assert.
+4. 다른 날짜 항목은 제외(기존 `filterByDate` 재사용이라 회귀 위험 낮지만 1케이스는 유지).
+
+**검증**: `npm run typecheck` 0건 유지·`npm test` 통과·`wc -l`로 두 파일 200줄
+이내 확인(`calendarBadges.js` 현재 102줄+신규 함수 10줄 안팎, `DayLogPage.jsx`
+174줄 변경 없음).
+
+**커밋**: 별도 1커밋. 작업자가 로컬 커밋까지, push는 보리.
