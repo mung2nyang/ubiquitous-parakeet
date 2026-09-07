@@ -3,8 +3,8 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-07 (리포트 거래처별 세부 내역서 뷰 이관 CI 초록+브라우저
-> 검증까지 `[x]` 확정. 다음: 세금계산서 화면 엑셀저장 버튼 이관 조사 착수)
+> 최종 갱신: 2026-09-07 (세금계산서 엑셀 저장 버튼 이관 CI 초록+브라우저 검증까지
+> `[x]` 확정. 다음: 저장 후 페이지 유지·뒤로가기 원위치 복귀 조사 착수)
 
 ---
 
@@ -72,14 +72,10 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 
 ## 다음 할 일
 
-**[착수지시서 작성 완료, 2026-09-07] 세금계산서 화면 "엑셀 저장" 버튼 이관** —
-보리 지시. 원본(`finance.js:494-709`) 전체 조사 완료 — `getTaxInvoiceSupplierBiz`·
-`invoiceCanIssue`·거래처 세금 필드 전부 react-app에 이미 있어 재사용, 새로
-만드는 건 엑셀 워크북 빌더(신규 npm 의존성 `exceljs` 추가, `html2pdf.js`와
-같은 동적 import 패턴)뿐. **착수지시서 `docs/report.md` 완성 — 작업자 전달
-대기.** 건드릴 파일: `package.json`(exceljs 추가)·신규
-`taxInvoiceExcelBuilder.js`(+test)·`taxInvoiceExcel.js`·`TaxInvoicePage.jsx`·
-`TaxInvoiceEntryList.jsx`.
+**[착수, 2026-09-07] 저장 후 페이지 유지 + 뒤로가기 원위치 복귀 (원본과 다름)**
+— 보리 지시: "저장했을 때 해당 페이지에 머물기"와 "뒤로가기 시 무조건
+메인화면이 아닌 왔던 곳으로 돌아가는 것"이 원본엔 있는데 react-app은 다름.
+감시관이 어느 화면 얘기인지 확인 중(범위가 넓을 수 있어 질문 1건 확인 필요).
 
 보류 중(보리 결정 대기, 급하지 않음):
 1. **`.test.js` 나머지 strict 진단 정책** — migration 원칙 "증가 금지"는 지켰으나 "전부 수정"은
@@ -118,6 +114,20 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
   상태가 생기진 않음 — 기존 데이터에도 없음(보리 확인) — 사실상 닫힌 문제, 참고용으로만 유지.
 
 ## 완료 (커밋·푸시됨)
+- **세금계산서 화면 "엑셀 저장" 버튼 이관**: 원본 `exportTaxInvoiceCsv`
+  (`finance.js:494-709`) 포팅 — 카드마다 "엑셀 저장" 버튼, 워크북 2시트(공식
+  전자세금계산서 양식 + 홈택스 업로드용 "입력자료"), 파일명 규칙. 기존
+  `getTaxInvoiceSupplierBiz`·`invoiceCanIssue`(둘 다 다른 화면용, 재사용) 그대로
+  써서 새 검증기·사업자 판별 로직 안 만듦. 신규 npm 의존성 `exceljs`(동적
+  import, `html2pdf.js`와 같은 패턴). 워크북 빌더를 순수 함수로 분리해 셀 값
+  단위 테스트 가능. — react-app `023e17c`(6 files: `package.json`+exceljs, 신규
+  `taxInvoiceExcelBuilder.js`(+test)·`taxInvoiceExcel.js`, `TaxInvoicePage.jsx`,
+  `TaxInvoiceEntryList.jsx`). (CI "verify" 초록 run `34084548569`
+  conclusion=success·headSha 일치·3게이트 green·감시관 §5 통과(지시서와 정확히
+  일치, `taxInvoiceExcelBuilder.js` 249줄·`TaxInvoicePage.jsx` 206줄 둘 다 §6
+  예외 사유주석 확인, 신규 6테스트가 지시서 §2 시나리오 전부 커버, 타입 꼼수 0,
+  `.md` 변경 0, `npm run typecheck` 0건·`npm test` 593+138 직접 재실행 확인)·
+  보리 브라우저 실검증 통과 + `[x]` 2026-09-07). 상세 `docs/report.md`.
 - **리포트 거래처별 세부 내역서 뷰 이관**: 원본 `viewDetailReport`(`script.js:5080-5338`)
   포팅 — 거래처 선택 모달 → 세부 표(날짜/상차지/하차지/거래처/금액) + 거래처별
   기본 운송료·수수료 차감·부가세·계 요약, PDF 다운로드도 현재 보이는 모드
