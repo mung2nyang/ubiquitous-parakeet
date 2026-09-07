@@ -155,8 +155,40 @@ JSDoc 추가)와 `upsertExpense`(trim/undefined 처리+결과 필드 추가) 두
 
 ## 4. 작업자 구현 완료 보고
 
-_(작업자 커밋 후 이 절 채움)_
+react-app `987be18`(16 files, 로컬 커밋만·미push): 정비/주유/기타 지출에
+`vehicleNumber` 태그 + 캘린더 칩 메인/서브 필터 + hydrate 3곳 `raw.vehicleNumber`
+복원. 작업자 자체 보고: "typecheck 0 · npm test 통과, expenses.js 196줄·
+MaintFuelPage.jsx 199줄(200 이하)".
 
-## 5. 감시관 실사
+## 5. 감시관 실사 (2026-09-07, push 전 사전 점검 — CI는 push 후 별도 확인 필요)
 
-_(CI 초록 확인 후 §5 7항목 채움)_
+> 아직 push 전이라 CI "verify"는 안 돌았다. §4 원칙상 CI 초록이 `[x]` 확정의
+> 필요조건이라 **최종 승인은 push 후 CI 확인 + 보리 브라우저 검증까지 남음.**
+> 다만 §5 체크리스트 중 CI가 못 보는 항목(1~3,6,7)과, 작업자 자체 보고 수치의
+> 신뢰도를 미리 확인해 두면 push 왕복을 줄일 수 있어 감시관이 선행 점검했다.
+
+| # | 확인 | 결과 |
+|---|---|---|
+| 1 범위 준수 | `git show --stat 987be18` | 지시서 파일 목록(11 프로덕션+5 테스트=16)과 정확히 일치. `lib/syncExpenseRecords.js`·`lib/hydrate.js`·`.md` 무변경 확인. |
+| 2 몰래 증설 없음 | `git diff` 훑기 | 새 파일·새 저장 키·새 durable/큐/레이어 0건. |
+| 3 타입 꼼수 없음 | `git show 987be18 \| grep` | `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 0건. `expenseFrom*Record` 3곳은 지시서보다 더 안전한 `typeof raw.vehicleNumber === 'string' && raw.vehicleNumber` 런타임 체크로 구현(지시서의 단순 `|| undefined`보다 개선). |
+| 4 200줄 | **감시관이 `wc -l` 직접 재실행** | `expenses.js` **200줄**(작업자 자체 보고 "196줄"과 불일치 — 실측이 맞음), `MaintFuelPage.jsx` 199줄. 둘 다 §6 "200줄 **이하**" 기준은 충족(초과 아님)이라 예외 절차 불필요하지만, `expenses.js`는 여유 0 — 다음 슬라이스에서 이 파일을 또 건드리면 바로 분리설계 검토 필요. |
+| 5 테스트 진실성 | `git show` 테스트 diff 전체 | 신규 8케이스(`calendarBadges.test.js` 3·`expenses.test.js` 2·`fuelRecords/maintenanceRecords/miscExpenseRecords.test.js` 각 1) 전부 구체적 입력값→기대 출력 assert, 기존 테스트 삭제·약화 0건. |
+| 6 문서 정합 | `git show --stat` | `.md` 0건 — 작업자가 AGENTS §1 준수. |
+| 7 요구사항 충족 | 지시서 §1 항목별 대조 | 10개 변경 지점 전부 구현 확인(태그 자동 부여·캘린더 메인/서브 분리 합산·hydrate 3곳 복원·`MaintFuelPage.jsx` 편집 시 보존). 미구현 0건. |
+
+**감시관이 typecheck·test 직접 재실행(작업자 수치 불일치 발견 직후라 전체 재확인)**:
+`npm run typecheck` 에러 0건, `npm test` **137 pass / 0 fail**(작업자 보고와 일치).
+기존에도 있던 `OwnerMonthlyCards` 관련 act() 경고 1건은 이번 diff와 무관한 파일이라
+회귀 아님(건드린 파일에 `OwnerMonthlyCards.jsx` 없음).
+
+**요약(비개발자용)**: 일지에서 서브 차량(예: 12가3456)을 보고 있을 때 등록한 정비/
+주유/기타 비용에 자동으로 그 차량 번호가 붙고, 캘린더에서 메인 캘린더엔 메인 비용만,
+서브 캘린더엔 그 차량 비용만 빨간 칩으로 따로 표시됩니다. 저장 방식 자체(서버 전송
+방법)는 안 건드려서 안전합니다. 작업자가 파일 줄 수를 살짝 잘못 세긴 했지만(196→
+실제 200) 규정 위반은 아니고 실제 동작엔 영향 없습니다.
+
+**다음 단계**: 보리가 이 커밋(`987be18`)을 확인 후 push → CI "verify" 초록 확인 →
+브라우저 실검증(일지에서 서브 로그로 전환해 정비/주유/기타 등록 → 서브 캘린더에만
+칩 표시, 메인 캘린더엔 안 뜨는지 / 기존 메인 지출은 계속 메인에만 뜨는지) → 최종
+`[x]`.
