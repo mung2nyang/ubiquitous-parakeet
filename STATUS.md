@@ -72,9 +72,14 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 
 ## 다음 할 일
 
-**[착수, 2026-09-07] 세금계산서(taxInvoices) 화면 엑셀저장 버튼 이관** — 보리
-지시. 원본에 있는 세금계산서 엑셀 내보내기 기능이 react-app `TaxInvoicePage.jsx`에
-아직 없음. 감시관이 원본부터 조사해 착수지시서 작성 중.
+**[착수지시서 작성 완료, 2026-09-07] 세금계산서 화면 "엑셀 저장" 버튼 이관** —
+보리 지시. 원본(`finance.js:494-709`) 전체 조사 완료 — `getTaxInvoiceSupplierBiz`·
+`invoiceCanIssue`·거래처 세금 필드 전부 react-app에 이미 있어 재사용, 새로
+만드는 건 엑셀 워크북 빌더(신규 npm 의존성 `exceljs` 추가, `html2pdf.js`와
+같은 동적 import 패턴)뿐. **착수지시서 `docs/report.md` 완성 — 작업자 전달
+대기.** 건드릴 파일: `package.json`(exceljs 추가)·신규
+`taxInvoiceExcelBuilder.js`(+test)·`taxInvoiceExcel.js`·`TaxInvoicePage.jsx`·
+`TaxInvoiceEntryList.jsx`.
 
 보류 중(보리 결정 대기, 급하지 않음):
 1. **`.test.js` 나머지 strict 진단 정책** — migration 원칙 "증가 금지"는 지켰으나 "전부 수정"은
