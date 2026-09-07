@@ -75,8 +75,39 @@ Supabase 스키마 무변경.
 
 ## 5. 구현 완료 보고
 
-_(구현 후 채움)_
+react-app `0c0ffd1`(6 files, 로컬 커밋만·미push) — **감시관이 직접 구현**(보리
+"버그 고쳐" 지시, 이번 건은 §1의 "감시관 코드 작성 안 함"이 적용 안 됨):
+- `CarDriverConnectPanel.jsx`: "운행 일지" 탭 `disabled`/가드 제거, 죽은
+  `logEnabled` prop 삭제.
+- `CarFormModal.jsx`: 로컬 `useState('link')` 삭제 → `draft.connectMode`로 승격,
+  `onTab`이 `setDraft`로 갱신.
+- `CarListPage.jsx`: `emptyDraft.connectMode:'link'` 추가, `openEdit`도 동일
+  기본값(편집 흐름 무변경), `save()`가 `skipInvite: !editingId &&
+  draft.connectMode==='log'`를 `saveInviteAfterVehicle`에 전달.
+- `carInviteFromDraft.js`: `saveInviteAfterVehicle`에 `skipInvite` 파라미터
+  추가, `true`면 `upsertDriver` 호출 전 조기 `return null`.
+- `CarDriverConnectPanel.test.js`: 죽은 `logEnabled` prop 제거 + "운행 일지"
+  탭이 `disabled` 속성 자체를 안 가지는지·클릭 시 실제 전환되는지 신규 케이스.
+- `carInviteFromDraft.test.js`(신규): `skipInvite:true`면 (driverName이 비어
+  검증에 걸릴 draft를 일부러 줘서) `upsertDriver`를 실제로 호출했으면 나올
+  검증 에러 대신 `null`이 나오는 것으로 "호출 자체를 안 함"을 간접 증명 +
+  `skipInvite` 생략/`false`/`!cloud` 3가지 회귀 케이스.
 
 ## 6. 검증
 
-_(typecheck·test 재실행 후 채움)_
+- `npm run typecheck`: 에러 0건.
+- `npm test`: `test:unit` 575 pass(+4, 신규 `carInviteFromDraft.test.js`)·
+  `test:app` 138 pass(+1, 신규 `CarDriverConnectPanel.test.js` 케이스), 실패 0건.
+  기존 act() 경고 1건은 이 diff 이전부터 있던 것(수정 없이 `안내 문구만
+  렌더한다` 단일 테스트만 격리 실행해도 재현 확인 — 회귀 아님).
+- `wc -l`: 전부 200줄 이하(77/146/184/84/70/71줄).
+- `git diff` grep: `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 0건.
+- **브라우저 실검증(보리 실계정, 감시관이 직접 조작, 2026-09-07)**: 신규
+  서브차량 "99다9999"를 "운행 일지" 탭으로 등록 →
+  1. 저장 성공("차량을 등록했습니다"), `store.drivers`에 새 pending 레코드가
+     **생기지 않음**(기존 "00가" 링크 1건만 그대로) 확인.
+  2. 사이드 메뉴에 "9999 일지" 항목이 정상 노출(기존엔 사라졌을 항목) 확인.
+  3. 검증 후 테스트 차량 삭제로 원상복구("차량을 삭제했습니다").
+  기존 linked 차량("00가")의 "기사 관리" 메뉴·편집 흐름은 무변경 확인(회귀 없음).
+- **다음 단계**: 보리 push → CI "verify" 확인 → (이미 브라우저 검증 완료) →
+  최종 `[x]`.
