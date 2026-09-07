@@ -6,6 +6,10 @@
 > 원본 확인 결과 "서브 차량도 지출 칩이 있다"는 사용자 지적이 맞음(§0). 추가 조사로
 > 애초 예상보다 위험이 작다는 걸 확인해 **2단계 계획을 재구성**했다(§0-D) — 1단계만으로
 > 사용자가 보는 기능은 완성되고, 2단계는 DB 내부 정합성만 다루는 급하지 않은 후속.
+> **2026-09-07 감시관 교차검증(별도 세션)**: react-app 실제 코드 전부 대조해 §0의
+> 기술적 주장을 검증(전부 일치) + 누락됐던 §8 4대 질문 답변 보강(§0-E) + 200줄 위험
+> 사전 경고(§1) + `DriverExpenseItem.vehicleNumber`와의 이름 교차 확인 추가. 계획
+> 자체(파일 목록·안 건드릴 것)는 변경 없음 — 여전히 작업자 전달 대기.
 
 ## 0. 조사 메모
 
@@ -61,7 +65,46 @@
   순회해 조회하게 고친다. 화면엔 영향 없고 "DB에 어느 차량 row로 남아있나"만 바뀌는
   정합성 개선 — 서두를 이유 없음, STATUS.md 알려진 이슈로 등재.
 
-## 1. 수정 계획 (1단계, 응집도상 분리 어려워 10파일 — §6 예외)
+### 0-E. §8 리팩토링·이관 착수 전 4대 질문 (2026-09-07, 감시관 교차검증 세션에서 보강)
+
+react-app 코드를 직접 대조해 확인한 답변 — 전부 "기존 방어·채널 그대로 재사용"으로
+귀결돼 새 위험 없음:
+
+1. **구독인가 스냅샷인가?** → 구독. `CalendarPage.jsx`는 `useOwnerExpenses`/
+   `useOwnerWorkDataByLogId`로 store를 직접 구독한다(`CalendarPage.jsx:57-68`,
+   자기만의 스냅샷 아님). `useExpenseForm.js`의 화면 렌더도 `useOwnerExpenses`
+   구독값을 그대로 쓴다(`useExpenseForm.js:29`).
+2. **지금 보이는 값이 draft/Store/localStorage/Supabase 중 어디 것인가?** → Store.
+   `useOwnerExpenses(ownerKey)` 구독값이며, 저장 직전엔 `readOwnerExpenses`로 store
+   최신값을 한 번 더 읽어 그 위에 merge한다(`useExpenseForm.js:68,76`) — draft는
+   폼 입력 임시값일 뿐 표시 값의 출처가 아니다.
+3. **쓰기 창구가 request\*인가, 배럴 save\*/load\* 우회인가?** → 기존 정식 채널
+   `saveExpenses`(`lib/expenses.js`) 그대로. `useExpenseForm.js`자체 주석대로
+   "commitExpenses→commitBatch→writeAllOrNothing이 이미 원자적"이라 새 쓰기 경로·
+   우회 없음(`useExpenseForm.js:35-41`).
+4. **hydrate·디바운스·동시편집이 겹치면 누가 이기는가?** → 이 슬라이스가 새로
+   만드는 로직이 아니라 `useExpenseForm.js`에 이미 있는 이중 방어를 그대로 탄다:
+   화면은 store를 항상 구독해 다른 탭/hydrate의 변경이 즉시 보이고, `save()`/
+   `remove()`는 쓰기 직전 `readOwnerExpenses`로 최신값을 다시 읽어 그 위에
+   merge한다(재감사 2차 FAIL 지적 2번 대응, `useExpenseForm.js:6-12`). `vehicleNumber`는
+   기존 필드들과 동일하게 이 병합 대상에 포함되므로 별도 처리 불필요.
+
+**교차 확인(신규 발견, 2026-09-07)**: `domain/expenseTypes.js:36-39`에 이미
+`DriverExpenseItem`(소속기사 서브차량 비용 표시용, `store/app-store.js`의
+`driverExpenses` 슬라이스 전용)가 `vehicleNumber` 필드를 갖고 있고, 주석에
+"ExpenseItem에 vehicleNumber만 덧붙인 형태. expenses 배열·ExpenseItem 정본에는
+넣지 않는다(Q3)"라고 명시돼 있다(그 Q3의 원 결정은 `docs/archive/audit.md`
+"소속기사 지출 입력 — 2차": "별도 읽기전용 버킷, expenses 배열·저장 경로 무변경").
+이번 슬라이스가 `ExpenseItem`(정본)에 추가하는 `vehicleNumber`는 **완전히 다른
+개념**(차주 본인 소유 서브 차량 로그 구분)이고 스토어 슬라이스도 다르다
+(`expenses[ownerKey]` vs `driverExpenses`, 서로 안 섞임 — `CalendarPage.jsx`는
+`useOwnerExpenses`만 쓰고 `useOwnerDriverExpenses`는 안 씀) — 기능 충돌은 없다.
+다만 같은 파일에 이름이 같은 필드가 두 타입에 걸쳐 존재하게 되므로, 작업자는
+`ExpenseItem.vehicleNumber` JSDoc에 "차주 본인 서브 로그 태그(DriverExpenseItem의
+동명 필드와 무관)"임을 한 줄 명시할 것.
+
+## 1. 수정 계획 (1단계, 응집도상 분리 어려워 10파일 — §3/§6 "응집도 우선" 원칙 준용,
+§6 자체의 "200줄 초과 파일 분리" 예외 조항과는 별개)
 
 | 파일 | 변경 |
 |---|---|
@@ -76,10 +119,21 @@
 | `src/domain/fuelRecords.js`·`maintenanceRecords.js`·`miscExpenseRecords.js` | 각 `expenseFrom*Record` 함수에 `vehicleNumber: raw.vehicleNumber || undefined` 1줄 추가(기존 `subsidy`/`mileage` 패턴과 동일, `row.*` 컬럼에서 오는 값 없음 — `raw`에서만). |
 
 **건드릴 파일 10개, 1커밋 목표(응집도상 쪼개면 "차량 태그가 입력→표시→복원까지
-한 기능"이 흩어짐 — §6 예외 사유).** 안 건드릴 것: `lib/syncExpenseRecords.js`(쓰기
+한 기능"이 흩어짐).** 안 건드릴 것: `lib/syncExpenseRecords.js`(쓰기
 루프)·`lib/hydrate.js`의 조회 쿼리(`.eq('vehicle_id', ...)`)·`MaintFuelPage.jsx`의
 차량 선택 UI(범위 밖, 2단계에서도 아님 — 원본에 대응 화면 없음). 실패 시 처리: 신규
 저장소·검증기 없음(§7), 기존 `raw` jsonb 왕복 패턴 재사용뿐.
+
+**⚠️ 200줄 위험(2026-09-07 감시관 교차검증에서 사전 점검, 착수 전 필수 확인)**:
+`src/domain/expenses.js`(현재 193줄)·`src/components/MaintFuelPage.jsx`(현재
+198줄) 둘 다 한도에 임박해 있다. 특히 `expenses.js`는 `emptyExpenseDraft`(파라미터+
+JSDoc 추가)와 `upsertExpense`(trim/undefined 처리+결과 필드 추가) 두 함수를
+동시에 건드려야 해서 200줄을 넘길 가능성이 실질적으로 있다. **작업자는 커밋 전
+`wc -l`로 이 두 파일을 직접 확인**하고, 200줄을 넘으면 임의로 로직을 줄이거나
+다른 파일로 흩어 넣지 말고 §6 절차(초과분을 최소화하는 표현으로 조정 → 그래도
+넘으면 사유 1줄 주석 + ~250줄까지 허용, 기계적 절단 금지) 그대로 따를 것. 이
+슬라이스 안에서 자체 판단으로 처리 가능(추가 착수지시서 불필요) — 단 감시관
+리뷰 시 §5 #4 항목에서 실제 줄 수와 처리 방식을 대조한다.
 
 ## 2. 테스트 계획
 
