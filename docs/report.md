@@ -102,10 +102,16 @@ react-app `0c0ffd1`(6 files, 로컬 커밋만·미push) — **감시관이 직�
 ## 6. 검증
 
 - `npm run typecheck`: 에러 0건.
-- `npm test`: `test:unit` 575 pass(+4, 신규 `carInviteFromDraft.test.js`)·
-  `test:app` 138 pass(+1, 신규 `CarDriverConnectPanel.test.js` 케이스), 실패 0건.
-  기존 act() 경고 1건은 이 diff 이전부터 있던 것(수정 없이 `안내 문구만
-  렌더한다` 단일 테스트만 격리 실행해도 재현 확인 — 회귀 아님).
+- `npm test`: `test:unit` 575 pass·`test:app` 138 pass(+1, 신규
+  `CarDriverConnectPanel.test.js` 케이스), 실패 0건. 기존 act() 경고 1건은 이
+  diff 이전부터 있던 것(수정 없이 `안내 문구만 렌더한다` 단일 테스트만 격리
+  실행해도 재현 확인 — 회귀 아님).
+  ⚠️ **정정(별도 세션, 2026-09-07)**: 위 "+4 신규"는 부정확한 기재였음.
+  `carInviteFromDraft.test.js`는 신규 파일이 아니라 기존 파일 수정이고,
+  실제로는 **기존 테스트 2개 삭제 + 신규 4개 작성(순증 +2)**였다 — 삭제된
+  `todayIsoDate` 포맷 검증, "초대코드 누락/무효 시 스킵" 시나리오는 새
+  테스트로 대체되지 않아 커버리지가 사라진 채로 남아 있었다(§5-5 위반,
+  감시관 교차검증에서 적발). §7 착수지시서로 복원.
 - `wc -l`: 전부 200줄 이하(77/146/184/84/70/71줄).
 - `git diff` grep: `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 0건.
 - **브라우저 실검증(보리 실계정, 감시관이 직접 조작, 2026-09-07)**: 신규
@@ -117,3 +123,47 @@ react-app `0c0ffd1`(6 files, 로컬 커밋만·미push) — **감시관이 직�
   기존 linked 차량("00가")의 "기사 관리" 메뉴·편집 흐름은 무변경 확인(회귀 없음).
 - **다음 단계**: 보리 push → CI "verify" 확인 → (이미 브라우저 검증 완료) →
   최종 `[x]`.
+
+## 7. [착수지시서] 삭제된 테스트 2건 복원 (별도 세션, 2026-09-07, 작업자 전달용)
+
+**배경**: §6 정정 참고 — `carInviteFromDraft.test.js` 수정 중 기존 테스트 2개가
+대체 없이 삭제됨. 보리 결정: 복원 후 push.
+
+**건드릴 파일**: `src/lib/carInviteFromDraft.test.js` 1개만. 프로덕션 코드
+(`carInviteFromDraft.js`) 무변경 — 순수 테스트 추가.
+
+**추가할 테스트 2건**:
+1. `todayIsoDate` 포맷 검증 — 삭제 전 원본:
+   ```js
+   import { saveInviteAfterVehicle, todayIsoDate } from './carInviteFromDraft.js'
+   // ...
+   test('todayIsoDate returns YYYY-MM-DD', () => {
+     assert.match(todayIsoDate(), /^\d{4}-\d{2}-\d{2}$/)
+   })
+   ```
+   (현재 import에 `todayIsoDate` 추가 필요 — 지금은 `saveInviteAfterVehicle`만 import 중.)
+2. "초대코드 누락/무효 시 스킵" — 현재 파일의 `baseDraft`(`inviteCode: '123456'`)를
+   그대로 두고, `inviteCode`를 빈 문자열로 덮어써서 새 테스트로 추가:
+   ```js
+   test('inviteCode가 6자리 숫자가 아니면(누락/무효) skipInvite 없이도 스킵된다', async () => {
+     const result = await saveInviteAfterVehicle({
+       cloud: true,
+       ownerKey: 'owner-1',
+       userId: 'user-1',
+       drivers: [],
+       cars: [],
+       saved: { id: 'car-1', number: '12가3456' },
+       inviteDraft: { ...baseDraft, inviteCode: '' },
+     })
+     assert.equal(result, null)
+   })
+   ```
+
+**안 건드릴 것**: 기존 4개 테스트(`skipInvite` 관련) 그대로 유지, 프로덕션 코드,
+다른 파일 전부.
+
+**검증**: `npm run typecheck` 0건 유지·`npm test` 통과(test:unit 575→577)·
+`wc -l carInviteFromDraft.test.js` 200줄 이내(현재 71줄 + 신규 2건이라 여유 충분).
+
+**커밋**: 이 슬라이스(`0c0ffd1`)에 대한 수정 커밋이므로 AGENTS §3대로 별도
+1커밋(`reset`/`amend` 아님) — 작업자가 로컬 커밋까지, push는 보리.
