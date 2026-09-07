@@ -329,3 +329,49 @@ export default function MessageSettingsPage({ onBack, showToast }) {
 
 이 슬라이스가 CI 초록·보리 `[x]` 확정되면, 이관 계획 ②-2(콜상세 문자보내기
 시트 3종 복원 + 이번 슬라이스 설정 반영) 착수지시서를 이 파일에 다시 작성.
+
+## 6. 감시관 §5 리뷰 — CI 초록 확인 (2026-09-07)
+
+작업자 커밋 `a833280`(react-app), 보리 push, origin/main과 일치, 작업 트리 clean.
+
+- `gh run view 34106103395`: `headSha`=`a833280f8448258829595beb4f1be3a7592de031`
+  (커밋과 일치), `conclusion`=`success`, "테스트 (npm test)"·"타입 검사 (npm run
+  typecheck)"·"빌드 (npm run build)" 3단계 전부 success.
+- **diff가 지시서 §2와 byte 단위로 일치**: `lib/messageTemplates.js`(55줄)·
+  `components/MessageSettingsPage.jsx`(112줄) 전부 지시서 코드 블록 그대로,
+  `side-menu.css`(+12, 기존 압축 포맷 유지)·`lazyPages.js`(+1)·
+  `AppShellRoutes.jsx`(+2, import+라우트)·`MyPage.jsx`(+1/-1) 전부 지시서
+  §1 그대로. 지난 슬라이스 때 지적했던 "여분 빈 줄" 같은 편차 이번엔 없음.
+- **신규 테스트**: `messageTemplates.test.js`(84줄, 5케이스) — 지시서 §3 계획
+  5가지 시나리오(기본값 폴백·저장 후 순서 보존·getItem 예외 폴백·스키마 불일치
+  폴백·reset) 전부 커버. private 변수 직접 조작 없이 실제 `localStorage`
+  Storage API를 최소 in-memory 구현으로 대체해 공개 함수만 호출 → 실제 동작
+  경로 검증. `beforeEach`로 매 테스트 격리.
+- **§4 플레이북 판단 재확인**: Supabase mutation·durable journal·tombstone·
+  hydrate 경합 전부 없음(순수 로컬 `localStorage` 키 2개) — 감시관이 코드
+  직접 읽어 재확인, 지시서 §3 판단과 일치.
+- **§5 1~7항목**: 범위(6개+테스트 1개 파일, 지시서와 일치) · 증설(신규 저장
+  키·durable·큐 없음, 기존 키 2개 그대로) · 타입 꼼수(전체 diff grep `any`/
+  `ts-ignore`/`ts-expect-error`/`as unknown as` 0건) · 200줄(55/84/112줄 전부
+  여유) · 테스트 진실성(위 참고, 기존 테스트 약화 없음) · 문서 정합(`.md`
+  변경 0) · 요구사항(지시서 §2 코드와 완전 일치) — 전부 통과.
+- **감시관이 직접 로컬 재실행**: `npm run typecheck` 0건 · `npm test` 598+138
+  전부 pass(기존 593+138에서 신규 5개 증가, fail 0) · `npm run build` 성공,
+  `dist/assets/MessageSettingsPage-*.js`(4.72kB) 청크 생성 확인. 빌드 로그에
+  `[esbuild css minify] Unexpected "}" [css-syntax-error]`(같은 줄 번호)가
+  뜨는데, 직전 커밋(`41e9fd9`)으로 되돌려 빌드해도 동일하게 뜨는 걸 확인함 —
+  이 슬라이스가 새로 만든 문제 아니라 기존에 있던 무관한 경고(원인은 별도
+  조사 필요하면 차후 백로그).
+
+**결론**: §5 7항목 전부 통과 + 실제 CI green 확인 완료. 남은 건 보리 브라우저
+실검증뿐:
+1. 마이페이지 → "문자 문구 설정" 클릭 → 기본 문구 4개(미수금 안내/입금
+   요청/운행 완료/내역서 공유) 보임
+2. 아무 문구나 수정 → 저장 → "문자 문구를 저장했습니다." 토스트
+3. 뒤로가기 → 다시 들어가면 수정한 문구 유지되는지
+4. "기본 문구로 복원" → 원래 문구로 돌아가고 "기본 문구로 복원했습니다." 토스트
+5. 문구 하나를 빈 칸으로 지우고 저장 → "모든 문자 문구를 입력해 주세요." 토스트,
+   저장 안 됨
+6. (버그 아님, 확인만) 콜상세 "문자 보내기"는 아직 이 설정과 무관 — ②-2에서 연결
+
+통과하면 보리가 `[x]` 확정 → 이관 계획 ②-2 착수지시서 작성.

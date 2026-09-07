@@ -3,8 +3,10 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-07 (이관 계획 ① "공지사항" — 보리 브라우저 실검증 통과,
-> **`[x]` 최종 확정**. 다음: 이관 계획 ② "문자 문구 설정 이관" 착수지시서 작성 중.)
+> 최종 갱신: 2026-09-07 (이관 계획 ②-1 "문자 문구 설정(설정화면만)" — 보리 push
+> 완료, GitHub Actions "verify" 실제 실행 초록 확인(run `34106103395`, headSha
+> `a833280` 일치, test·typecheck·build 3게이트 success). 감시관 §5 리뷰 통과.
+> **남은 건 보리 브라우저 실검증뿐 — 아직 `[~]`**.)
 
 ---
 
@@ -18,21 +20,23 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 
 ## 지금 하는 일
 
-**이관 계획 ②-1 "문자 문구 설정 이관(설정화면만)" — 착수지시서 작성 완료, 작업자
-전달 대기 (2026-09-07).** 이관 계획 ①(공지사항)은 `[x]` 최종 확정(아래 "완료"
-절 참고). 착수 전 감시관이 조사한 결과 react-app엔 이미 콜상세 화면에 "미수금
-안내" 1종만 하드코딩된 문자보내기 기능(`MessageTemplateSheet.jsx`)이 있고,
-원본의 리포트 카카오톡/문자 공유 기능은 아예 없음을 발견 — 스코프를 보리에게
-질문 → **"설정화면만 우선(권장)"으로 확정**(2026-09-07). 이번 슬라이스는 설정
-화면만 이관하고, 저장한 문구가 실제 SMS에 반영되는 배선은 다음 슬라이스로
-미룬다(브라우저 검증 시 "저장은 되는데 콜상세엔 아직 안 보임"은 정상, 버그
-아님 — 지시서에 명시). 건드릴 파일 6개(신규 `lib/messageTemplates.js`+
-`components/MessageSettingsPage.jsx` + `side-menu.css`·`lazyPages.js`·
-`AppShellRoutes.jsx`·`MyPage.jsx` 각 1~2줄), 새 Supabase 동기화·새 저장 키
-없음(기존 `messageTemplateCustomBodies`·`reportShareMessagePattern` 그대로).
-§4 플레이북 열람 완료(순수 로컬 localStorage, 원격/durable 경로 없어 대부분
-N/A). **다음: 작업자에게 `docs/report.md` 전달 → 코드 → `npm test` → commit
-(push 안 함) → 보리 push → CI → 감시관 §5 리뷰 → 보리 브라우저 검증 → `[x]`.**
+**이관 계획 ②-1 "문자 문구 설정 이관(설정화면만)" — CI 초록 확인, 보리 브라우저
+검증 대기 `[~]` (2026-09-07).** 작업자 커밋 `a833280`(react-app) — 지시서
+7개 파일 그대로(신규 `lib/messageTemplates.js` 55줄 + `messageTemplates.test.js`
+84줄(5케이스: 기본값·저장roundtrip·getItem예외·스키마불일치·reset) +
+`MessageSettingsPage.jsx` 112줄 + `side-menu.css` +12·`lazyPages.js` +1·
+`AppShellRoutes.jsx` +2·`MyPage.jsx` +1/-1, 전부 지시서와 byte 단위 일치) ·
+보리 push · CI "verify" 초록(run `34106103395`, conclusion=success, headSha
+`a833280` 일치, 테스트·타입검사·빌드 3게이트 전부 success) · 감시관 §5 7항목
+통과(범위·증설·타입·200줄·테스트진실성(실제 in-memory localStorage로 검증,
+private 변수 조작 없음)·문서·요구사항 전부 확인) + 감시관이 typecheck·test
+(598+138, +5)·build 직접 재실행해 일치 확인(빌드 중 뜨는 `css-syntax-error`
+경고는 이전 커밋에도 있던 무관한 기존 이슈, 직접 대조 확인 — 이 슬라이스가
+낸 문제 아님). **다음: 보리 브라우저 실검증(마이페이지→문자 문구 설정→기본
+문구 4개 확인→하나 수정 후 저장→재진입 시 유지 확인→기본 문구로 복원→빈 칸
+저장 시 검증 토스트 확인) → 통과하면 보리가 `[x]` 확정.** 확정되면 이관
+계획 ②-2(콜상세 문자보내기 3종 복원+이번 설정 반영) 착수지시서를 이어서
+작성. 상세 `docs/report.md` §6.
 
 원본↔React UI 전수 대조 1차 조사 전체 내용(재무 숫자 불일치 등 나머지 발견 항목)은
 `docs/archive/audit.md` "원본↔React UI 전수 대조 — 1차 조사" 절로 옮김(동결, 참고용).
