@@ -16,28 +16,24 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 버그 수정·정합성 문제는 즉시 처리(위 슬라이스들처럼).
 
 ## 지금 하는 일
-**Step 11 JS→TS 전환 슬라이스 25 완료·`[x]` 확정 (2026-09-07).**
-`src/main.jsx`·`src/components/ReportPage.jsx`·`src/components/ForgotPasswordModal.jsx`·
-`src/app/HydrationRetryBanner.jsx` — 작업자 `62640d8`(감시관 추천 방향 ①, 보리 "다음건
-추천방향으로 진행" 승인)·보리 push·CI "verify" 초록(run `34072997974`, conclusion=success,
-headSha `62640d8` 일치, test·typecheck·build 3게이트 green)·감시관 §5 7항목 통과(diff가
-착수지시서 §3 "건드릴 파일"과 정확히 일치 + 감시관이 typecheck·test·strict-inventory
-직접 재실행해 346·561/135 확인)·보리 브라우저 스모크 통과 + 최종 `[x]`.
-- `main.jsx`: TS2345(`getElementById` null) — null 가드 추가(가드 실패 시 명시적 throw).
-- `HydrationRetryBanner.jsx`/`ForgotPasswordModal.jsx`: TS7031(props 암묵적 `any`) — JSDoc만.
-- `ReportPage.jsx`: TS2345(html2pdf 옵션) — 지시서(`import('html2pdf.js').Html2PdfOptions`)
-  대신 `Parameters<InstanceType<(typeof html2pdf)['Worker']>['set']>[0]` 사용. `Html2PdfOptions`가
-  패키지 `type.d.ts`에서 `export` 없이 선언돼 지시서 방식 자체가 원천 불가능함을 감시관이
-  `.d.ts` 직접 확인해 검증 — 값 무변경, 목적 동일.
-- 4파일 전부 200줄 이하(17/164/23/67줄), §4 플레이북 비대상, §7 증설 0.
-- strict-inventory 350→346(−4). 상세 `docs/report.md` §1·§4~5.
-※ **프로덕션 JS→TS 완료(슬라이스 1~24) + 후속 ① 완료(슬라이스 25).** 잔여 후보 ②`.test.js`
-  정책 ③`.ts`/`.tsx` 실전환 ④이관 로드맵 잔여(거래처별 세부 보고서 뷰 등)는 다음 방향
-  **보리 결정 대기**.
-※ **`ubiquitous-parakeet` 상태 (2026-09-07)**: 슬라이스 22~24 문서 기록 로컬 커밋
-  완료(`53a8e46`, `origin`=`7f2c550`에서 1커밋 앞섬) — **보리가 push 필요**(감시관은 push
-  금지, AGENTS §3). 이번 슬라이스 25 완료 기록(이 파일 + `docs/report.md`)은 감시관이
-  커밋 예정(push는 보리).
+**캘린더 지출 칩(maint-badge) 복원 — 작업자 구현 완료·CI 초록, 브라우저 검증만 남음
+(2026-09-07).** 범위 질문("메인 캘린더 전용") 승인 → 작업자 구현 → react-app `39b9677`
+(7파일 1커밋: `domain/calendarBadges.js`+테스트·`CalendarCell.jsx`+테스트·`CalendarGrid.jsx`·
+`CalendarPage.jsx`·`main-calendar.css`). **작업자는 "push 안 함"으로 보고했으나 감시관이
+`git fetch`로 확인한 결과 이미 `origin/main`에 반영돼 있었고 CI "verify" run `34074679875`
+conclusion=success(test·typecheck·build 3게이트 green)까지 끝난 상태.** 감시관 §5 7항목
+통과(diff가 착수지시서 §1과 정확히 일치 + typecheck·test 직접 재실행해 0에러·565/137 확인).
+- 신규 `dayExpenseBadgeLabel(expenses, dateKey)`(기존 `expenses.js`의 `filterByDate` 재사용,
+  신규 저장소 0) — 메인 캘린더만 `expenses` 전달, 서브 차량 캘린더는 칩 없음(승인 범위 그대로).
+- 4파일 전부 200줄 이하(56/53/137/101줄). 상세 `docs/report.md` §4~5.
+- **남은 것: 보리 브라우저 실검증**(`/app`에서 지출 있는 날짜에 빨간 칩 확인) **→ 최종 `[x]`**.
+※ 최근 완료: 25(잔여 UI 4파일) `62640d8` · 24(taxInvoices) `3352601` — 전부 CI 초록·
+  보리 `[x]`. 슬라이스별 상세는 "완료" 절. 남은 후보 `.test.js` 정책 / `.ts` 실전환 / 이관
+  로드맵 나머지(거래처별 세부 보고서 뷰)는 이 작업 이후 보리 결정 대기.
+※ **저장소 상태 (2026-09-07)**: react-app `origin/main`=`39b9677`(캘린더 지출 칩, CI 초록
+  확인 완료, 브라우저 검증 대기). ubiquitous-parakeet `origin/main`=`53a8e46`, 로컬은 그
+  위에 `e0a9d31`(슬라이스 25 `[x]` 문서, 1커밋 앞섬)+이번 캘린더 지출 칩 기록(미커밋) —
+  **보리가 커밋 확인 후 push 필요**(감시관 push 금지, AGENTS §3).
 
 ---
 
@@ -90,16 +86,15 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
    안 함. 별도로 다룰지 / 그대로 둘지 보리 결정.
 2. **`.ts`/`.tsx` 확장자 실전환** — JSDoc 타입 → 실제 TS. 보리가 "이 작업 끝난 뒤 별도 단계"로
    미뤄둔 것(2026-09-05).
-3. **이관 로드맵 잔여 확인** — 후속 nit(캘린더 지출 칩, 거래처별 세부 보고서 뷰) 등.
-   원본에 있던 기능이라 이관 우선순위 원칙상 비중이 크지만, 스코프(특히 거래처별 세부
-   보고서 뷰는 새로 만들지 여부 자체)가 안 잡혀 있어 별도 상의 필요.
+3. **[착수 중] 캘린더 지출 칩 복원** — 아래 후속 nit 참고, 착수지시서 작성 완료·범위
+   질문 1건 확인 대기(`docs/report.md`).
+4. **이관 로드맵 나머지** — 거래처별 세부 보고서 뷰 등. 원본에 있던 기능이라 이관
+   우선순위 원칙상 비중이 크지만, "새로 만들지 여부" 자체가 안 잡혀 있어 별도 상의 필요.
 
 ### 후속 nit (급하지 않음)
-- **캘린더 날짜 아래 지출 칩이 안 보임**[확인: 2026-09-05] — 보리가 Step 11 슬라이스 4
-  브라우저 검증 중 발견. 이번 슬라이스(`ownerDataHooks.js` 훅 분리)와는 무관 —
-  캘린더 지출 관련 코드는 `useOwnerExpenses`뿐인데 이번엔 손대지 않았고(일지/workData
-  훅만 이동), `domain/calendarBadges.js`엔 지출 관련 로직 자체가 없어 원래부터 있던
-  이슈로 판단(회귀 아님). 보리가 "나중에 수정" 지시 — 급하지 않음, 원인 조사부터 필요.
+- **캘린더 날짜 아래 지출 칩이 안 보임**[확인: 2026-09-05] → **[착수 중, 2026-09-07]**
+  원인 조사 완료: 버그가 아니라 react-app에 `.maint-badge` 계산·렌더·CSS가 통째로
+  이관 안 된 상태(회귀 아님, 원판단 유지). 상세·수정 계획·범위 질문은 `docs/report.md`.
 - **리포트 "세부 보고서(거래처별)" 뷰 자체가 없음** — 원본엔 월간 요약 외에 거래처별 세부
   내역 뷰(`isDetailReportView`)가 있는데 react-app `report.js`/`ReportPage.jsx`엔 이
   개념 자체가 없음(2026-09-05 Step 10 3차 착수 조사로 발견). 원본에 있던 기능이라 "이관

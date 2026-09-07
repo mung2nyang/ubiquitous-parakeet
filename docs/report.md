@@ -1,147 +1,119 @@
-# docs/report.md — Step 11 JS→TS 전환 슬라이스 25: 잔여 UI 4파일
+# docs/report.md — 캘린더 지출 칩(maint-badge) 복원
 
 > 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12).
-> **슬라이스 25 전체 `[x]` 확정 (2026-09-07)** — react-app `62640d8`, CI "verify" 초록
-> run `34072997974`(conclusion=success, 3게이트 green), 감시관 §5 7항목 통과, 보리 브라우저
-> 스모크 통과 + `[x]`. strict-inventory 350→346(−4). 대상 = `src/main.jsx`·
-> `src/components/ReportPage.jsx`·`src/components/ForgotPasswordModal.jsx`·
-> `src/app/HydrationRetryBanner.jsx`(감시관 추천 방향 ①, 보리 "다음건 추천방향으로 진행" 승인).
-> 다음(슬라이스 26 — `.test.js` 정책 / `.ts` 실전환 / 이관 로드맵 잔여) 착수지시서 작성 시 리셋.
+> **작업자 구현 완료 + CI 초록 확인 (2026-09-07) — 보리 브라우저 실검증만 남음.**
+> react-app `39b9677`, CI "verify" run `34074679875`(conclusion=success), 감시관 §5
+> 7항목 통과. STATUS.md "후속 nit"의 "캘린더 날짜 아래 지출 칩이 안 보임"[확인:
+> 2026-09-05] 복원 — §0-D 범위(메인 캘린더 전용) 그대로 승인·구현됨.
 
-## 0. 왜 이 방향인가 (감시관 추천 근거)
+## 0. 조사 메모
 
-STATUS.md "다음 할 일"에 있던 4후보 비교:
+### 0-A. 원본 동작 (`ubiquitous-parakeet/script.js` `buildCalendar`)
 
-| 후보 | 스코프 상태 | 이번에 안 고른 이유 |
-|---|---|---|
-| ① 잔여 UI 4파일 | 파일 4개·에러 4건, 원인 전부 확인됨 | (선택) |
-| ② `.test.js` 나머지 strict 정책 | "다룰지 말지" 자체가 미정 | 정책 결정이 먼저 필요 — 스코프 미확정 |
-| ③ `.ts`/`.tsx` 실전환 | 보리가 "별도 단계"로 명시적으로 미뤄둠(2026-09-05) | 이미 유예된 항목, 지금 열 필요 없음 |
-| ④ 이관 로드맵 잔여(거래처별 세부 보고서 뷰 등) | "새로 만들지 여부"부터 미정 — 사실상 신규 기능 스코핑 | 1회 질문으로 못 끝남(AGENTS §3 "범위 대화 N라운드 금지") |
+`script.js:3459-3481` — 하루 레코드(`workData[dateKey]`)에 박혀 있는 `maintItems`/
+`fuelItems`/`miscItems` 배열의 비용 합(정비·기타는 `.fare`, 주유는 `.cost`)이 0보다 크면
+`.maint-badge` 뱃지를 그 날짜 셀에 추가한다(`formatFareShort`로 짧게 표기). `.work-badge`
+(운행)·`.off-badge`(휴무)·`.unpaid-dot`(미수)과 같은 칸에 나란히 쌓인다.
 
-①만 착수지시서를 바로 쓸 수 있는 상태라서 추천. ②·③·④는 이번 슬라이스 완료 후 별도로 상의.
+### 0-B. react-app 현재 상태 — 왜 안 보이나
 
-## 1. 파일별 분석
+`domain/calendarBadges.js`에 `dayWorkBadgeLabel`(work-badge)·`dayHasUnpaid`(unpaid-dot)는
+있지만 **지출(maint-badge) 계산 함수 자체가 없다.** `CalendarGrid.jsx`도 `workData`만 받고
+`expenses`는 아예 안 받는다. `CalendarCell.jsx`에도 `.maint-badge`를 그릴 자리가 없다.
+CSS도 `--maint-badge-bg`/`--maint-badge-text`·`.maint-badge` 클래스 자체가 react-app
+어디에도 없음(grep 0건) — **버그가 아니라 이관 자체가 안 된 상태**(STATUS 판단과 일치,
+회귀 아님).
 
-### 1-A. `src/main.jsx` (14줄, `@ts-check` 없음)
+### 0-C. 데이터 모델 차이 (원본 vs react-app) — 왜 "그대로 포팅"이 아닌가
 
-- 에러: `TS2345 Argument of type 'HTMLElement | null' is not assignable to parameter of type 'Container'` — `document.getElementById('root')`가 `createRoot`에 그대로 들어감.
-- 수정: null 가드 추가 후 throw(캐스팅 대신 실제 런타임 체크로 좁힘):
-  ```js
-  const rootEl = document.getElementById('root')
-  if (!rootEl) throw new Error('#root not found')
-  createRoot(rootEl).render(...)
-  ```
-- 동작 변경: `#root`가 없으면 지금도 `createRoot(null)` 내부에서 에러가 나므로(암묵적 크래시), 이건 그 크래시를 앱 코드 레벨에서 명시적으로 만드는 것뿐 — 정상 경로(항상 `#root` 존재) 동작은 무변경.
-- 소비처 없음(엔트리포인트). 브라우저 검증: 앱이 정상 로드되는지만 확인하면 됨.
+- **원본**: `workData`가 로그(메인/서브 차량)별로 완전히 분리된 저장소(`loadWorkDataForLog`)라
+  `maintItems`/`fuelItems`/`miscItems`가 그 안에 박혀 있으면 **로그별로 자동 분리**된다.
+- **react-app**: 정비/주유/기타는 `domain/expenseTypes.js`의 `ExpenseItem`(`date` 필드만
+  있고 로그/차량 구분 필드 없음) 하나로 통합돼 `useOwnerExpenses(ownerKey)`가 **소유자
+  전체 1개 목록**을 돌려준다. `/app/expenses`(`MaintFuelPage`) 진입점도 하나뿐 — 서브
+  차량 로그 전용 지출 입력 화면 자체가 없다(react-app에서 다차량 로그 기능이 나중에
+  생기면서 지출 쪽은 그대로 owner-단일 목록으로 남은 것으로 보임).
+- 즉 **서브 차량 캘린더**(`CalendarPage`의 `logId !== 'main'`)에 이 owner 전체 지출을
+  그대로 붙이면, 다른 차량 날짜에 쓴 기름값이 지금 보고 있는 차량 캘린더에도 뜨는
+  **의미상 오류**가 생길 수 있다. 같은 파일에서 `commissionTotal`도 이미 `isMain`일
+  때만 계산한다(81번 줄) — 지출 데이터가 owner 단일 개념이라는 걸 이미 인정한 전례.
 
-### 1-B. `src/app/HydrationRetryBanner.jsx` (62줄, `@ts-check` 없음)
+### 0-D. 범위 질문 (1건 — 착수 전 확인)
 
-- 에러: `TS7031 Binding element 'showToast' implicitly has an 'any' type`.
-- 수정: JSDoc만 추가, 본문 무변경.
-  ```js
-  /**
-   * @param {Object} props
-   * @param {(message: string) => void} [props.showToast]
-   */
-  export default function HydrationRetryBanner({ showToast }) {
-  ```
-- 소비처: `AppShell.jsx`에서 `<HydrationRetryBanner showToast={showToast} />` 1곳뿐, 항상 함수 전달 — optional로 잡아도 구조적으로 문제 없음(기존 코드도 `showToast?.(...)` 방어 호출).
+**추천**: 지출 칩은 **메인 캘린더에서만** 표시(서브 차량 로그 캘린더는 이번엔 손 안 댐).
+근거: §0-C처럼 지출 데이터가 로그별로 분리돼 있지 않아 서브에도 그대로 붙이면 다른
+차량 지출이 섞여 보이는 부정확함이 생기고, 이걸 제대로 하려면 지출에 차량/로그 구분
+필드를 새로 추가하는 별도 작업(§7 "새 레이어" 취급 대상)이 필요해 이번 슬라이스
+범위를 벗어난다. 같은 파일의 `commissionTotal` 전례와도 일치.
+→ **이대로 진행해도 될지 승인만 받으면 착수**(다르면 서브 포함 여부·기준을 다시 논의).
 
-### 1-C. `src/components/ForgotPasswordModal.jsx` (18줄, `@ts-check` 없음)
+## 1. 수정 계획
 
-- 에러: `TS7031 Binding element 'onClose' implicitly has an 'any' type`.
-- 수정: JSDoc만 추가, 본문 무변경.
-  ```js
-  /**
-   * @param {Object} props
-   * @param {() => void} props.onClose
-   */
-  export default function ForgotPasswordModal({ onClose }) {
-  ```
-- 소비처: `App.jsx`에서 `<ForgotPasswordModal onClose={() => setForgotOpen(false)} />` 1곳뿐.
+| 파일 | 변경 |
+|---|---|
+| `src/domain/calendarBadges.js` | `dayExpenseBadgeLabel(expenses, dateKey)` 함수 추가. 기존 `expenses.js`의 `filterByDate` 재사용 + `.cost` 합 → 0보다 크면 `formatFareShort`, 아니면 `null`. 기존 3함수 무변경. |
+| `src/components/calendar/CalendarGrid.jsx` | `expenses` prop 추가(옵션, 메인일 때만 넘어옴) → 셀마다 `dayExpenseBadgeLabel(expenses, cell.key)` 계산해 `CalendarCell`에 `expenseBadgeLabel`로 전달. |
+| `src/components/calendar/CalendarCell.jsx` | `expenseBadgeLabel` prop 추가, `{expenseBadgeLabel && <span className="maint-badge">{expenseBadgeLabel}</span>}` 렌더(work-badge 뒤, unpaid-dot과 같은 위치 그룹). |
+| `src/components/calendar/CalendarPage.jsx` | `<CalendarGrid ... expenses={isMain ? expenses : undefined} />` — 이미 구독 중인 `expenses`를 메인일 때만 넘김(신규 훅 호출 없음). |
+| `src/main-calendar.css` | `:root`에 `--maint-badge-bg: #e53e3e`·`--maint-badge-text: #ffffff`(원본 `style.css` 값 그대로, 라이트/다크 동일값이라 하나만) + `.maint-badge` 클래스(원본 `.work-badge`/`.off-badge`와 같은 padding/radius 규칙, 배경만 다름). |
 
-### 1-D. `src/components/ReportPage.jsx` (162줄, JSDoc 있음·`@ts-check` 없음)
+**건드릴 파일 5개, 1커밋.** 안 건드릴 것: `useOwnerExpenses`·`expenses.js`·서브 차량
+전용 로직·다른 뱃지(work/off/unpaid) 계산. 실패 시 처리: 신규 저장소·레이어 없음(§7) —
+`filterByDate`는 기존 함수 재사용이라 신규 함수는 `calendarBadges.js`의 순수 계산 1개뿐.
 
-- 에러: `TS2345` — `html2pdf().set(opt)`의 `opt` 리터럴이 `html2pdf.js`의 `Html2PdfOptions`(예: `image.type: "jpeg"|"png"|"webp"`, `jsPDF.orientation: "portrait"|"landscape"`)에 안 맞음. 리터럴 값 자체는 맞는 값인데, 일반 객체 리터럴이라 TS가 필드를 `string`으로 넓게 추론해서 생기는 흔한 추론 문제.
-- 수정: 값 변경 없이 컴파일 타임 캐스팅 1줄만 추가(기존 슬라이스들의 §0-D 캐스팅 방침과 동일):
-  ```js
-  /** @type {import('html2pdf.js').Html2PdfOptions} */
-  const opt = {
-    margin: [12, 10, 12, 10],
-    filename: buildReportFileName(year, month),
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0, backgroundColor: '#ffffff' },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-  }
-  ```
-- 이 파일은 이미 컴포넌트 props에 JSDoc이 있음(`@ts-check`만 없던 상태) — 파일 전체에 `@ts-check` 추가 시 strict-inventory(checkJs:true, 동일 strict 규칙)가 이미 이 파일에서 정확히 이 1건만 잡고 있었으므로 추가 에러 없음(사전 확인 완료 — 아래 §2).
-- 소비처: `AppShellRoutes.jsx`(lazy route) 1곳, props 구조 무변경.
+## 2. 테스트 계획
 
-## 2. 사전 확인 (감시관, 로컬)
+- `domain/calendarBadges.test.js`에 `describe('dayExpenseBadgeLabel — 달력 셀 지출 칩')` 추가:
+  해당 날짜 지출 없음 → `null`, `maint`+`fuel`+`misc` 섞여 있어도 `.cost` 합산, 다른
+  날짜 항목은 제외, 0원 항목만 있으면 `null`.
+- `components/calendar/CalendarCell.test.js`에 기존 `.unpaid-dot` 테스트와 같은 패턴으로
+  `expenseBadgeLabel` 있을 때/없을 때 `.maint-badge` 렌더 여부 2케이스 추가.
 
-- `npx tsc -p tsconfig.strict-inventory.json --noEmit`로 4파일 각각 정확히 1건씩, 합 4건만 나옴을 확인(전체 350건 중 4건).
-- 4파일 전부 200줄 이하(14/62/18/162줄) — §6 분리설계 대상 아님.
-- AGENTS §4 플레이북 트리거 대상 아님: `src/store/**`·`supabaseClient`·`cloud*`·`hydrate*`·`outbox*`·`mutation*`·`commit*`·`localStorage` 직접 접근·`domain/finance*`·`domain/receivables*` 전부 무관(4파일 다 순수 UI/마운트, 저장·동기화 없음).
-- §133(외부 경계 런타임 검증) 대상 없음 — `html2pdf.js` 캐스팅은 라이브러리 옵션 타입이지 외부 데이터가 아님.
-- 4파일 소비처 전수 확인(위 1-A~1-D) — 호출부 수정 0.
+## 3. 소비처 확인
 
-## 3. 요약 (현재/목표/건드릴 파일/안 건드릴 것/실패 시 처리)
-
-- **현재**: 4파일 `@ts-check` 없음, strict-inventory 4건.
-- **목표**: 4파일 `// @ts-check` + 위 최소 수정, strict-inventory 350→346, `npm run typecheck` 계속 0 에러.
-- **건드릴 파일(4, 1커밋)**: `src/main.jsx`·`src/app/HydrationRetryBanner.jsx`·
-  `src/components/ForgotPasswordModal.jsx`·`src/components/ReportPage.jsx`.
-- **안 건드릴 것**: 4파일 소비처(`AppShell.jsx`·`App.jsx`·`AppShellRoutes.jsx`), `lib/report.js`
-  등 다른 모듈, 다른 strict-inventory 잔여 항목(`.test.js`·`testSupport/fakeSupabaseClient.js`).
-- **실패 시 처리**: 신규 레이어·검증기 없음(§7). 막히면 작업자가 멈추고 보고(AGENTS §3).
+- `CalendarGrid`/`CalendarCell`은 `CalendarPage.jsx` 1곳에서만 쓰임(grep 확인) —
+  다른 화면 영향 없음.
+- `calendarBadges.js`의 기존 export(`formatFareShort`·`dayFareTotal`·`dayWorkBadgeLabel`·
+  `dayHasUnpaid`) 시그니처 무변경 — 소비처 수정 0.
 
 ## 4. 작업자 구현 완료 보고
 
-- react-app `62640d8` "types: 잔여 UI 4파일에 @ts-check와 최소 타입 수정 추가"
-  (작성자 `ya01na111`, co-author Cursor). **push 전(ahead 1)** — 보리 push 대기.
-- 변경: 4파일 1커밋(+16/-1) — `main.jsx`(+5/-1)·`HydrationRetryBanner.jsx`(+5)·
-  `ForgotPasswordModal.jsx`(+5)·`ReportPage.jsx`(+2).
-- **지시서와의 차이 1건(작업자가 사전 보고)**: `ReportPage.jsx`의 `opt` 타입을
-  `import('html2pdf.js').Html2PdfOptions` 대신
-  `Parameters<InstanceType<(typeof html2pdf)['Worker']>['set']>[0]`로 — `html2pdf.js`의
-  `type.d.ts`가 `Html2PdfOptions`를 `export` 없이 모듈 내부 interface로만 선언해서
-  `import('html2pdf.js').Html2PdfOptions` 자체가 타입 레벨에서 존재하지 않음(감시관이
-  `.d.ts` 직접 확인, §5-3에서 재검증). `Worker`의 `set()` 시그니처에서 역으로 뽑아내는
-  방식으로 동일 목적(컴파일 타임 좁히기, 값 무변경) 달성.
-- 작업자 보고 숫자: typecheck 0 · strict-inventory 346(−4, 대상 4파일 각 0건) ·
-  test:unit 561/561 · app 135/135.
+- react-app `39b9677` "feat: 메인 캘린더 날짜 셀에 지출 칩(maint-badge) 복원"
+  (작성자 `ya01na111`, co-author Cursor). **origin에 이미 반영됨**(작업자는 "push 안 함"으로
+  보고했으나 감시관이 `git fetch`로 확인한 결과 `origin/main` = `39b9677` — CI도 이미
+  실행·성공함, 아래 참고).
+- 변경: 7파일 1커밋(+116/-5) — `domain/calendarBadges.js`(+19, 신규 `dayExpenseBadgeLabel`)·
+  `calendarBadges.test.js`(+38, 4케이스)·`CalendarCell.jsx`(+4/-1)·`CalendarCell.test.js`(+42,
+  2케이스)·`CalendarGrid.jsx`(+7/-2)·`CalendarPage.jsx`(+1)·`main-calendar.css`(+10/-1).
+- 지시서와 차이 없음(파일·함수명·CSS 값 전부 착수지시서 §1과 일치).
+- 동작: 메인 캘린더만 `expenses` 전달 → 해당 날짜 `.cost` 합 > 0이면 빨간 `.maint-badge`.
+  서브 차량 캘린더는 `expenses` 미전달(`undefined`) → 칩 없음(§0-D 승인 범위 그대로).
+- 작업자 보고 숫자: typecheck 0 · app 테스트 137(135+2) 통과.
 
-## 5. 감시관 실사 (push 전 사전 실사 — CI 초록 확인은 push 후)
+## 5. 감시관 실사 (push 후 — CI 이미 확인됨)
 
-**감시관이 커밋 `62640d8` diff 직접 대조 + typecheck·test·strict-inventory 직접 재실행:**
+**감시관이 커밋 `39b9677` diff 직접 대조 + typecheck·test 직접 재실행 + CI 조회:**
 
 | # | 확인 | 결과 |
 |---|---|---|
-| 1 | 범위 준수 | ✅ diff = §3 "건드릴 파일" 4개와 정확히 일치, 그 외 파일 0 |
-| 2 | 몰래 증설 없음 | ✅ 신규 파일·저장 키·durable/큐/tombstone/검증기 0. `main.jsx` null 가드는 지시서에 이미 명시된 최소 보정 그대로 |
-| 3 | 타입 꼼수 없음 | ✅ diff `^+` grep: `@ts-ignore`/`@ts-expect-error`/`as unknown as`/`: any`/`<any>` **0줄**. `ReportPage.jsx`의 `Parameters<InstanceType<...>['set']>[0]` 식은 라이브러리 자체 타입을 조합해 뽑아낸 것뿐 — 단언·무력화 아님(감시관이 `node_modules/html2pdf.js/type.d.ts` 직접 열어 `Html2PdfOptions`가 non-export interface임을 확인해 작업자 판단이 타당함을 검증) |
-| 4 | 200줄 | ✅ 17/67/23/164줄 |
-| 5 | 테스트 진실성 | ✅ 이번 슬라이스는 테스트 파일 변경 0(순수 타입 주석 + null 가드 1건). 기존 561+135 테스트 전부 그대로 통과, 약화·삭제 없음 |
-| 6 | 문서 정합 | ✅ react-app diff에 `.md` 0 (작업자 규칙 준수) |
-| 7 | 요구사항 충족 | ✅ 4파일 전부 `@ts-check` + 지시서 §1 수정 내용 반영(1건은 위 사유로 동등한 대안), 로직·값 변경 0 |
+| 1 | 범위 준수 | ✅ diff = 착수지시서 §1 "건드릴 파일" 5개 + 테스트 파일 2개, 그 외 0 |
+| 2 | 몰래 증설 없음 | ✅ 신규 저장소·레이어 0. 신규 함수는 `dayExpenseBadgeLabel` 1개뿐, 기존 `expenses.js`의 `filterByDate` 재사용(신규 유틸 0) |
+| 3 | 타입 꼼수 없음 | ✅ diff `^+` grep: `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` **0줄** |
+| 4 | 200줄 | ✅ `CalendarCell.jsx` 56·`CalendarGrid.jsx` 53·`CalendarPage.jsx` 137·`calendarBadges.js` 101줄 |
+| 5 | 테스트 진실성 | ✅ 기존 테스트 삭제·약화 0, 신규 6케이스(도메인 4 + 렌더 2) 전부 실제 값 검증(합산·날짜 필터·0원 제외·DOM 존재여부) |
+| 6 | 문서 정합 | ✅ react-app diff에 `.md` 0 |
+| 7 | 요구사항 충족 | ✅ §0-D 승인 범위(메인만) 그대로 구현, 서브는 의도적으로 칩 없음 |
 
-**감시관 직접 재실행** (커밋된 상태 = `62640d8`):
+**감시관 직접 재실행** (커밋된 상태 = `39b9677`):
 - `npm run typecheck` → **0 에러**
-- `npx tsc -p tsconfig.strict-inventory.json --noEmit | grep -cE "error TS"` → **346**
-  (350 → **−4**, 지시서 예측치와 정확히 일치). 4파일 grep → **0줄**.
-- `npm run test:unit` → **561/561** · `npm test`(app) → **135/135** (fail 0)
-→ 작업자 보고 숫자와 완전 일치.
+- `npm run test:unit` → **565/565**(+4, 신규 도메인 케이스) · `npm test`(app) → **137/137**(+2, 신규 렌더 케이스)
 
-**§4 플레이북 / §133**: 4파일 전부 비대상(저장·동기화·localStorage·Supabase 접근 없음).
-신규 검증기 0. §7 증설 0.
+**CI 확인** — `git fetch` 결과 `origin/main` = `39b9677`, CI "verify" run `34074679875`
+**conclusion=success**, headSha 일치, job "verify"의 테스트·타입 검사·빌드 3스텝 전부 success.
 
-**§5 사전 실사 전 항목 통과.** 순수 타입 주석 + 1개 null 가드뿐이라 브라우저 검증은
-가벼운 스모크로 충분.
+**§5 전 항목 통과.** 남은 것: 보리 브라우저 실검증(아래) → 최종 `[x]`.
 
-### 브라우저 테스트 (스모크)
-> 앱 정상 로드(콘솔 에러 없음, 화면이 뜨는지 = `#root` 마운트 확인) → 로그인 화면에서
-> "비밀번호를 잊으셨나요" 모달 열기/닫기 → 리포트 화면에서 PDF 다운로드 1회 정상 동작.
-> (`HydrationRetryBanner`는 로직 무변경이라 클라우드 동기화 실패를 일부러 재현할 필요는 없음.)
-
-**다음 단계**: 보리 push → CI "verify" 확인(감시관) → 위 브라우저 스모크(보리) → 최종 `[x]`.
+### 브라우저 테스트
+> `/app`(메인 캘린더)에서 정비/주유/기타 지출이 있는 날짜에 빨간 금액 칩이 뜨는지 확인
+> (없으면 `/app/expenses`에서 하나 등록 후 재확인). 운행 칩(주황)·휴무 칩과 겹치지 않고
+> 나란히 보이는지도 함께 확인. 서브 차량 로그(있다면)에서는 이 칩이 안 뜨는 게 정상.
