@@ -3,9 +3,11 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-07 (이관 계획 ②-1 "문자 문구 설정(설정화면만)" — 보리
-> 브라우저 실검증 통과, **`[x]` 최종 확정**. 다음: 이관 계획 ②-2 "콜상세
-> 문자보내기 3종 복원 + ②-1 설정 반영" 착수지시서 작성 중.)
+> 최종 갱신: 2026-09-07 (이관 계획 ②-2 "콜상세 문자보내기 3종 복원 + ②-1
+> 설정 반영" — 보리 push 완료, GitHub Actions "verify" 실제 실행 초록 확인
+> (run `34107868770`, headSha `a03d983` 일치, test·typecheck·build 3게이트
+> success). 감시관 §5 리뷰 통과. **남은 건 보리 브라우저 실검증뿐 — 아직
+> `[~]`**.)
 
 ---
 
@@ -19,20 +21,27 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 
 ## 지금 하는 일
 
-**이관 계획 ②-2 "콜상세 문자보내기 3종 복원 + ②-1 설정 반영" — 착수지시서
-작성 완료, 작업자 전달 대기 (2026-09-07).** 이관 계획 ②-1(문자 문구 설정
-화면)은 `[x]` 최종 확정(아래 "완료" 절 참고). 이번 슬라이스는 콜상세 화면
-"문자 보내기" 시트(`MessageTemplateSheet.jsx`)가 지금 "미수금 안내" 1종만
-하드코딩돼 있는 것을 원본처럼 3종(미수금 안내/입금 요청/운행 완료) 선택
-시트로 복원하고, ②-1이 저장한 커스텀 문구를 실제로 반영한다(`lib/
-messageTemplates.js`의 `getMessageTemplatePatterns` 재사용). 건드릴 파일
-3개(`lib/messageTemplates.js`에 `fillMessageTemplatePattern` 함수 추가,
-`MessageTemplateSheet.jsx` 재작성, 신규 테스트 파일) — 새 CSS 없음(기존
-`.message-template-*` 그대로), `CallDetailCard.jsx`/`DayLogPage.jsx`는
-이미 올바르게 배선돼 있어 무변경. §4 플레이북 열람 완료(순수 로컬, 원격
-경로 없음). **다음: 작업자에게 `docs/report.md` 전달 → 코드 → `npm test`
-→ commit(push 안 함) → 보리 push → CI → 감시관 §5 리뷰 → 보리 브라우저
-검증 → `[x]`.**
+**이관 계획 ②-2 "콜상세 문자보내기 3종 복원 + ②-1 설정 반영" — CI 초록
+확인, 보리 브라우저 검증 대기 `[~]` (2026-09-07).** 작업자 커밋 `a03d983`
+(react-app) — 지시서 3개 파일 그대로(`lib/messageTemplates.js`에
+`fillMessageTemplatePattern` +12줄 · `MessageTemplateSheet.jsx` 전체
+재작성(67줄, 3종 문구+미리보기+②-1 설정 반영) · 신규
+`MessageTemplateSheet.test.js` 154줄(4케이스: 기본 3종 렌더·커스텀 문구
+반영(②-1↔②-2 연결 증명)·연락처 없을 때 alert+onClose 미호출·
+`buildTemplateSmsUrl` UA 분기), 전부 지시서와 byte 단위 일치, `CallDetailCard.jsx`/
+`DayLogPage.jsx` 무변경 확인) · 보리 push · CI "verify" 초록(run
+`34107868770`, conclusion=success, headSha `a03d983` 일치, 3게이트 전부
+success) · 감시관 §5 7항목 통과(범위·증설·타입·200줄·테스트진실성(실제
+DOM 렌더+localStorage 통합 검증, `mock.method(window,'alert')`로 호출
+횟수·인자까지 확인)·문서·요구사항 전부 확인) + 감시관이 typecheck·test
+(598+142, day-log 그룹 +4)·build 직접 재실행해 일치 확인. 빌드 중 act
+경고 3건은 이 슬라이스 이전에도 있던 기존 이슈임을 직접 대조 확인(신규
+테스트가 새로 만든 게 아님). **다음: 보리 브라우저 실검증(미수 콜상세→
+문자 보내기→3종 문구 확인→미리보기에 거래처/구간/운송료 반영 확인→문자
+문구 설정에서 수정 후 저장→시트에 반영 확인→연락처 없는 거래처는 안내
+alert) → 통과하면 보리가 `[x]` 확정.** 확정되면 이관 계획 ②-3(리포트
+카카오톡/문자 공유 기능 신규 이관) 착수지시서를 이어서 작성 — 이걸로
+이관 계획 ② 전체 완료. 상세 `docs/report.md` §6.
 
 원본↔React UI 전수 대조 1차 조사 전체 내용(재무 숫자 불일치 등 나머지 발견 항목)은
 `docs/archive/audit.md` "원본↔React UI 전수 대조 — 1차 조사" 절로 옮김(동결, 참고용).
