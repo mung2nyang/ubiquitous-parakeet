@@ -170,8 +170,27 @@ unstaged 수정 + `NoticePage.jsx` untracked). AGENTS §3 흐름상 ②작업자
 0건 · `npm test` 593+138 전부 pass, fail 0 · `npm run build` 성공,
 `dist/assets/NoticePage-*.js`(1.67kB) 청크 생성 확인 — 작업자 보고와 일치, 회귀 없음.
 
-**결론**: 코드 내용 자체는 지시서 요구사항을 전부 충족하고 §5 체크리스트 통과.
-다만 **아직 커밋이 없어 절차상 CI 관문을 못 거쳤으므로 `[x]` 확정 불가, `[~]` 유지.**
-다음 필요 조치: 작업자가 한국어 커밋 메시지로 로컬 commit(push 금지, 위 빈 줄 2곳
-정리 권장) → 보리가 push → GitHub Actions "verify" 실제 실행·초록 확인 → 그 다음
-보리 브라우저 실검증(§3 순서 그대로) → `[x]`.
+**결론(2026-09-07 1차)**: 코드 내용 자체는 지시서 요구사항을 전부 충족하고 §5
+체크리스트 통과. 다만 아직 커밋이 없어 절차상 CI 관문을 못 거쳤으므로 `[x]` 확정
+불가, `[~]` 유지.
+
+## 7. 감시관 §5 리뷰 — CI 초록 확인 (2026-09-07, 커밋 후)
+
+보리가 push 완료·CI 초록 보고. 확인 결과:
+- 커밋 `41e9fd9`(react-app) — origin/main과 일치, 작업 트리 clean.
+- `gh run view 34103326120`: `headSha`=`41e9fd9d6f7e3b0f7ef340262914e27040919c9a`
+  (커밋과 일치), `conclusion`=`success`, job "verify"의 "테스트 (npm test)"·
+  "타입 검사 (npm run typecheck)"·"빌드 (npm run build)" 3단계 전부 success.
+- 최종 diff가 지시서와 정확히 1:1 일치: `AppShellRoutes.jsx` +2, `lazyPages.js`
+  +1, `MyPage.jsx` +1/-1, 신규 `NoticePage.jsx` +65 — 6절에서 지적한 빈 줄 2곳도
+  정리돼서 커밋됨. `.md` 변경 0.
+- 감시관이 typecheck(0건)·test(593+138 pass, fail 0)·build(`NoticePage-*.js`
+  청크 생성) 재실행해 CI와 로컬 결과 일치 확인, 회귀 없음.
+
+**결론(최종)**: §5 7항목 전부 통과 + 실제 CI green 확인 완료. 남은 건 §3 순서의
+마지막 단계인 보리 브라우저 실검증뿐:
+1. 마이페이지 → "공지사항" 클릭 → 공지 3건("[필독] 서비스 이용 안내" 등) 보임
+2. 항목 하나 탭 → 본문 펼쳐짐 → 다시 탭 → 접힘
+3. 뒤로가기(←) → 마이페이지로 복귀(홈으로 안 감)
+
+통과하면 보리가 `[x]` 확정 → 이관 계획 ②(문자 문구 설정 이관) 착수지시서 작성.
