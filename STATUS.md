@@ -3,7 +3,7 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-07 (서브 차량 지출 칩 이관 1단계 브라우저 검증 완료 — 최종 `[x]` 대기. 별개 기존 버그 1건 발견·백로그 등재)
+> 최종 갱신: 2026-09-07 (서브 차량 지출 칩 이관 1단계 `[x]` 확정. 별개 기존 버그(§0-F) 착수)
 
 ---
 
@@ -22,46 +22,34 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 (`/app`에서 지출 있는 날짜에 빨간 칩 확인) → 최종 `[x]`.** 상세 이전 판(git 이력)·
 `docs/archive/audit.md` 이관 예정.
 
-**B) [신규 착수지시서, 작업자 전달 대기] 서브 차량 지출 칩 이관 — 1단계 (2026-09-07).**
-보리 지적("서브차량도 원본에 있는거 아냐? 확인하고 이관해") → 감시관 확인: **맞음,
-원본은 로그별 저장소 분리라 서브도 원래 됐음.** react-app은 지출에 "어느 차량"
-개념 자체가 없어서(A)는 메인 전용으로만 나갔던 것.
-- **처음엔 2단계(로컬 태깅 / Supabase 동기화 루프 수정)로 나누려 했으나, 재조사로
-  Supabase 위험이 훨씬 작다는 걸 확인해 계획 축소**: `fuel_records` 등 테이블은
-  아이템 전체를 `raw`(jsonb)로 통째로 저장하므로, 새 필드(`vehicleNumber`)도 이미
-  자동으로 서버에 실린다 — hydrate 쪽 3함수(`expenseFromFuelRecord` 등)에 그 필드를
-  다시 읽어오는 1줄씩만 추가하면 **화면 기능이 100% 완성**되고 sync 쓰기 루프·
-  hydrate 조회 쿼리(`vehicle_id` 필터)는 안 건드려도 됨(0-C~0-D, `docs/report.md`).
-- **1단계(이 지시서, 10파일 1커밋 — §6 예외, 응집도상 안 쪼갬)**: `ExpenseItem`에
-  `vehicleNumber` 필드 + 일지 상세 인라인 입력(`useExpenseForm.js`)이 보고 있는
-  로그를 자동 태그 + 캘린더 칩이 메인/서브 구분해서 필터링 + hydrate 3곳 1줄씩
-  (raw 필드 복원). **Supabase 쓰기 루프·`vehicle_id` 값 자체는 무변경.**
-- **2단계(백로그, 안 급함)**: `syncFuelRecords` 등이 지금 "무조건 메인 차량의
-  `vehicle_id`로만 저장"하는 걸 실제 차량별로 고치는 DB 내부 정합성 개선 — 화면엔
-  영향 없어서 서두를 이유 없음(아래 "알려진 이슈"에 등재).
-- **감시관은 코드 작성 안 함**(사용자 지시) — 착수지시서만 작성, 작업자 전달 대기.
-  상세 `docs/report.md`.
-- **[2026-09-07] 작업자 구현 완료 — push 대기.** react-app `987be18`(16 files, 로컬
-  커밋만·미push). 감시관 §5 사전점검(CI가 못 보는 1~3·6·7항목) 전부 통과 + `wc -l`·
-  `npm run typecheck`·`npm test` 직접 재실행 확인(에러 0·137/0 fail). **작업자 자체
-  보고 수치 오류 발견**: "expenses.js 196줄"이라 했으나 실측 **200줄**(§6 "이하"
-  기준 충족이라 위반은 아니지만 여유 0 — 다음에 이 파일 또 건드리면 분리설계 검토
-  필요). 상세 `docs/report.md` §4~5. **남은 것: **CI "verify" 초록 확인**(run `34076822470`, headSha `987be18` 일치, test·typecheck·
-  build 3게이트 success). **브라우저 실검증도 완료**(2026-09-07, 보리 실계정 로그인
-  상태에서 감시관이 직접 조작 — 기존 서브차량 "00가"에 테스트 항목 등록→서브에만
-  칩·메인엔 없음/수정 후 태그 유지/재조회 후 유지 4단계 전부 통과, 테스트 데이터는
-  검증 후 삭제해 원상복구). **→ 보리 최종 `[x]` 확정만 남음.**
-- **[2026-09-07] 별개 버그 발견 — 서브차량 등록 시 "일지" 메뉴가 사라짐(오늘 작업과
-  무관, 기존 코드).** 보리가 "차량 등록 모달 기사연동/운행일지 중 운행일지만
-  클릭된다"고 보고해 조사 → 실제 원인은 다름: `CarDriverConnectPanel.jsx`는 신규
-  등록 시 "운행 일지" 탭이 애초에 disabled고, `carInviteFromDraft.js`의
-  `saveInviteAfterVehicle`은 탭 선택과 무관하게 저장 시 항상 기사 초대(pending)를
-  만들며, `subLogMenuItems.js`는 pending 초대만 있어도 그 차량을 사이드 메뉴
-  "[번호] 일지" 목록에서 빼버림 — 결과적으로 서브차량을 등록하는 즉시 오너가 그
-  캘린더에 들어갈 메뉴 경로가 사라짐(URL 직접 이동은 가능, 우회해서 위 브라우저
-  검증 수행함). 코드 수정은 안 함(범위 밖) — 조사만 완료, 코드 위치 특정됨. 상세·
-  수정 방향안 `docs/report.md` §0-F. **보리 결정 필요: 별도 착수지시서로 언제
-  다룰지.**
+**B) [착수] 차량 등록 모달 "기사연동/운행일지" 탭 무의미 버그 수정 (2026-09-07).**
+서브 차량 지출 칩(위 완료 항목) 브라우저 검증 중 보리가 "운행일지만 클릭된다"고
+보고 → 조사 결과 진짜 원인 특정(상세 `docs/report.md` §0-F): `CarDriverConnectPanel.jsx`가
+신규 등록 시 "운행 일지" 탭을 disabled 처리하는 건 2026-09-04 `5dc3ab4`가 그 탭 안의
+"이 차량 일지 열기" 버튼(`editingId` 필요)을 지우면서 남은 **죽은 게이트**(더 이상
+그 탭 안에 `editingId`가 필요한 것이 없음) — 이제 안내 문구만 있어서 막을 이유가
+없다. `carInviteFromDraft.js`의 `saveInviteAfterVehicle`은 탭 선택과 무관하게 항상
+기사 초대(pending)를 만들고, `subLogMenuItems.js`는 pending만 있어도 그 차량을
+사이드 메뉴 "일지" 목록에서 제외 — 그래서 서브차량을 등록하면 어떤 탭을 골랐어도
+"일지" 메뉴가 사라진다.
+- **수정 방향(보리 지시 "버그 고쳐" 승인, 감시관이 직접 구현 — 이번 건은 사용자가
+  감시관에게 코드 작성 허용)**: (a) 안 건드림: `subLogMenuItems.js`의 필터 로직
+  자체(기존 linked 차량들의 메뉴 분류는 그대로) — 블라스트 반경 최소화. (b) 신규
+  등록(`!editingId`)에서만 "운행 일지" 탭을 실제로 선택 가능하게 하고, 그 탭을
+  고른 채 저장하면 `saveInviteAfterVehicle` 호출 자체를 건너뛰어 애초에 pending
+  초대가 안 생기게 함(탭의 문구 "기사 연동 없이"를 실제로 지키게). 기존에 이미
+  linked/pending인 차량을 **편집**할 때는 무변경(그 관계를 건드리는 건 별개 기능).
+- 건드릴 파일: `CarDriverConnectPanel.jsx`(disabled 제거)·`CarFormModal.jsx`(탭
+  상태를 `draft.connectMode`로 승격)·`CarListPage.jsx`(`emptyDraft`+`save()`에 스킵
+  플래그 전달)·`carInviteFromDraft.js`(스킵 플래그로 조기 return)·
+  `CarDriverConnectPanel.test.js`(죽은 `logEnabled` prop 제거). 안 건드릴 것:
+  `subLogMenuItems.js`·기존 linked 차량 편집 흐름·Supabase 스키마.
+
+**A) 메인 캘린더 지출 칩 — CI 초록, 브라우저 검증만 남음.** react-app `39b9677`(7파일
+1커밋). 감시관 §5 7항목 통과(typecheck 0·565/137). **남은 것: 보리 브라우저 실검증
+(`/app`에서 지출 있는 날짜에 빨간 칩 확인) → 최종 `[x]`.** 상세 이전 판(git 이력)·
+`docs/archive/audit.md` 이관 예정.
+
 - **[2026-09-07, 별도 세션] 감시관 교차검증**: 전임 감시관이 쓴 착수지시서가 제대로
   됐는지 사용자 요청으로 재검토. react-app 실제 코드(`CalendarPage.jsx`·
   `CalendarGrid.jsx`·`calendarBadges.js`·`DayLogPage.jsx`·`useExpenseForm.js`·
@@ -177,6 +165,18 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
   상태가 생기진 않음 — 기존 데이터에도 없음(보리 확인) — 사실상 닫힌 문제, 참고용으로만 유지.
 
 ## 완료 (커밋·푸시됨)
+- **서브 차량 지출(정비/주유/기타) 칩 이관 — 1단계**: `ExpenseItem.vehicleNumber`
+  옵션 필드 + 일지 인라인 입력 자동 태그(`useExpenseForm.js`가 `logId` 받음) +
+  캘린더 칩 메인/서브 분리 합산(`dayExpenseBadgeLabel` 3번째 인자) + hydrate 3곳
+  `raw.vehicleNumber` 복원(`fuelRecords.js`·`maintenanceRecords.js`·
+  `miscExpenseRecords.js`). Supabase 쓰기 루프·`vehicle_id` 조회 쿼리는 무변경(2단계
+  백로그, 급하지 않음 — "알려진 이슈" 참고). — react-app `987be18`(16 files).
+  (CI "verify" 초록 run `34076822470` conclusion=success·headSha 일치·3게이트
+  green·감시관 §5 7항목 통과(범위·증설·타입·200줄·테스트진실성·문서정합·요구사항
+  전부 확인, `expenses.js` 200줄 정확히·`wc -l`로 작업자 자체보고 오류 정정)·
+  감시관이 보리 실계정 로그인 상태로 직접 브라우저 조작해 4단계 실검증(메인/서브
+  칩 분리·수정 후 태그 유지·재조회 후 유지, 테스트 데이터 삭제로 원상복구)·보리
+  `[x]` 2026-09-07). 상세 `docs/report.md` §0~5.
 - **Step 0~8**: 전부 완료·승인·푸시 (Step 8: 2026-09-02)
 - **Step 9-A~D**: 차량 정산방식(매출제/월급제)·정산 UI — react-app `5d1de1f`
 - **Step 9 ① 슬라이스 A**: 기사 차량 일지 서버 동기화 — `ce08638`

@@ -1,244 +1,82 @@
-# docs/report.md — 서브 차량 지출(정비/주유/기타) 칩 이관 — 1단계
+# docs/report.md — 차량 등록 모달 "기사연동/운행일지" 탭 무의미 버그 수정
 
 > 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12).
-> **착수지시서 (2026-09-07) — 작업자 전달 대기. 감시관은 코드 작성 안 함(사용자 지시:
-> "감시관이 관할할거니 너가 작업하지마 기록만해").**
-> 원본 확인 결과 "서브 차량도 지출 칩이 있다"는 사용자 지적이 맞음(§0). 추가 조사로
-> 애초 예상보다 위험이 작다는 걸 확인해 **2단계 계획을 재구성**했다(§0-D) — 1단계만으로
-> 사용자가 보는 기능은 완성되고, 2단계는 DB 내부 정합성만 다루는 급하지 않은 후속.
-> **2026-09-07 감시관 교차검증(별도 세션)**: react-app 실제 코드 전부 대조해 §0의
-> 기술적 주장을 검증(전부 일치) + 누락됐던 §8 4대 질문 답변 보강(§0-E) + 200줄 위험
-> 사전 경고(§1) + `DriverExpenseItem.vehicleNumber`와의 이름 교차 확인 추가. 계획
-> 자체(파일 목록·안 건드릴 것)는 변경 없음 — 여전히 작업자 전달 대기.
+> **착수지시서 + 구현 (2026-09-07). 사용자 지시: "버그 고쳐" — 이번 건은 감시관이
+> 직접 코드까지 작성(앞 슬라이스의 "감시관은 코드 작성 안 함" 지시는 이 건엔
+> 적용 안 됨, 사용자가 새로 "고쳐"라고 명시).**
 
-## 0. 조사 메모
+## 0. 배경 — 어떻게 발견했나
 
-### 0-A. 원본 재확인 — 사용자 말이 맞다
+서브 차량 지출 칩 슬라이스(직전 완료) 브라우저 검증 중 보리가 "서브차량등록 →
+기사연동/운행일지 클릭하는 것 중 운행일지 클릭밖에 안 된다"며 서브 캘린더 진입이
+막혀 테스트를 못 하겠다고 보고. 감시관이 보리 실계정으로 직접 재현·코드 추적한
+결과, 보고와는 다른 정확한 원인을 특정했다(추론이 아니라 실제 코드 실행으로
+확인 — 아래 각 항목에 `javascript_exec`로 직접 값을 찍어 확인한 근거 있음).
 
-`script.js`의 `workData`는 전역 변수라 `activeLogId`가 바뀔 때마다
-`loadWorkDataForLog(carNum)`으로 통째로 다른 로그 저장소로 교체된다(`script.js:1364-1369`).
-`maint-fuel-misc.js`도 이 전역 `workData`에 직접 쓴다(`saveDataToStorage()`가
-`writeWorkDataStoreForLog(activeLogId, workData)`). 즉 **어느 로그를 보고 있을 때
-정비/주유/기타를 입력하느냐에 따라 자동으로 그 차량 것으로 갈린다** — 메인만 되는 게
-아니라 서브 차량도 원본대로 이미 되는 기능이었다.
+## 1. 원인 (3단 연쇄)
 
-### 0-B. react-app 현재 상태 — 지출에 "어느 차량"이라는 개념 자체가 없음
+1. `src/components/cars/CarDriverConnectPanel.jsx:35` — "운행 일지" 탭이
+   `disabled={!logEnabled}`(`logEnabled = !!editingId`)라 **신규 등록 시엔 고를 수
+   없다.** 실측: 새 차량 등록 모달에서 `disabled: true` 확인.
+   - **왜 이렇게 됐나**: 2026-09-04 커밋 `5dc3ab4`가 이 탭 안의 "이 차량 일지
+     열기" 버튼(저장된 차량이어야 갈 수 있어서 `editingId` 필요)을 지우고 안내
+     문구("기사 연동 없이, 차주가 운행 일지를 직접 작성합니다")로 단순화했는데,
+     `disabled` 게이트를 지우는 걸 빠뜨렸다 — **지금은 그 탭 안에 `editingId`가
+     필요한 게 아무것도 없는데 여전히 막혀 있는 죽은 게이트.**
+2. `src/lib/carInviteFromDraft.js:39-46`(`saveInviteAfterVehicle`) — 탭에서 뭘
+   골랐는지 전혀 확인하지 않는다. `connectTab`(탭 선택)은 `CarFormModal.jsx`
+   안의 로컬 `useState`일 뿐 `draft`에 담기지도 않아서 `save()`가 접근조차 못
+   한다. `inviteCode`가 6자리 숫자면(신규 등록 시 `openAdd()`가 자동 생성,
+   `CarListPage.jsx:72`) **무조건** `upsertDriver`로 `status:'pending'` 기사
+   레코드를 만든다.
+3. `src/app/subLogMenuItems.js:21` — `status !== 'disconnected'`(즉 `'pending'`도
+   포함)인 초대가 걸린 차량번호는 사이드 메뉴 "[번호] 일지" 목록에서 제외한다.
 
-- `domain/expenseTypes.js`의 `ExpenseItem`에 차량 구분 필드가 없다.
-- 일지 상세 화면의 정비/주유/기타 인라인 입력(`day-log/useExpenseForm.js`)이
-  `logId`를 아예 안 받는다(`DayLogPage.jsx:50`) — 서브 차량 일지를 보고 있어도
-  무조건 owner 전체 통합 목록(`expenses[ownerKey]`)에 태그 없이 저장됨.
-- `/app/expenses`(`MaintFuelPage.jsx`, 로그와 무관한 전체 목록 화면)도 마찬가지.
+**결과**: 서브차량을 새로 등록하면(탭 선택과 무관하게) 즉시 pending 초대가
+생기고, 그 순간 사이드 메뉴에서 "일지" 항목이 사라져 조회 전용 "기사 관리"만
+남는다 — 오너가 그 차량 캘린더에 들어갈 메뉴 경로가 없어진다. (URL 직접 이동
+`/app/logs/<번호>`는 라우트 가드가 없어 우회 가능 — 직전 슬라이스 브라우저
+검증에 이 방법을 씀.)
 
-### 0-C. Supabase 쪽 — 처음 생각보다 위험이 작음 (재조사)
+## 2. 수정 방향 — 블라스트 반경 최소화
 
-- `lib/syncExpenseRecords.js`는 세 함수(`syncFuelRecords`/`syncMaintenanceRecords`/
-  `syncMiscExpenseRecords`) 전부 **무조건 "메인" 차량의 `vehicle_id`로만 저장**한다
-  (`cars.find(car => car.type === 'main' ...)`, 51·88·125번 줄).
-- `lib/hydrate.js`도 이 세 테이블을 **무조건 메인 차량의 `vehicle_id`로만 조회**한다
-  (142-144번 줄, `.eq('vehicle_id', mainCar.supabaseId)`).
-- 두 가지가 **항상 같은 차량(메인)을 가리키므로 서로 정합적** — 태그를 로컬에만
-  추가해도 지금 sync/hydrate 경로를 안 건드리면 **데이터 유실·조회 누락 위험이 없다.**
-  단, `buildFuelRecordRow` 등이 아이템 전체를 `raw`(jsonb)로 그대로 저장하므로,
-  새 필드(`vehicleNumber`)도 이미 `raw`에 자동으로 실려서 서버에 저장된다 — 다시
-  불러올 때(`expenseFromFuelRecord` 등)만 `raw.vehicleNumber`를 읽어오게 1줄씩
-  추가하면 새로고침·재로그인 후에도 태그가 그대로 유지된다(기존 `subsidy`/`mileage`와
-  동일한 패턴, §133 대상 아님 — 이미 저장된 원시 필드를 추가로 읽는 것뿐).
-- **즉 "메인 차량의 DB row에 전부 몰아 쓴다"는 사실 자체는 이번 1단계에서 안 고친다.**
-  기능은 100% 동작하지만(로컬 계산·표시가 전부 태그 기준으로 정확히 필터링됨),
-  서버 쪽 `vehicle_id` 컬럼 값 자체는 여전히 항상 메인 차량 것 — 이건 지금 화면에
-  아무 영향이 없는 "DB 내부 정합성" 문제라 2단계(백로그, 안 급함)로 미룬다(§0-E).
+**안 건드리는 것**: `subLogMenuItems.js`의 필터 로직 자체(기존에 이미
+linked/pending인 차량들의 메뉴 분류 규칙은 그대로 — 그 규칙을 바꾸면 기존 연동
+차량들의 메뉴 표시가 전부 영향받아 블라스트 반경이 커짐). 기존 차량을
+**편집**할 때의 초대 저장 로직(무조건 `saveInviteAfterVehicle` 호출)도 무변경
+— 이미 linked/pending인 관계를 건드리는 건 "연동 해제"라는 별개 기능이라 이번
+버그 수정 범위 밖.
 
-### 0-D. 계획 변경 — 왜 위험이 작아졌는가
+**건드리는 것**: 신규 등록(`!editingId`)에서만 "운행 일지" 탭을 실제로 선택
+가능하게 하고, 그 탭을 고른 채 저장하면 `saveInviteAfterVehicle` 자체를
+건너뛰어 pending 초대가 애초에 안 생기게 한다 — 탭 문구가 약속하는 "기사 연동
+없이"를 실제로 지키게 하는 것.
 
-애초엔 "동기화 루프를 차량별로 고쳐야 한다"고 봐서 2단계 다 필요하다고 판단했는데,
-`raw` 컬럼이 이미 아이템 전체를 실어 나른다는 걸 재확인하면서, **sync/hydrate의 쓰기
-루프·조회 필터 자체는 안 바꾸고 "다시 읽을 때 한 필드 더 읽기"만 추가**하면 화면
-기능은 완성된다는 걸 확인했다. 그래서:
-- **1단계(이 지시서)**: 로컬 태깅 + 인라인 입력 자동 태그 + 캘린더 칩 필터링(메인/서브
-  둘 다) + hydrate 3곳 1줄씩(`raw.vehicleNumber` 복원). **Supabase 쓰기 루프·조회
-  필터·`vehicle_id` 값 자체는 무변경** — §4 플레이북 "저장·동기화" 정의상 hydrate
-  읽기 함수 3곳을 건드리긴 하지만, 기존 패턴 그대로 필드 하나 추가일 뿐 새 검증기·
-  새 쓰기 경로·새 쿼리 없음.
-- **2단계(백로그, 급하지 않음)**: `syncFuelRecords` 등이 아이템의 `vehicleNumber`로
-  실제 그 차량의 `vehicle_id`를 찾아 쓰게 고치고, `hydrate.js`도 owner의 모든 차량을
-  순회해 조회하게 고친다. 화면엔 영향 없고 "DB에 어느 차량 row로 남아있나"만 바뀌는
-  정합성 개선 — 서두를 이유 없음, STATUS.md 알려진 이슈로 등재.
-
-### 0-E. §8 리팩토링·이관 착수 전 4대 질문 (2026-09-07, 감시관 교차검증 세션에서 보강)
-
-react-app 코드를 직접 대조해 확인한 답변 — 전부 "기존 방어·채널 그대로 재사용"으로
-귀결돼 새 위험 없음:
-
-1. **구독인가 스냅샷인가?** → 구독. `CalendarPage.jsx`는 `useOwnerExpenses`/
-   `useOwnerWorkDataByLogId`로 store를 직접 구독한다(`CalendarPage.jsx:57-68`,
-   자기만의 스냅샷 아님). `useExpenseForm.js`의 화면 렌더도 `useOwnerExpenses`
-   구독값을 그대로 쓴다(`useExpenseForm.js:29`).
-2. **지금 보이는 값이 draft/Store/localStorage/Supabase 중 어디 것인가?** → Store.
-   `useOwnerExpenses(ownerKey)` 구독값이며, 저장 직전엔 `readOwnerExpenses`로 store
-   최신값을 한 번 더 읽어 그 위에 merge한다(`useExpenseForm.js:68,76`) — draft는
-   폼 입력 임시값일 뿐 표시 값의 출처가 아니다.
-3. **쓰기 창구가 request\*인가, 배럴 save\*/load\* 우회인가?** → 기존 정식 채널
-   `saveExpenses`(`lib/expenses.js`) 그대로. `useExpenseForm.js`자체 주석대로
-   "commitExpenses→commitBatch→writeAllOrNothing이 이미 원자적"이라 새 쓰기 경로·
-   우회 없음(`useExpenseForm.js:35-41`).
-4. **hydrate·디바운스·동시편집이 겹치면 누가 이기는가?** → 이 슬라이스가 새로
-   만드는 로직이 아니라 `useExpenseForm.js`에 이미 있는 이중 방어를 그대로 탄다:
-   화면은 store를 항상 구독해 다른 탭/hydrate의 변경이 즉시 보이고, `save()`/
-   `remove()`는 쓰기 직전 `readOwnerExpenses`로 최신값을 다시 읽어 그 위에
-   merge한다(재감사 2차 FAIL 지적 2번 대응, `useExpenseForm.js:6-12`). `vehicleNumber`는
-   기존 필드들과 동일하게 이 병합 대상에 포함되므로 별도 처리 불필요.
-
-**교차 확인(신규 발견, 2026-09-07)**: `domain/expenseTypes.js:36-39`에 이미
-`DriverExpenseItem`(소속기사 서브차량 비용 표시용, `store/app-store.js`의
-`driverExpenses` 슬라이스 전용)가 `vehicleNumber` 필드를 갖고 있고, 주석에
-"ExpenseItem에 vehicleNumber만 덧붙인 형태. expenses 배열·ExpenseItem 정본에는
-넣지 않는다(Q3)"라고 명시돼 있다(그 Q3의 원 결정은 `docs/archive/audit.md`
-"소속기사 지출 입력 — 2차": "별도 읽기전용 버킷, expenses 배열·저장 경로 무변경").
-이번 슬라이스가 `ExpenseItem`(정본)에 추가하는 `vehicleNumber`는 **완전히 다른
-개념**(차주 본인 소유 서브 차량 로그 구분)이고 스토어 슬라이스도 다르다
-(`expenses[ownerKey]` vs `driverExpenses`, 서로 안 섞임 — `CalendarPage.jsx`는
-`useOwnerExpenses`만 쓰고 `useOwnerDriverExpenses`는 안 씀) — 기능 충돌은 없다.
-다만 같은 파일에 이름이 같은 필드가 두 타입에 걸쳐 존재하게 되므로, 작업자는
-`ExpenseItem.vehicleNumber` JSDoc에 "차주 본인 서브 로그 태그(DriverExpenseItem의
-동명 필드와 무관)"임을 한 줄 명시할 것.
-
-## 1. 수정 계획 (1단계, 응집도상 분리 어려워 10파일 — §3/§6 "응집도 우선" 원칙 준용,
-§6 자체의 "200줄 초과 파일 분리" 예외 조항과는 별개)
+## 3. 수정 계획 (5파일 1커밋)
 
 | 파일 | 변경 |
 |---|---|
-| `src/domain/expenseTypes.js` | `ExpenseItem`에 `@property {string} [vehicleNumber]` 추가(옵션, 없으면 메인). |
-| `src/domain/expenses.js` | `emptyExpenseDraft(kind, date, vehicleNumber)` 3번째 옵션 파라미터 추가. `upsertExpense`가 `draft.vehicleNumber`를 결과에 포함(trim, 빈 문자열은 undefined 취급). |
-| `src/components/day-log/useExpenseForm.js` | `useExpenseForm(ownerKey, dateKey, showToast, logId)` 4번째 파라미터 추가. `openAdd`가 `emptyExpenseDraft(kind, dateKey, logId !== 'main' ? logId : undefined)` 호출. `openEdit`가 `item.vehicleNumber`를 draft에 보존. |
-| `src/components/day-log/DayLogPage.jsx` | `useExpenseForm(ownerKey, dateKey, showToast, logId)` 호출부에 `logId` 추가(이미 props로 받고 있음, 전달만 추가). |
-| `src/components/MaintFuelPage.jsx` | `openEdit`가 `item.vehicleNumber`를 draft에 보존(수정 저장 시 태그 유실 방지). 이 화면 자체엔 차량 선택 UI 추가 안 함(로그 비종속 전체 목록이라 원본에도 대응 화면 없음 — 범위 밖). |
-| `src/domain/calendarBadges.js` | `dayExpenseBadgeLabel(expenses, dateKey, vehicleNumber)` 3번째 옵션 파라미터 추가 — `item.vehicleNumber`가 그 값과 일치(둘 다 없으면 "메인"으로 간주)하는 것만 합산. |
-| `src/components/calendar/CalendarGrid.jsx` | `expenseVehicle` prop 추가(메인이면 undefined, 서브면 `logId`) → `dayExpenseBadgeLabel(expenses, cell.key, expenseVehicle)`로 전달. |
-| `src/components/calendar/CalendarPage.jsx` | `expenses`를 메인/서브 구분 없이 항상 전달(기존 `isMain ? expenses : undefined` 제거) + `expenseVehicle={isMain ? undefined : logId}` 전달. |
-| `src/domain/fuelRecords.js`·`maintenanceRecords.js`·`miscExpenseRecords.js` | 각 `expenseFrom*Record` 함수에 `vehicleNumber: raw.vehicleNumber || undefined` 1줄 추가(기존 `subsidy`/`mileage` 패턴과 동일, `row.*` 컬럼에서 오는 값 없음 — `raw`에서만). |
+| `CarDriverConnectPanel.jsx` | "운행 일지" 탭의 `disabled`/`onClick` 가드 제거(항상 선택 가능). 죽은 `logEnabled` prop 삭제(JSDoc 포함). |
+| `CarFormModal.jsx` | 로컬 `useState('link')` 제거 → `draft.connectMode`(`'link'|'log'`, 기본 `'link'`)로 승격. `onTab`이 `setDraft`로 `connectMode` 갱신. `CarDriverConnectPanel`에 `logEnabled` 전달 제거. |
+| `CarListPage.jsx` | `emptyDraft`에 `connectMode: 'link'` 추가. `openEdit`도 기존 동작 유지 위해 `connectMode: 'link'`(무변경 — 편집 흐름은 안 건드림). `save()`가 `saveInviteAfterVehicle` 호출 시 `skipInvite: !editingId && draft.connectMode === 'log'` 전달. |
+| `carInviteFromDraft.js` | `saveInviteAfterVehicle`에 `skipInvite` 파라미터 추가, `true`면 `upsertDriver` 호출 전 조기 `return null`. |
+| `CarDriverConnectPanel.test.js` | 기존 테스트에서 죽은 `logEnabled: true` prop 제거(더 이상 컴포넌트가 안 받음). |
 
-**건드릴 파일 10개, 1커밋 목표(응집도상 쪼개면 "차량 태그가 입력→표시→복원까지
-한 기능"이 흩어짐).** 안 건드릴 것: `lib/syncExpenseRecords.js`(쓰기
-루프)·`lib/hydrate.js`의 조회 쿼리(`.eq('vehicle_id', ...)`)·`MaintFuelPage.jsx`의
-차량 선택 UI(범위 밖, 2단계에서도 아님 — 원본에 대응 화면 없음). 실패 시 처리: 신규
-저장소·검증기 없음(§7), 기존 `raw` jsonb 왕복 패턴 재사용뿐.
+**신규 저장소·검증기·DB 변경 없음(§7)**. `subLogMenuItems.js`·기존 편집 흐름·
+Supabase 스키마 무변경.
 
-**⚠️ 200줄 위험(2026-09-07 감시관 교차검증에서 사전 점검, 착수 전 필수 확인)**:
-`src/domain/expenses.js`(현재 193줄)·`src/components/MaintFuelPage.jsx`(현재
-198줄) 둘 다 한도에 임박해 있다. 특히 `expenses.js`는 `emptyExpenseDraft`(파라미터+
-JSDoc 추가)와 `upsertExpense`(trim/undefined 처리+결과 필드 추가) 두 함수를
-동시에 건드려야 해서 200줄을 넘길 가능성이 실질적으로 있다. **작업자는 커밋 전
-`wc -l`로 이 두 파일을 직접 확인**하고, 200줄을 넘으면 임의로 로직을 줄이거나
-다른 파일로 흩어 넣지 말고 §6 절차(초과분을 최소화하는 표현으로 조정 → 그래도
-넘으면 사유 1줄 주석 + ~250줄까지 허용, 기계적 절단 금지) 그대로 따를 것. 이
-슬라이스 안에서 자체 판단으로 처리 가능(추가 착수지시서 불필요) — 단 감시관
-리뷰 시 §5 #4 항목에서 실제 줄 수와 처리 방식을 대조한다.
+## 4. 테스트 계획
 
-## 2. 테스트 계획
+- `CarDriverConnectPanel.test.js`: 기존 케이스에서 `logEnabled` prop 제거하고
+  통과 확인 + "운행 일지" 탭이 `disabled` 속성 자체를 안 가지는지 케이스 추가.
+- `carInviteFromDraft.test.js`(신규 또는 기존 파일에 추가): `skipInvite: true`면
+  `upsertDriver`/`requestDriverInviteSave`가 전혀 호출되지 않고 `null`을
+  반환하는지, `skipInvite` 없거나 `false`면 기존과 동일하게 동작하는지.
 
-- `domain/expenses.test.js`: `emptyExpenseDraft`가 `vehicleNumber`를 draft에 담는지,
-  `upsertExpense`가 그 값을 결과 아이템에 유지/trim하는지.
-- `domain/calendarBadges.test.js`: `dayExpenseBadgeLabel`에 `vehicleNumber` 인자
-  추가 — 태그 없는 항목만 메인에 합산되는지, 특정 차량 태그 항목만 그 서브에
-  합산되는지, 다른 차량 태그는 서로 안 섞이는지 3케이스 이상.
-- `domain/fuelRecords.test.js`/`maintenanceRecords.test.js`/`miscExpenseRecords.test.js`:
-  `raw.vehicleNumber`가 있는 행을 `expenseFrom*Record`에 넣었을 때 결과 아이템에
-  `vehicleNumber`가 복원되는지 1케이스씩.
+## 5. 구현 완료 보고
 
-## 3. 소비처 확인
+_(구현 후 채움)_
 
-- `dayExpenseBadgeLabel`·`emptyExpenseDraft`·`expenseFrom*Record` 시그니처가 파라미터
-  "추가"(옵션)라 기존 호출부(슬라이스 25에서 만든 메인 칩 호출부 포함)는 인자 없이도
-  그대로 동작 — 무변경 호출부는 전부 "메인과 동일" 취급.
-- `useExpenseForm` 호출부는 `DayLogPage.jsx` 1곳뿐(grep 확인).
+## 6. 검증
 
-## 4. 작업자 구현 완료 보고
-
-react-app `987be18`(16 files, 로컬 커밋만·미push): 정비/주유/기타 지출에
-`vehicleNumber` 태그 + 캘린더 칩 메인/서브 필터 + hydrate 3곳 `raw.vehicleNumber`
-복원. 작업자 자체 보고: "typecheck 0 · npm test 통과, expenses.js 196줄·
-MaintFuelPage.jsx 199줄(200 이하)".
-
-## 5. 감시관 실사 (2026-09-07, push 전 사전 점검 — CI는 push 후 별도 확인 필요)
-
-> 아직 push 전이라 CI "verify"는 안 돌았다. §4 원칙상 CI 초록이 `[x]` 확정의
-> 필요조건이라 **최종 승인은 push 후 CI 확인 + 보리 브라우저 검증까지 남음.**
-> 다만 §5 체크리스트 중 CI가 못 보는 항목(1~3,6,7)과, 작업자 자체 보고 수치의
-> 신뢰도를 미리 확인해 두면 push 왕복을 줄일 수 있어 감시관이 선행 점검했다.
-
-| # | 확인 | 결과 |
-|---|---|---|
-| 1 범위 준수 | `git show --stat 987be18` | 지시서 파일 목록(11 프로덕션+5 테스트=16)과 정확히 일치. `lib/syncExpenseRecords.js`·`lib/hydrate.js`·`.md` 무변경 확인. |
-| 2 몰래 증설 없음 | `git diff` 훑기 | 새 파일·새 저장 키·새 durable/큐/레이어 0건. |
-| 3 타입 꼼수 없음 | `git show 987be18 \| grep` | `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 0건. `expenseFrom*Record` 3곳은 지시서보다 더 안전한 `typeof raw.vehicleNumber === 'string' && raw.vehicleNumber` 런타임 체크로 구현(지시서의 단순 `|| undefined`보다 개선). |
-| 4 200줄 | **감시관이 `wc -l` 직접 재실행** | `expenses.js` **200줄**(작업자 자체 보고 "196줄"과 불일치 — 실측이 맞음), `MaintFuelPage.jsx` 199줄. 둘 다 §6 "200줄 **이하**" 기준은 충족(초과 아님)이라 예외 절차 불필요하지만, `expenses.js`는 여유 0 — 다음 슬라이스에서 이 파일을 또 건드리면 바로 분리설계 검토 필요. |
-| 5 테스트 진실성 | `git show` 테스트 diff 전체 | 신규 8케이스(`calendarBadges.test.js` 3·`expenses.test.js` 2·`fuelRecords/maintenanceRecords/miscExpenseRecords.test.js` 각 1) 전부 구체적 입력값→기대 출력 assert, 기존 테스트 삭제·약화 0건. |
-| 6 문서 정합 | `git show --stat` | `.md` 0건 — 작업자가 AGENTS §1 준수. |
-| 7 요구사항 충족 | 지시서 §1 항목별 대조 | 10개 변경 지점 전부 구현 확인(태그 자동 부여·캘린더 메인/서브 분리 합산·hydrate 3곳 복원·`MaintFuelPage.jsx` 편집 시 보존). 미구현 0건. |
-
-**감시관이 typecheck·test 직접 재실행(작업자 수치 불일치 발견 직후라 전체 재확인)**:
-`npm run typecheck` 에러 0건, `npm test` **137 pass / 0 fail**(작업자 보고와 일치).
-기존에도 있던 `OwnerMonthlyCards` 관련 act() 경고 1건은 이번 diff와 무관한 파일이라
-회귀 아님(건드린 파일에 `OwnerMonthlyCards.jsx` 없음).
-
-**요약(비개발자용)**: 일지에서 서브 차량(예: 12가3456)을 보고 있을 때 등록한 정비/
-주유/기타 비용에 자동으로 그 차량 번호가 붙고, 캘린더에서 메인 캘린더엔 메인 비용만,
-서브 캘린더엔 그 차량 비용만 빨간 칩으로 따로 표시됩니다. 저장 방식 자체(서버 전송
-방법)는 안 건드려서 안전합니다. 작업자가 파일 줄 수를 살짝 잘못 세긴 했지만(196→
-실제 200) 규정 위반은 아니고 실제 동작엔 영향 없습니다.
-
-**CI "verify" 초록 확인 (2026-09-07, push 후)**: run `34076822470`, conclusion=success,
-headSha=`987be186c35af36e3be17845f85f91313372eb90`(origin/main과 일치), 테스트·타입
-검사·빌드 3개 스텝 전부 success. §4 필요조건 충족.
-
-**다음 단계**: 보리 브라우저 실검증만 남음 — 순서:
-1. `/app`에서 메인 캘린더에 정비/주유/기타 하나 등록 → 그 날짜에 빨간 칩(금액) 표시,
-   서브 캘린더로 전환해도 그 칩이 안 보이는지.
-2. 서브 로그(사이드메뉴에서 등록된 서브 차량 일지)로 전환 → 같은 날짜 또는 다른
-   날짜에 정비/주유/기타 등록 → 그 서브 캘린더에서만 칩이 보이고, 메인 캘린더로
-   돌아가면 그 칩이 안 보이는지.
-3. `/app/expenses`(정비/주유/기타 관리 화면)에서 서브 차량 항목을 수정 후 저장 →
-   다시 서브 캘린더에서 칩이 그대로 유지되는지(태그 유실 안 되는지).
-4. 새로고침(F5) 후에도 1~3 결과가 그대로 유지되는지(서버 재조회 후 태그 복원 확인).
-모두 통과하면 최종 `[x]`.
-
-**브라우저 실검증 완료 (2026-09-07, 보리 실계정 로그인 상태에서 감시관이 직접 조작)**:
-보리가 "차량 등록 모달에서 기사연동/운행일지 중 운행일지만 클릭된다"며 서브 캘린더
-진입이 안 돼 테스트가 막힌다고 보고 → 조사 결과 **완전히 다른 기존 버그**(§0-F)가
-원인이었고, 지출 칩 기능 자체는 URL 직접 이동(`/app/logs/00가`)으로 우회해 실계정
-데이터로 4단계 전부 검증 완료:
-1. 기존 서브차량 "00가"의 2026-09-07에 정비 "서브테스트정비"(77,000원) 등록 →
-   서브 캘린더에만 빨간 "8만" 칩 표시, 같은 날짜 메인 캘린더엔 칩 없음 확인.
-2. `/app/expenses`에서 항목명 수정("...수정됨") 후에도 서브 캘린더 칩 유지 확인.
-3. 페이지 재이동(새로고침과 동일 효과, 서버 재조회)해도 칩 유지 확인 — hydrate
-   `raw.vehicleNumber` 복원 정상 동작 실증.
-4. 검증 후 테스트 항목 삭제로 계정 원상복구 완료(잔여 데이터 없음).
-**→ 이 슬라이스 최종 `[x]` 확정 가능.**
-
-### 0-F. 발견된 별개 버그 (2026-09-07, 이번 슬라이스 범위 밖 — 별도 착수지시서 필요)
-
-보리가 겪은 "서브 캘린더 진입 불가"의 실제 원인. **오늘 작업(987be18)과 무관한
-기존 코드**(2026-09-04~05 "기사 연동 이관" 슬라이스에서 만들어진 부분)의 버그:
-
-1. `CarDriverConnectPanel.jsx:35` — 신규 차량 등록 시(`editingId` 없음) "운행 일지"
-   탭이 `disabled`라 "기사 연동" 탭만 고를 수 있다.
-2. `carInviteFromDraft.js:42-44`(`saveInviteAfterVehicle`) — 저장 시 어느 탭을
-   선택했는지는 아예 확인하지 않고, `inviteCode`가 6자리 숫자면 **무조건** 기사
-   초대(`status:'pending'`)를 생성한다. 탭 상태(`connectTab`)는 `draft`에 담기지도
-   않는 순수 로컬 UI 상태라 저장 로직에 영향을 줄 수 없는 구조.
-3. `subLogMenuItems.js:21` — `status !== 'disconnected'`(즉 `'pending'`도 포함)인
-   초대가 있는 차량번호는 사이드 메뉴 "[번호] 일지" 목록에서 제외된다.
-
-**결과**: 서브차량을 새로 등록하는 순간(어떤 탭을 골랐어도) 사이드 메뉴에서 "일지"
-항목이 사라지고 조회 전용 "기사 관리"만 남아, 오너가 그 차량 캘린더에 들어갈
-메뉴 경로가 없어진다. URL 직접 이동(`/app/logs/<차량번호>`)은 막혀 있지 않아
-우회 가능(위 검증에 사용). **감시관은 이 버그를 코드로 고치지 않았음**(범위 밖,
-사용자 결정 필요) — 순수 조사만 완료. 가능한 방향(보리 결정 필요):
-(a) "운행 일지" 탭을 신규 등록에서도 선택 가능하게 하고, 그 탭 선택 시
-`saveInviteAfterVehicle` 호출 자체를 건너뛰게 배선 수정, 또는
-(b) 초대가 `pending`인 동안은 `subLogMenuItems`에서도 계속 노출(실제로 기사가
-수락해 `status:'linked'`가 된 뒤에만 제외).
-`getAssignmentState`/`buildSubLogMenuItems`(`src/app/subLogMenuItems.js`)·
-`CarDriverConnectPanel.jsx`·`carInviteFromDraft.js` 재조사로 코드 위치는 이미
-특정됨 — 착수 승인만 나면 바로 착수지시서 작성 가능.
+_(typecheck·test 재실행 후 채움)_
