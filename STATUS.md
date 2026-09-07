@@ -3,9 +3,9 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-07 (세금계산서 엑셀 저장 버튼 이관 CI 초록+브라우저 검증까지
-> `[x]` 확정. 다음 건 "저장 후 페이지 유지 + 뒤로가기 원위치 복귀" 조사 완료 +
-> 사용자 결정 2건 확보, 착수지시서는 미작성 — 세션 종료, 다음 감시관이 이어감)
+> 최종 갱신: 2026-09-07 (관리 화면 공통 네비게이션 정합성 — 뒤로가기 원위치 복귀 +
+> 차량 등록 후 목록 유지 — 작업자 커밋·CI 초록·감시관 §5 리뷰까지 통과, `[~]`.
+> 브라우저 실검증 + 최종 승인만 남음)
 
 ---
 
@@ -19,12 +19,16 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 
 ## 지금 하는 일
 
-**없음 — 리포트 거래처별 세부 내역서 뷰(아래 참고)까지 CI 초록 + 보리 브라우저
-실검증 끝나 `완료` 절로 이동(2026-09-07).** 다음 작업은 "다음 할 일" 참고.
+**`[~]` 관리 화면 공통 네비게이션 정합성 (뒤로가기 원위치 복귀 + 차량 등록 후 목록
+유지)** — 작업자 커밋 `eb734e7`(react-app, 4파일: `AppShell.jsx`·`AppShellRoutes.jsx`·
+`CarListPage.jsx`·`App.clientsCars.test.js`) → 사용자 push 완료 → CI "verify" 초록
+(run `34086676997`, headSha 일치, test·typecheck·build 3게이트 green) → 감시관 §5
+7항목 통과(`npm run typecheck` 0건·`npm test` 593+138 직접 재실행 확인) — 상세
+`docs/report.md` §6. **남은 것: 사용자 브라우저 실검증 + 최종 `[x]` 승인.**
 
-※ **저장소 상태 (2026-09-07 최종)**: react-app `origin/main`=`HEAD`=`d5e4a0c`,
-클린, 미push 커밋 없음. ubiquitous-parakeet 로컬 HEAD가 이 문서+`docs/report.md`
-갱신 커밋들로 origin보다 앞서 있음(감시관 push 금지, AGENTS §3) — 보리 push 필요.
+※ **저장소 상태 (2026-09-07)**: react-app `origin/main`=`HEAD`=`eb734e7`, 클린,
+미push 커밋 없음. ubiquitous-parakeet 로컬 HEAD가 이 문서+`docs/report.md` 갱신
+커밋들로 origin보다 앞서 있음(감시관 push 금지, AGENTS §3) — 보리 push 필요.
 
 ---
 
@@ -73,73 +77,8 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 
 ## 다음 할 일
 
-**[조사 완료, 착수지시서는 미작성 — 다음 세션이 이어서 작성] 저장 후 페이지
-유지 + 뒤로가기 원위치 복귀 (원본과 다름)** — 보리 지시로 조사, 이번 세션은
-여기까지만 기록하고 종료(보리: "기록만 해놔, 다음 감시관이 할 거야"). **다음
-세션은 착수지시서 새로 쓸 필요 없이 아래 내용 그대로 `docs/report.md`에 옮겨
-적고 바로 작업자에게 전달하면 됨.**
-
-**범위 확인 완료(질문 1건, 2026-09-07)**: "차량/거래처/기사 등 관리 화면 공통"
-문제라고 확인받음.
-
-### A. 뒤로가기 — 왔던 곳(메인 vs 마이페이지)으로 복귀 (명확한 버그, 바로 고치면 됨)
-
-- **메커니즘은 이미 반쯤 만들어져 있다**: `AppShell.jsx`의 `goToPage(page, title,
-  backFallback)`가 사이드메뉴에서 부르면 `backFallback='home'`, 마이페이지에서
-  부르면 `'mypage'`를 이미 받고 있는데(`AppShell.jsx:153`의 `SideMenu onSelect`,
-  `AppShellRoutes.jsx:78`의 `MyPage onOpen`), **`'soon'`(준비중) 페이지 말고는
-  이 값을 그냥 버린다**(`AppShell.jsx:106-113` `goToPage` 본문 — `pagePath(page)`로만
-  navigate). 그래서 `AppShellRoutes.jsx`의 모든 실제 페이지 `onBack`이 무조건
-  `navigate('/app')`.
-- **이미 존재하는 정확한 선례**: `ComingSoonRoute.jsx`가 정확히 이 문제를 쿼리
-  파라미터로 풀어놨다 — `/app/soon?title=...&back=mypage|home`,
-  `const backTo = params.get('back')==='mypage' ? '/app/me' : '/app'`
-  (`ComingSoonRoute.jsx:10`). **이 방식을 실제 페이지들에도 그대로 확장하면 된다**
-  (location.state 방식도 있지만(`workLogNavigation.js`의 `resolveWorkLogCloseTarget`
-  선례), 새로고침에도 살아남는 쿼리파라미터 방식이 이미 있는 그대로라 더 낫다).
-- **고칠 파일 2개**: `AppShell.jsx`의 `goToPage`(모든 페이지에 `backFallback` 있으면
-  `?back=` 붙이기) + `AppShellRoutes.jsx`(`useSearchParams()`로 `back` 읽어서
-  `backTarget = back==='mypage' ? '/app/me' : '/app'` 계산, 아래 8개 라우트의
-  `onBack`을 `navigate('/app')` → `navigate(backTarget)`로 교체).
-- **대상 라우트 8개**(사이드메뉴+마이페이지 양쪽에서 다 들어갈 수 있는 화면,
-  `SideMenu.jsx`의 `pick(...)` 8개 + `MyPage.jsx`의 `page:` 8개가 정확히 대응됨
-  — 둘 다 확인함): `cars`·`clients`·`expenses`·`receivables/*`·`report`·`tax`
-  (`invoices`)·`me/profile`·`me/settings`.
-- **`drivers` 라우트는 별개, 더 단순한 버그**: `MyPage.jsx:153`에서만 열림(사이드
-  메뉴엔 없음 — Step 9 ② 1차에서 정적 버튼 삭제됨). 즉 항상 마이페이지에서만
-  오므로 조건 분기 필요 없이 `AppShellRoutes.jsx`의 `drivers` 라우트 `onBack`을
-  무조건 `() => { navigate('/app/me'); bumpNotifTick() }`로 바꾸면 끝.
-- **스코프 제외(알려진 한계, 후속 nit으로 남길 것)**: `receivables/*` 안의 중첩
-  라우트(`ReceivablesDetailPage.jsx`)가 `navigate('/app/receivables')`로 뒤로가기
-  할 때 `?back=` 쿼리를 안 들고 감 — 마이페이지에서 들어가 상세까지 갔다가
-  나오면 그 시점부턴 홈으로 떨어짐. 드문 경로라 이번 슬라이스에서 안 고침.
-- `revenue`(하단 탭 전용)·`support`(사이드메뉴 전용, 마이페이지에 없음 확인)는
-  진입 경로가 하나뿐이라 지금 그대로도 맞음 — 손대지 않음.
-
-### B. 저장 후 페이지 유지 — 사용자 결정 완료(2026-09-07): **원본대로 변경**
-
-- [`CarListPage.jsx:132`](../react-app/src/components/cars/CarListPage.jsx)
-  `if (!editingId && result.saved) navigate(todayLogPath(result.saved))` —
-  신규 차량 등록 직후 그 차량의 "오늘 일지"로 자동 이동. 원본
-  `saveNewCar()`(`car-management.js:317-324`)는 모달만 닫고 차량 관리 목록에
-  그대로 머문다 — **원본엔 없는 동작**.
-- **주의**: 이거 실수로 남은 코드가 아니라 **테스트까지 있는 의도된 동작**이다
-  — `App.clientsCars.test.js:259` `'차량 추가 직후 오늘 일지로 들어가 저장되고
-  새로고침 뒤에도 남는다'`. react-app 최초 커밋(`89aa20f`)부터 있던 동작이라
-  이 감시 체계 생기기 전 결정이라 근거 기록은 없음. **보리 결정: 원본대로 —
-  목록에 머문다.**
-- **수정**: `CarListPage.jsx:132` 삭제. 그러면 `todayLogPath` 함수(42-46줄)와
-  그 안에서만 쓰는 `todayWorkLogSelection` import(11줄)도 죽은 코드가 되니
-  같이 삭제. **122-131줄의 "번호 변경 시 원래 보던 일지로 돌아가기"(`fromLog`)
-  로직은 별개 기능이니 그대로 둘 것** — 지우지 말 것.
-- **테스트**: `App.clientsCars.test.js:259` 테스트를 "차량 추가 후 차량 관리
-  목록에 그대로 머문다"로 다시 쓸 것(단순 삭제 금지 — §5-5 테스트 진실성).
-  259번 줄 근처의 "새로고침 뒤에도 남는다" 데이터 영속성 검증 부분은 다른
-  방식으로(예: 목록에 머문 채로 새로고침 후 차량이 여전히 있는지) 유지할지
-  판단 필요.
-- **다른 화면(거래처/기사)엔 같은 문제 없음 확인**: `ClientListPage.jsx`는
-  `navigate` 자체를 안 씀(이미 원본처럼 목록에 머묾). `DriverFormModal.jsx`도
-  `navigate` 없음. **차량 관리 1곳만의 문제.**
+현재 슬라이스(관리 화면 공통 네비게이션 정합성)는 "지금 하는 일" 참고 — 브라우저
+실검증 대기 중이라 여기 별도 항목 없음.
 
 보류 중(보리 결정 대기, 급하지 않음):
 1. **`.test.js` 나머지 strict 진단 정책** — migration 원칙 "증가 금지"는 지켰으나 "전부 수정"은

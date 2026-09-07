@@ -1,131 +1,162 @@
-# docs/report.md — 세금계산서 화면 "엑셀 저장" 버튼 이관
+# docs/report.md — 관리 화면 공통 네비게이션 정합성 (뒤로가기 원위치 복귀 + 차량 등록 후 목록 유지)
 
 > 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12).
-> **착수지시서 (2026-09-07). 보리 지시로 진행 — 이관 우선순위 대상(원본에 있던 기능).**
+> **착수지시서 (2026-09-07). 보리 지시로 진행 — 조사는 이전 세션에서 완료,
+> 이번 세션은 STATUS.md 내용을 그대로 옮겨 착수지시서로 확정.**
+> 감시관이 아래 코드 근거(파일·줄번호)를 실제 소스와 전부 대조 확인함(2026-09-07).
 
-## 0. 조사 메모
+## 0. 범위 확인 (기 완료, 재확인 불필요)
 
-### 0-A. 원본 기능 (`finance.js:494-709`)
+- "차량/거래처/기사 등 관리 화면 공통" 문제라고 사용자 확인 받음(질문 1건, 2026-09-07).
+- **A(뒤로가기)**: 명확한 버그, 바로 고침.
+- **B(차량 등록 후 목록 유지)**: 원본 동작 대비 차이 — 사용자 결정 완료(2026-09-07): **원본대로 변경**(모달만 닫고 목록에 머문다).
 
-- 세금계산서 카드마다(발행 전/후 무관, 매출·매입·수수료 flow 전부) "엑셀 저장"
-  버튼(`finance.js:307`)이 있고, 누르면 `exportTaxInvoiceCsv(partyKey)`
-  (`finance.js:494-709`, 함수명과 달리 실제로는 `.xlsx`)가 실행된다.
-- **검증**: 공급자(`getTaxInvoiceSupplierBiz`)와 공급받는자(`item.clientBizNumber`)
-  사업자번호가 둘 다 없으면 안내만 하고 중단(`finance.js:500-504`).
-- **라이브러리**: `exceljs`를 CDN(`jsdelivr`)에서 동적 `<script>` 태그로 그때그때
-  로드(`loadTaxInvoiceExcelLibrary`, `finance.js:476-492`).
-- **워크북 구조**: 시트 2개.
-  1. `'세금계산서'` — 공식 전자세금계산서 양식을 셀 병합·테두리·배경색으로 그대로
-     재현(공급자/공급받는자 박스, 품목 표, 합계금액 박스 등). A1:J19 정확한 셀
-     주소로 값·스타일 지정(`finance.js:546-688`).
-  2. `'입력자료'` — 홈택스 일괄등록용 평문 표 1행(헤더)+1행(값)
-     (`finance.js:690-697`).
-  - 파일명: `` `${월}_${거래처명}_${flow라벨}_계산서.xlsx` ``, 특수문자 제거
-    (`finance.js:516`).
-  - 완성된 워크북을 buffer로 변환 → Blob → `<a download>` 클릭으로 저장
-    (`finance.js:699-703`).
+## 1. A. 뒤로가기 — 왔던 곳(메인 vs 마이페이지)으로 복귀
 
-### 0-B. react-app 현재 상태 — 버튼 자체가 없음, 하지만 대부분의 재료는 이미 있음
+### 1-A. 문제
 
-- [`TaxInvoicePage.jsx`](../react-app/src/components/TaxInvoicePage.jsx)·
-  [`TaxInvoiceEntryList.jsx`](../react-app/src/components/TaxInvoiceEntryList.jsx)에
-  "엑셀 저장" 버튼·핸들러가 전혀 없다.
-- **하지만 재사용할 게 많다** — 새로 만들 필요 없음:
-  - `getTaxInvoiceSupplierBiz(item, settings)`
-    ([`financeTaxInvoiceEntries.js:132`](../react-app/src/domain/financeTaxInvoiceEntries.js))
-    가 원본과 **바이트 단위로 동일한 로직**으로 이미 있음.
-  - `invoiceCanIssue(item, settings)`
-    ([`domain/invoices.js:71`](../react-app/src/domain/invoices.js))가 원본의
-    "공급자·공급받는자 사업자번호 확인" 검증과 사실상 동일한 체크(공급자
-    이름·번호·대표자 + 클라이언트 사업자번호)를 이미 하고 있음 — **엑셀
-    저장 전 검증도 이 함수를 그대로 재사용**(발행 가능 여부와 같은 기준이라
-    합리적).
-  - `getTaxInvoiceFlowMeta(flow)`(`lib/finance.js`, 이미 import돼 있음)가
-    `.label`/`.itemName` 제공.
-  - 거래처 쪽 필드(`clientBizNumber`·`clientRepresentative`·`clientAddress`·
-    `clientBizType`·`clientBizItem`·`clientEmail`)는 이미
-    `financeTaxInvoiceEntries.js`가 만드는 `InvoiceLike`에 전부 존재(Step 24
-    이관 때 이미 들어감) — 새 필드 배선 불필요.
-  - 공급자 쪽 사업자 정보(`bizName`/`bizNumber`/`bizRepresentative`/`bizAddress`/
-    `bizType`/`bizItem`/`bizEmail`)와 `cars`는 `buildFinanceSettings(ownerKey)`
-    (`lib/ownerFinance.js`, `TaxInvoicePage.jsx`가 이미 `settings`로 갖고 있음)에
-    다 있음.
-  - **단, 계좌 메모용 `bankName`/`accountNumber`/개인 `userName`은
-    `buildFinanceSettings`엔 없다** — 원본은 `getUserSettings()` 하나로 전부
-    묶여 있었지만, react-app은 이미 분리돼 있어 `TaxInvoicePage.jsx`가 이미 갖고
-    있는 `profile`(`useOwnerProfile`, `profile.bankName`/`profile.accountNumber`/
-    `profile.name`)에서 따로 가져와야 한다(ReportPage.jsx가 `profile`/`settings`를
-    이미 이렇게 나눠 쓰는 것과 같은 패턴).
-- `exceljs`가 `package.json`에 없음 — **신규 npm 의존성 추가 필요**. 원본처럼
-  CDN `<script>` 동적 삽입 대신, 이 코드베이스가 이미 `html2pdf.js`에 쓰는 패턴
-  (`ReportPage.jsx`의 `await import('html2pdf.js')`, 정식 npm 패키지 + 동적
-  import로 번들 분리)을 그대로 따른다 — 오프라인 대응·번들 최적화 둘 다 원본보다
-  낫다.
+- `AppShell.jsx`의 `goToPage(page, title, backFallback)`(`AppShell.jsx:106-113`)가
+  `backFallback`을 받긴 하는데(`'soon'` 페이지일 때만 씀, 108줄), 그 외 모든 페이지는
+  `navigate(pagePath(page))`(112줄)만 호출 — **`backFallback`을 버린다.**
+- 호출부 확인: 사이드메뉴 선택 시 `AppShell.jsx:153`에서 `backFallback='home'`,
+  마이페이지 단축 버튼 클릭 시 `AppShellRoutes.jsx:78`에서 `'mypage'`를 이미 넘기고 있음
+  — 값은 오고 있는데 라우팅에서 버려짐.
+- 그래서 `AppShellRoutes.jsx`의 8개 실제 페이지 라우트 `onBack`이 전부 무조건
+  `() => navigate('/app')`(67·74·79·80·81·83·84 등).
+- **이미 존재하는 정확한 선례**: `ComingSoonRoute.jsx`가 정확히 이 문제를 쿼리 파라미터로
+  풀어놨음 —
+  ```js
+  const [params] = useSearchParams()
+  const backTo = params.get('back') === 'mypage' ? '/app/me' : '/app'
+  ```
+  (`ComingSoonRoute.jsx:8-10`). 새로고침에도 살아남는 쿼리파라미터 방식.
 
-## 1. 수정 계획
+### 1-B. 수정 (파일 2개)
 
-**신규 파일 3개 + 수정 3개, 1커밋.** (§3/§6 응집도 예외 — "엑셀 양식 빌더"는
-쪼개면 시각적 레이아웃이 흩어짐, 987be18·리포트 세부내역서와 같은 사유.)
+**`AppShell.jsx`** — `goToPage`(106-113줄)를 수정:
+- `'soon'`이 아닌 다른 페이지도 `backFallback`이 있으면 `?back=` 쿼리를 붙여
+  `navigate(pagePath(page))` 호출.
+- 예: `navigate(backFallback ? `${pagePath(page)}?back=${backFallback}` : pagePath(page))`
+  (기존 `'soon'` 분기 로직은 그대로 두고, 아래 else 분기만 추가 — 두 분기 구조 유지).
+
+**`AppShellRoutes.jsx`** — 파일 상단에 `useSearchParams()` 추가해서 `back` 파라미터를
+읽고, 아래 **8개 라우트**의 `onBack`을 `() => navigate('/app')` →
+`() => navigate(backTarget)`로 교체(`backTarget = back === 'mypage' ? '/app/me' : '/app'`,
+`ComingSoonRoute.jsx`와 동일 계산):
+
+| 라우트 path | 현재 줄 |
+|---|---|
+| `cars` | 67 |
+| `clients` (두 분기 모두) | 72, 74 |
+| `expenses` | 81 |
+| `receivables/*` | 82 (`navigate('/app')` 부분만 교체, `bumpNotifTick()` 유지) |
+| `report` | 83 |
+| `tax` | 84 |
+| `me/profile` | 79 |
+| `me/settings` | 80 |
+
+- **`drivers` 라우트는 별개, 더 단순한 버그**: `MyPage.jsx:153`에서만 열림(사이드메뉴엔 없음
+  — SideMenu.jsx에 `drivers` pick 없음, 이미 확인). 즉 항상 마이페이지에서만 오므로 조건
+  분기 필요 없이 `AppShellRoutes.jsx:88`의 `drivers` 라우트 `onBack`을 무조건
+  `() => { navigate('/app/me'); bumpNotifTick() }`로 바꾸면 끝(쿼리파라미터 방식과 무관,
+  단순 고정값).
+- **다른 라우트는 손대지 않음**: `me`(마이페이지 자체, 78줄)·`me/invite`(89)·`revenue`(90,
+  하단 탭 전용이라 진입 경로 하나)·`support`(91, 사이드메뉴 전용, 마이페이지에 없음)·
+  `drivers/:linkId*`(85-87, `navigate(-1)`이라 이미 정상)·`soon`(92, 이미 해결됨).
+
+### 1-C. 스코프 제외 (알려진 한계, 후속 nit)
+
+- `receivables/*` 안의 중첩 라우트(`ReceivablesDetailPage.jsx`)가
+  `navigate('/app/receivables')`로 뒤로가기 할 때 `?back=` 쿼리를 안 들고 감 — 마이페이지에서
+  들어가 상세까지 갔다가 나오면 그 시점부턴 홈으로 떨어짐. 드문 경로라 이번 슬라이스에서
+  안 고침. 이번 슬라이스에서 `receivables/*` 진입 자체의 `onBack`(82줄, 목록 화면까지 오는
+  경로)만 고치고, 그 안의 하위 라우트는 건드리지 않음.
+
+## 2. B. 차량 등록 후 목록 유지 (원본대로 변경)
+
+### 2-A. 문제
+
+- [`CarListPage.jsx:132`](../react-app/src/components/cars/CarListPage.jsx)
+  `if (!editingId && result.saved) navigate(todayLogPath(result.saved))` — 신규 차량 등록
+  직후 그 차량의 "오늘 일지"로 자동 이동.
+- 원본 `saveNewCar()`(`car-management.js:317-324`)는 모달만 닫고 차량 관리 목록에 그대로
+  머문다 — **원본엔 없는 동작.**
+- 실제 파일 확인 완료: `todayLogPath` 함수는 42-46줄, `todayWorkLogSelection` import는
+  11줄이고 파일 전체에서 `todayLogPath` 내부(43줄)에서만 쓰임 — 삭제하면 완전히 죽는 코드
+  맞음(grep으로 재확인).
+- **122-131줄의 "번호 변경 시 원래 보던 일지로 돌아가기"(`fromLog`) 로직은 별개 기능이니
+  그대로 둘 것 — 지우지 말 것.**
+
+### 2-B. 수정 (파일 1개 + 테스트 1개)
+
+**`CarListPage.jsx`**:
+1. 11줄 `import { todayWorkLogSelection } from '../../lib/calendar.js'` 삭제.
+2. 42-46줄 `todayLogPath` 함수 전체 삭제.
+3. 132줄 `if (!editingId && result.saved) navigate(todayLogPath(result.saved))` 삭제.
+4. 122-131줄(`fromLog` 로직)은 그대로 둠.
+
+**`src/app/App.clientsCars.test.js`** (259-290줄, 테스트명
+`'차량 추가 직후 오늘 일지로 들어가 저장되고 새로고침 뒤에도 남는다'`):
+- **단순 삭제 금지(§5-5 테스트 진실성).** "차량 추가 후 차량 관리 목록에 그대로 머문다"로
+  다시 쓸 것.
+- 새 테스트가 검증할 것: `+ 추가` → 폼 입력 → 저장 클릭 후, ① `window.location.pathname`이
+  여전히 `/app/cars`(오늘 일지 경로로 안 바뀜) ② 새 차량(`12가3456`)이
+  `getState().cars[ownerKey]`에 실제로 추가됨(저장 자체는 됐는지 확인) ③ 데이터 영속성:
+  기존 테스트의 "새로고침 뒤에도 남는다" 취지를 유지하려면 — 목록에 머문 채로 root
+  재마운트(새로고침 시뮬레이션) 후에도 그 차량이 여전히 `getState().cars[ownerKey]`에
+  있는지 확인(기존 테스트의 unmountTracked→재마운트 패턴 재사용, 다만 검증 대상을
+  `workLogs`가 아니라 `cars`로 바꿈 — 오늘 일지 이동 자체가 없어졌으니 `workLogs`
+  `fixedCount` 입력 시나리오는 이 테스트에서 빠짐).
+- 참고: `todayWorkLogSelection` import(테스트 파일 275줄에서 씀)가 이 테스트 수정 후에도
+  파일 내 다른 곳에서 쓰이는지 확인 후, 안 쓰이면 그 import도 정리(다른 테스트가 쓰고
+  있으면 그대로 둠 — 작업자가 실제 파일에서 확인).
+
+### 2-C. 스코프 확인 완료 — 다른 화면엔 같은 문제 없음
+
+- `ClientListPage.jsx`는 `navigate` 자체를 안 씀(이미 원본처럼 목록에 머묾).
+- `DriverFormModal.jsx`도 `navigate` 없음.
+- **차량 관리 1곳만의 문제.** 다른 파일 손대지 않음.
+
+## 3. 파일 요약 (1커밋, 총 4파일)
 
 | 파일 | 변경 |
 |---|---|
-| `package.json` | `dependencies`에 `"exceljs": "^4.4.0"` 추가(원본 CDN 버전과 동일 고정). |
-| `src/lib/taxInvoiceExcelBuilder.js` (신규) | `buildTaxInvoiceWorkbook(ExcelJS, item, settings, profile, monthKey)` — 순수 함수(DOM·다운로드 없음, ExcelJS 모듈은 인자로 받음 → 테스트 시 정적 import로 직접 넣을 수 있음). `finance.js:525-697`(시트 2개 만드는 부분, `writeBuffer` 이전까지)을 필드명만 아래 매핑대로 바꿔 그대로 포팅. |
-| `src/lib/taxInvoiceExcelBuilder.test.js` (신규) | 아래 §2 테스트 계획. |
-| `src/lib/taxInvoiceExcel.js` (신규) | `buildTaxInvoiceExcelFileName(monthKey, item)`(`finance.js:516` 그대로 포팅) + `async function exportTaxInvoiceExcel(item, settings, profile, monthKey)`(동적 `import('exceljs')` → `buildTaxInvoiceWorkbook` 호출 → `workbook.xlsx.writeBuffer()` → Blob·`<a download>` 클릭, `finance.js:699-703` 그대로). 검증(사업자번호 체크)은 여기 안 넣음 — 호출부(`TaxInvoicePage.jsx`)가 `invoiceCanIssue` 재사용. |
-| `src/components/TaxInvoicePage.jsx` | `invoiceCanIssue`(`lib/invoices.js`, 이미 그 파일에서 export됨 — import 추가) + `exportTaxInvoiceExcel` import. 새 핸들러 `async function exportExcel(item)`: `invoiceCanIssue(item, settings)` 실패면 `showToast?.(check.error)`(원본처럼 모달 대신 이 코드베이스 기존 toast 패턴), 성공이면 `try { await exportTaxInvoiceExcel(item, settings, profile, monthKey) ; showToast?.('세금계산서 엑셀 파일을 저장했습니다.') } catch { showToast?.('엑셀 저장에 실패했습니다.') }`. `TaxInvoiceEntryList`에 `onExportExcel={exportExcel}` 전달. |
-| `src/components/TaxInvoiceEntryList.jsx` | `onExportExcel` prop 추가, `.receivable-card-actions` 안에 "내용 보기/작성하기" 버튼과 발급상태 버튼 사이에 "엑셀 저장" 버튼 추가(원본 카드의 버튼 순서와 동일, `finance.js:305-309`). |
+| `src/app/AppShell.jsx` | `goToPage` 1개 분기 추가(§1-B) |
+| `src/app/AppShellRoutes.jsx` | `useSearchParams` 추가 + 8개 라우트 `onBack` 교체 + `drivers` 라우트 1곳 고정값 교체 |
+| `src/components/cars/CarListPage.jsx` | import 1줄 + 함수 1개 + 호출 1줄 삭제(순수 삭제, 추가 없음) |
+| `src/app/App.clientsCars.test.js` | 기존 테스트 1개 재작성(단순 삭제 금지) |
 
-### 1-A. 필드명 매핑 (원본 `finance.js` → react-app)
+**§4 플레이북 해당 없음** — 전부 UI 라우팅/화면 전환, `store/**`·`supabaseClient`·
+`localStorage`·`domain/finance*`·`domain/receivables*` 직접 접근 없음. 참고 수준.
 
-원본은 `getUserSettings()` 하나가 전부 갖고 있었지만 react-app은 이미
-`settings`(`FinanceSettings`)/`profile`로 나뉘어 있다 — 빌더 함수 인자 2개로 받기만
-하면 되고, 그 외 필드명은 전부 동일(`item.supplyAmount`·`item.taxAmount`·
-`item.totalAmount`·`item.clientBizNumber`·`item.clientName`·
-`item.clientRepresentative`·`item.clientAddress`·`item.clientBizType`·
-`item.clientBizItem`·`item.clientEmail`·`item.carNumber`·`item.itemName`·
-`item.remark`·`item.flow`·`item.issueDate`·`item.taxAmount`·`item.supplierBiz` —
-전부 react-app `InvoiceLike`에 이미 존재, 새로 안 만듦):
+**§8 4대 질문** — 데이터 구독/스냅샷/쓰기창구/hydrate 어느 것도 안 바뀜(순수 라우팅 값
+전달 + 죽은 코드 삭제). 신규 저장 레이어·durable·fallback 없음(§7 해당 없음).
 
-| 원본 | react-app |
-|---|---|
-| `settings.bizName`/`bizNumber`/`bizRepresentative`/`bizAddress`/`bizType`/`bizItem`/`bizEmail` | 그대로 `settings.*` (`FinanceSettings`) |
-| `settings.cars` | 그대로 `settings.cars` |
-| `settings.bankName`/`accountNumber`/`userName` (계좌 메모용) | `profile.bankName`/`profile.accountNumber`/`profile.name` |
-| `taxInvoiceViewMonth`(전역 문자열 `YYYY-MM`) | 함수 인자 `monthKey`(`TaxInvoicePage.jsx`가 이미 계산해 둔 값) |
+## 4. 스코프
 
-## 2. 테스트 계획
+**포함**: 위 4파일, §1-B의 8+1개 라우트, §2-B의 3줄 삭제 + 테스트 재작성.
+**안 건드릴 것**: `receivables/*` 하위 중첩 라우트(§1-C, 후속 nit), `fromLog` 로직
+(122-131줄), `ComingSoonRoute.jsx`(이미 정상, 참고용 선례일 뿐), `me`·`me/invite`·
+`revenue`·`support`·`drivers/:linkId*` 라우트, Supabase/DB 무관.
 
-`buildTaxInvoiceWorkbook`을 순수 함수로 분리한 이유 — ExcelJS로 워크북을 만든
-뒤 `sheet.getCell(address).value`로 바로 읽어서 검증 가능(다운로드·Blob 불필요).
-`src/lib/taxInvoiceExcelBuilder.test.js`에 실제 `exceljs`를 정적 import해서:
+## 5. 다음 단계
 
-1. 공급가액·세액·합계금액이 정확한 셀(`C9`/`E9`/`A18`)에 숫자로 들어가는지
-   (문자열 아님 — `numFmt`가 아니라 `.value` 타입 확인).
-2. 공급자 사업자번호(`C3`)·상호(`C4`)가 `getTaxInvoiceSupplierBiz` 결과와
-   일치하는지(매출 flow에서 `item.supplierBiz`가 있을 때 그걸 쓰는지, 없을 때
-   `settings` 폴백을 쓰는지 — `getTaxInvoiceSupplierBiz` 자체 테스트가 이미
-   있다면 그 케이스 재사용).
-3. 공급받는자(거래처) 사업자번호(`H3`)·상호(`H4`)가 `item.clientBizNumber`/
-   `item.clientName`과 일치하는지(매입(`purchase`) flow면 supplier/buyer가
-   뒤바뀌는 것까지 — `finance.js:513-514` 그대로).
-4. "입력자료" 시트(2번째 워크시트) 2번째 행이 헤더와 같은 순서로 실제 값을
-   담는지.
-5. `buildTaxInvoiceExcelFileName`: 특수문자(`/`,`:` 등)가 포함된 거래처명이
-   파일명에서 `_`로 치환되는지(`finance.js:516`의 정규식 그대로 포팅했는지 확인).
+착수 승인 후 작업자에게 이 파일 그대로 전달. 구현 완료 보고는 이 파일 §6에 이어 기록.
 
-`TaxInvoiceEntryList.jsx`/`TaxInvoicePage.jsx` 쪽은 버튼 배선만이라 렌더
-테스트 필수 아님(기존 관례, `ReportDetailView.jsx`도 렌더 테스트 없음) — 브라우저
-검증으로 대체.
+## 6. 구현 완료 · 감시관 §5 리뷰 (2026-09-07)
 
-## 3. 스코프
+작업자 커밋 `eb734e7`(react-app) — 사용자 push 완료. CI "verify" run `34086676997`
+conclusion=success, headSha=`eb734e7` 일치, 3게이트(test·typecheck·build) green.
+감시관이 `npm run typecheck`(0건)·`npm test`(593+138, fail 0) 직접 재실행해 재확인.
 
-**포함**: 화면의 "엑셀 저장" 버튼, 워크북 2개 시트(세금계산서 양식 + 입력자료),
-파일명 규칙, 검증(기존 `invoiceCanIssue` 재사용). **안 건드릴 것**:
-`getTaxInvoiceSupplierBiz`·`invoiceCanIssue`·`InvoiceLike` 필드 정의·PDF 리포트
-기능(`lib/report.js` 등, 이번 슬라이스와 무관)·Supabase 스키마·발행/취소 로직.
+| # | 항목 | 결과 |
+|---|---|---|
+| 1 | 범위 준수 | `git show --stat`로 확인 — 지시서 4파일과 정확히 일치, 그 외 파일 무변경 |
+| 2 | 몰래 증설 없음 | 신규 파일·저장 키·durable/큐/fallback/tombstone 0 |
+| 3 | 타입 꼼수 없음 | `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 신규 0건(diff 확인) |
+| 4 | 200줄 | AppShell.jsx 178·AppShellRoutes.jsx 98·CarListPage.jsx 176(전부 감소), 테스트파일은 §6 예외 |
+| 5 | 테스트 진실성 | 기존 테스트 1개를 새 동작에 맞게 재작성(단순 삭제 아님) — pathname `/app/cars` 유지 + 신규 차량 상태 반영 + 재마운트 후 영속 3가지 실제 검증. 제거된 `localStorage.getItem(storageKeyForLog(...))` 단언은 옛 "오늘일지 이동" 플로우 전용이라 그 플로우 자체가 삭제되며 같이 무의미해진 것 확인(다른 목적의 검증 아님) |
+| 6 | 문서 정합 | `git show --stat`에 `.md` 없음 — 작업자 문서 미수정 확인 |
+| 7 | 요구사항 충족 | §1-B의 8+1개 라우트 전부 교체 확인(diff 라인 단위 대조), §2-B의 3줄 삭제 + fromLog 로직(115-124줄) 보존 확인 |
 
-## 4. 다음 단계
-
-착수 승인 후 작업자에게 이 파일 그대로 전달. 구현 완료 보고는 이 파일 §5에
-이어 기록.
+**결론**: 7항목 전부 통과. `[~]` → 브라우저 실검증만 남음.
