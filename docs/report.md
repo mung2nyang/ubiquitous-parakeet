@@ -877,3 +877,55 @@ diff/사용처로 재확인했다.
   켜고 콜상세 항목을 2건 이상(수수료 있는 거래처 포함) 등록한 상태에서 콜 목록 하단의
   "일일 합계"(수수료 행·합계 행 포함)를 라이트·다크로 대조한다. §5 7항목도 다시 판정하며,
   보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+
+## 18. 7차 구현 결과와 감시관 직접 검증
+
+### 18-1. 작업자 구현·CI
+
+- 작업자 커밋: react-app `07346a8f33b7eb9f0771845f9f3ccecf790c9791`
+  (`refactor: 콜 목록·일일 합계 스타일을 call-detail-list.css로 분리`). 작업자 커밋 후
+  보리가 직접 push(§3 절차 정상).
+- 변경 파일은 지시한 정확히 3개(기존 2 + 신규 1): `src/main-calendar.css`(495~522·
+  558~561·694~706 세 구간 48줄 제거), `src/components/day-log/call-detail-list.css`
+  (신규, 세 블록 순서 그대로 — 죽은 코드도 삭제 없이 보존), `src/components/day-log/
+  CallDetailList.jsx`(`import './call-detail-list.css'` 1줄 추가). diff +50/-48.
+- `rg` 재확인: 이동한 선택자 전부 신규 파일에만 존재. 공유·인접 규칙(`.toggle-btn`
+  기본형 495줄, `.call-detail-card` 529줄, `.call-vat-row` 660줄)은 전부 그대로 남아
+  있음(옮기지 않음 지시 준수).
+- 줄 수: `call-detail-list.css` 49, `CallDetailList.jsx` 73, `main-calendar.css` 666 —
+  전부 §6 200줄 이내.
+- GitHub Actions CI: `verify`·`deploy` 모두 headSha `07346a8...`와 일치,
+  `conclusion: success`.
+
+### 18-2. 감시관 직접 브라우저 대조
+
+- 분리 전 `99e6724`, 분리 후 `07346a8`를 각각 로컬 worktree에서 `npm run build`해 정적
+  서버로 띄우고 두 탭을 390×844로 맞춘 뒤, 게스트로 "운행 일지 세부 입력"을 켜고 운송료
+  100,000원 콜상세 1건을 동일하게 추가했다(수수료 있는 거래처 등록은 이번 회차에서
+  생략 — `.commission-row`는 diff의 byte 단위 일치로 대신 확인, 아래 참고).
+- **컴퓨티드 스타일 전수 대조**: `.call-detail-daily-summary`(배경·테두리·둥근모서리·
+  패딩·글자색·글자크기)·`.call-detail-daily-summary > div`(flex 레이아웃)·
+  `.summary-grand-total`(색상·글자크기·굵기)·`.call-detail-section`(마진·패딩, day-log-shell
+  오버랩 포함 실제 렌더 값)을 라이트 모드에서 JSON으로 추출해 비교 — **완전 일치**.
+- **다크 모드**: `.call-detail-daily-summary`·`.summary-grand-total`의 배경·테두리·글자색을
+  동일한 방식으로 비교 — **완전 일치**.
+- `.commission-row`(수수료 있는 거래처일 때만 나타남)는 이번 회차 게스트 데이터에
+  수수료 있는 거래처가 없어 화면에 나타나지 않았다 — diff의 정확한 byte 단위 일치
+  (18-1 기준)로 대신 확인했다(이전 슬라이스들과 동일 판단 기준).
+
+### 18-3. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 지시한 3파일(기존 2+신규 1)만 변경.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0.
+3. 타입 꼼수 없음: 통과 — `any`·`@ts-ignore`·캐스팅 0, `@ts-check` 유지.
+4. 200줄 원칙: 통과 — `call-detail-list.css` 49·`CallDetailList.jsx` 73·
+   `main-calendar.css` 666줄.
+5. 테스트 진실성: 통과 — 테스트 파일 변경 0, CI test 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 지시한 3파일 외 무변경, 공유·인접 규칙 보존 확인, 죽은 코드
+   삭제 없이 보존 확인, 라이트·다크까지 실측 확인.
+
+### 18-4. 승인 대기
+
+- 위 18-1~18-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치, 공유·
+  인접 규칙 보존 확인)까지 마친 상태다. **`[x]` 확정은 보리의 명시 승인이 있어야 한다.**

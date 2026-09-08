@@ -3,11 +3,12 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1~6차 전부 `[x]`.**
-> 6차는 react-app `99e6724`, 보리 명시 승인 **"승인/다음 진행해"**로 닫음.
-> **7차 콜 목록·일일 합계(call-detail-list) CSS 분리 착수지시 확정,
-> 작업자 착수 가능 `[~]`.** 콜상세 폼·카드는 이번 범위 밖(각각 별도
-> 재조사 후 슬라이스). 상세 `docs/report.md` §16~§17.)
+> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1~6차 전부 `[x]`,
+> 7차 콜 목록·일일 합계(call-detail-list) CI+감시관 검증 완료, 보리 최종
+> 승인 대기 `[~]`.** react-app `07346a8`, CI green, 라이트/다크 컴퓨티드
+> 스타일 완전 일치, 공유·인접 규칙(`.toggle-btn`·`.call-detail-card`·
+> `.call-vat-row`) 보존 확인. 콜상세 폼·카드는 각각 별도 재조사 후 슬라이스
+> 예정. 상세 `docs/report.md` §17~§18.)
 
 ---
 
@@ -114,15 +115,19 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
   green + 감시관 실측(셸 스타일 라이트/다크 완전 일치, 휴무 토글로 살아있는
   블록 재확인, 공유 규칙 보존 확인), §5 7항목 통과. 보리 명시 승인
   **"승인/다음 진행해"** 2026-09-08.
-- **7차 콜 목록·일일 합계(call-detail-list) CSS 분리 착수지시 확정, 작업자
-  착수 가능 `[~]`.** `main-calendar.css` 495~522(`.work-log-page
+- **7차 콜 목록·일일 합계(call-detail-list) CSS 분리 — 코드·CI·감시관 검증
+  완료, 보리 승인 대기 `[~]`.** `main-calendar.css` 495~522(`.work-log-page
   .call-detail-daily-summary` 등 28줄) + 558~561(bare `.call-detail-section`,
   유일한 정의) + 694~706(죽은 bare `.call-detail-daily-summary`, 보존 이동),
   총 45줄을 신규 `src/components/day-log/call-detail-list.css`로 옮기고
-  `CallDetailList.jsx`가 직접 import한다. 수정은 기존 2파일+신규 1파일뿐이다.
-  콜상세 폼(`.call-vat-row` 등)·카드(`.call-detail-fare-line` 등)는 이번
-  범위 밖 — 각각 별도 재조사 후 별도 슬라이스로 이어간다. 상세 착수지시는
-  `docs/report.md` §17.
+  `CallDetailList.jsx`가 직접 import(react-app `07346a8`, 정확히 지시한
+  3파일만 변경). CI green + 감시관이 분리 전(`99e6724`)·후(`07346a8`)를
+  각각 로컬 빌드해 콜상세 1건(운송료 100,000원)의 "일일 합계" 카드 라이트/
+  다크 컴퓨티드 스타일 완전 일치 확인, 공유·인접 규칙(`.toggle-btn`·
+  `.call-detail-card`·`.call-vat-row`) 보존 확인, §5 7항목 통과. 수수료
+  행(`.commission-row`)은 게스트 데이터에 수수료 거래처가 없어 diff의
+  byte 단위 일치로 대신 확인. 콜상세 폼·카드는 각각 별도 재조사 후 별도
+  슬라이스로 이어간다. 상세 `docs/report.md` §17~§18.
 - **§1 홈 캘린더 UI 5건 — 기능 검증 완료, 전체 상태 `[~]`.** 마지막
   `b7104e1`(`white-space: nowrap`)은 CI "verify" 초록(run `34191474760`,
   headSha 일치, test·typecheck·build 성공) + 보리 브라우저 검증·승인 완료.
