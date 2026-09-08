@@ -1,5 +1,20 @@
 # docs/report.md — UI 비교 수정 슬라이스: 홈(캘린더) 화면
 
+## 진행 상태 — `[~]` CI 초록·감시관 §5 통과, 보리 브라우저 검증 대기
+
+- **커밋**: react-app `fe98184` "fix: 홈 캘린더 UI를 원본과 맞추기" (작업자, push 완료).
+- **CI**: GitHub Actions "CI" run [`34189318780`](https://github.com/mung2nyang/react-app/actions/runs/34189318780) `conclusion=success`, headSha `fe98184` 일치 확인.
+  (작업자가 로컬 `npm run build`에서 Windows 크래시(0xC0000409)를 보고했으나, **CI 빌드는 정상 통과** —
+  로컬 환경(OneDrive 경로 등) 문제로 결론, 코드 문제 아님.)
+- **감시관 §5 리뷰**: `git show --stat fe98184` = 지시서의 파일 4개와 정확히 일치, 그 외 파일 0.
+  `git show fe98184` 라인 단위로 아래 "구체적으로 바꿀 내용" 5개 항목과 정확히 일치(추가 로직 없음).
+  `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 신규 0건. `.md` 파일 diff 0(작업자 규칙 준수).
+  `.test.*` 파일 변경 없음(순수 CSS 값·인라인 style 추가라 새 테스트 불필요, 기존 테스트 약화 없음).
+- **감시관 관찰 (미확인 — 실행 지시 아님)**: `main-calendar.css`(1281줄)·`account-flow.css`(593줄)가
+  AGENTS §6 "200줄 이하" 기준을 이미 크게 초과한 상태(이번 슬라이스가 만든 게 아니라 기존 상태,
+  이번엔 각각 1~2줄만 추가). CSS 파일도 §6 분리설계 대상으로 볼지는 대화창에서 보리에게 질문만
+  하고 답변 전까지는 이 파일에 확정 항목으로 안 올림.
+
 > 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12).
 > 이관 계획 ①~③은 전부 `[x]` 확정됨(상세는 `STATUS.md` "완료" 절).
 > ④(매출 탭 수치 불일치 조사)는 보리 지시(2026-09-08)로 "원본 vs react-app
