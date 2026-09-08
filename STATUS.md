@@ -3,12 +3,14 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1~4차 전부 `[x]`,
-> 5차 고정노선/파렛트(fixed-route) CI+감시관 검증 완료, 보리 최종 승인 대기
-> `[~]`.** react-app `4fe84e8`, CI green, 라이트/다크 컴퓨티드 스타일 완전
-> 일치. **착수 전 우려했던 `.input-box`(공유 규칙) 끼임 처리도 실제로 안전함을
-> 재실측 확인**(제외한 규칙이 두 빌드 모두 그대로 동일). 상세 `docs/report.md`
-> §13~§14.)
+> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1~5차 전부 `[x]`.**
+> 5차는 react-app `4fe84e8`, 보리 명시 승인 **"승인/다음 진행해"**로 닫음.
+> **남은 구간(콜상세 폼·카드·목록+일지 셸) 재조사 결과, `.work-log-page`
+> 스코프 규칙과 스코프 없는 bare 규칙이 이중으로 겹쳐 있고 상당수 bare
+> 규칙이 죽은 코드(항상 스코프 규칙에 덮임)임을 발견 — 삭제하지 않고
+> 그대로 보존 이동하는 원칙으로 6차(day-log-shell.css) 착수지시 작성,
+> 작업자 착수 가능 `[~]`.** 콜상세 폼/카드/목록은 같은 문제가 있어 별도
+> 재조사 후 별도 슬라이스 예정. 상세 `docs/report.md` §14~§15.)
 
 ---
 
@@ -96,16 +98,26 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
   카드 컴퓨티드 스타일 완전 일치 확인, `action-icon-btn` 클래스명 겹침
   (`MaintFuelPage`)도 실제 무영향 재확인, §5 7항목 통과. 보리 명시 승인
   **"승인/다음 진행해"** 2026-09-08.
-- **5차 고정노선/파렛트(fixed-route) CSS 분리 — 코드·CI·감시관 검증 완료,
-  보리 승인 대기 `[~]`.** `main-calendar.css` 645~657 + 673~751(중간 659~671의
-  공유 `.input-box`는 제외, 총 92줄)을 신규 `src/components/day-log/
-  fixed-route.css`로 옮기고 `DayLogPage.jsx`가 기존 `day-log.css` import
-  바로 앞에 직접 import(react-app `4fe84e8`, 정확히 지시한 3파일만 변경).
-  CI green + 감시관이 분리 전(`688c3c0`)·후(`4fe84e8`)를 각각 로컬 빌드해
-  운행 횟수 빠른 버튼 라이트/다크 컴퓨티드 스타일 완전 일치 확인, **제외
-  대상이었던 `.input-box`도 함께 재검증해 완전 일치** 확인, §5 7항목 통과.
-  자주 다니는 노선 칩·파렛트는 게스트 기본 데이터에 등록이 없어 화면에
-  안 나타나 diff의 byte 단위 일치로 대신 확인. 상세 `docs/report.md` §13~§14.
+- **5차 고정노선/파렛트(fixed-route) CSS 분리 `[x]`.** `main-calendar.css`
+  645~657 + 673~751(중간 공유 `.input-box`는 제외, 총 92줄)을 신규
+  `src/components/day-log/fixed-route.css`로 옮기고 `DayLogPage.jsx`가
+  `day-log.css` 앞에 직접 import(react-app `4fe84e8`). CI green + 감시관
+  실측(운행 횟수 빠른 버튼 라이트/다크 완전 일치, 제외한 `.input-box`도
+  재검증), §5 7항목 통과. 보리 명시 승인 **"승인/다음 진행해"** 2026-09-08.
+- **남은 구간 재조사 — 이중 레이어 구조 발견.** 착수 전 콜상세 폼·카드·목록
+  +일지 셸 구간(현재 195~815줄)을 조사하다가, `.work-log-page` 스코프
+  규칙(현재 실제 적용)과 스코프 없는 bare 규칙(다수가 스코프 규칙에 덮여
+  **죽은 코드**)이 이중으로 겹쳐 있는 걸 발견했다. 삭제하지 않고 그대로
+  보존 이동한다는 기존 원칙(`.summary-hint` 등 전례)을 그대로 적용.
+- **6차 day-log-shell.css 분리 착수지시 확정, 작업자 착수 가능 `[~]`.**
+  `main-calendar.css` 195~278(연속 84줄) + 609~612(죽은 bare
+  `.btn-group-toggle`) + 627~636(`.toggle-btn.active-off`+
+  `.modal-work-details.is-off`), 총 98줄을 신규 `src/components/day-log/
+  day-log-shell.css`로 옮기고 `DayLogPage.jsx`가 `fixed-route.css` import
+  바로 앞에 직접 import한다. 수정은 기존 2파일+신규 1파일뿐이다. 공유
+  `.toggle-btn`/`.modal-section-title` 기본형·`.input-box`는 옮기지 않는다.
+  콜상세 폼·카드·목록은 같은 이중 레이어 문제가 있어 이번 슬라이스 밖 —
+  별도 재조사 후 별도 슬라이스 예정. 상세 착수지시는 `docs/report.md` §15.
 - **§1 홈 캘린더 UI 5건 — 기능 검증 완료, 전체 상태 `[~]`.** 마지막
   `b7104e1`(`white-space: nowrap`)은 CI "verify" 초록(run `34191474760`,
   headSha 일치, test·typecheck·build 성공) + 보리 브라우저 검증·승인 완료.
