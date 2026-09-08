@@ -521,8 +521,78 @@ diff/사용처로 재확인했다.
 7. 요구사항 완전성: 통과 — 지시한 3파일 외 무변경, `.work-log-page` 스코프 보존,
    `MaintFuelPage` 등 다른 화면 무영향 실측 확인, 라이트·다크·색상·크기·간격 무변경.
 
-### 12-4. 승인 대기
+### 12-4. 승인 완료
 
-- 위 12-1~12-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치,
-  `.work-log-page` 스코프·`MaintFuelPage` 무영향 재확인)까지 마친 상태다. **`[x]` 확정은
-  보리의 명시 승인이 있어야 한다.**
+- 보리 명시 승인: **"승인/다음 진행해"**(2026-09-08). 4차 일지 정비/주유/기타(day-log-expenses)
+  CSS 분리 슬라이스를 `[x]`로 닫는다. 전체 `main-calendar.css` 책임 분리는 아래 13번 슬라이스가
+  남아 `[~]`.
+
+## 13. 5차 착수지시 — 고정노선/파렛트(fixed-route) 전용 CSS 분리 `[~]`
+
+### 13-1. 기준과 목적
+
+- 작업 기준: react-app `688c3c0c27c4e09f211a165c8d281288e0823e9f`, `HEAD`=`origin/main`,
+  작업트리 클린.
+- §3 설계표의 "fixed-route.css(신규) — 고정횟수·파렛트·빠른노선 칩" 책임.
+- **착수 전 확인한 위험과 결론**: 이 구간을 실측하다가 `.fixed-route-input-row`(652줄)와
+  `.fixed-route-unit`(673줄) 사이에 **`.input-box` 기본형 규칙(659~671줄)이 끼어 있는 것을
+  발견**했다. `.input-box`는 §2 분류표상 "공통/공유"(일지·인증·차량/거래처/기사 폼·고객센터·
+  리포트·매출 등 다수 화면이 공유)라 이번 슬라이스 대상이 아니다 — 그대로 `main-calendar.css`에
+  남겨두고, `.fixed-route-*` 규칙만 그 앞뒤로 나눠 옮긴다(원 설계 문서가 애초에 이 책임을
+  915~927·943~1021 두 구간으로 나눠 기록해 둔 이유가 바로 이 끼임 때문으로 보인다).
+- `grep` 재확인 결과 `fixed-route-group`·`fixed-route-input-row`·`fixed-route-unit`·
+  `fixed-count-quick-buttons`·`quick-count-btn`·`fixed-route-quick-buttons`·
+  `fixed-route-chip*` 전부 `main-calendar.css`에만 정의돼 있고, 소비 컴포넌트는
+  `DayLogPage.jsx`·`FixedCountSection.jsx`·`FixedRouteChips.jsx`·`PalletSection.jsx`
+  (전부 `src/components/day-log/`) 뿐이다. 다른 화면·다른 CSS 파일의 정의·소비 0건.
+- 현재 정확한 범위(2블록, `.input-box` 제외):
+  - **블록 A**: `src/main-calendar.css` **645~657**(`.fixed-route-group > label`부터
+    `.fixed-route-input-row`까지, 13줄).
+  - **[제외] 659~671**: `.input-box` — 손대지 않는다.
+  - **블록 B**: `src/main-calendar.css` **673~751**(`.fixed-route-unit`부터
+    `.fixed-route-chip-minus`까지, 79줄).
+  - 블록 A 바로 앞(643~644)은 `.modal-section-title`(손대지 않음), 블록 B 바로 뒤(752~758)는
+    `.call-detail-section`/`.call-detail-card`(손대지 않음) — 둘 다 빈 줄로 구분된 경계다.
+
+### 13-2. 작업자 수정 범위 — 정확히 2파일
+
+1. `src/main-calendar.css`
+   - 645~657(블록 A)과 673~751(블록 B) **두 구간만** 제거한다. 659~671의 `.input-box`는
+     그대로 남긴다(제거하지 않음 — 남기면 646번째 줄 근처에 있던 빈 줄 구조가 자연히
+     `.modal-section-title` 다음 `.input-box` 규칙만 남는 모양이 된다).
+2. `src/components/day-log/fixed-route.css` **신규**
+   - 블록 A를 먼저, 블록 B를 그 다음에 원래 상대 순서 그대로 옮긴다(사이의 `.input-box`는
+     옮기지 않으므로 두 블록이 신규 파일 안에서는 바로 붙는다). 선택자·선언·값·순서를
+     바꾸지 않는다.
+   - 파일 책임을 설명하는 짧은 주석 외에 정리·병합·축약·재정렬을 하지 않는다.
+3. `src/components/day-log/DayLogPage.jsx`
+   - 마지막 줄의 기존 `import './day-log.css'` **바로 앞**에 `import './fixed-route.css'`
+     한 줄만 추가한다. `day-log.css`가 항상 마지막에 로드돼 "최종 보정" 역할을 하는 기존
+     순서(§2 조사에서 확인된 규칙)를 그대로 지키기 위해서다.
+   - 컴포넌트·로직·이벤트 코드는 변경하지 않는다.
+
+(수정 파일은 정확히 2개 기존 + 1개 신규.)
+
+### 13-3. 이번 슬라이스 금지 범위
+
+- **`.input-box`(659~671)는 절대 옮기거나 수정하지 않는다** — 공유 규칙이라 다른 슬라이스
+  대상이다.
+- 콜상세 폼·카드·목록, 일지 헤더/섹션, 공통 변수·제어 스타일(§3 설계표의 나머지 책임)은
+  이동하지 않는다.
+- `calendar.css`, `day-log.css`, `account-flow.css`, `side-menu.css`,
+  `components/day-log/message-template.css`, `components/day-log/day-log-expenses.css`,
+  `components/bottom-nav.css`를 수정하지 않는다.
+- 색상·크기·간격·z-index·선택자 의미·애니메이션·동작을 바꾸지 않는다.
+- Store, DB, Supabase, 동기화, 화면 기능, 테스트 데이터 구조를 변경하지 않는다.
+- 같은 선언을 양쪽 파일에 남기는 복제, 줄 수만 줄이는 압축, 작업자 `.md` 수정은 금지한다.
+
+### 13-4. 작업자 검증·인계
+
+- `rg`로 `.fixed-route-*`·`.quick-count-btn` 계열 선택자가 신규 파일에만 존재하는지, 그리고
+  `.input-box`가 여전히 `main-calendar.css`에 그대로 남아 있는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build`를 통과시키고 React 저장소에 코드만
+  커밋한다. **커밋까지만 하고 push는 하지 않는다.**
+- 변경 파일·커밋 SHA·검증 결과를 감시관에게 전달한다.
+- 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 게스트로 "고정 노선" 켠 상태에서
+  운행 횟수 빠른 버튼·자주 다니는 노선 칩·파렛트 섹션을 라이트·다크로 대조한다. §5 7항목도
+  다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
