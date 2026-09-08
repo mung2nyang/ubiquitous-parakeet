@@ -100,11 +100,32 @@ CI "verify" 초록(run `34180303423`, headSha 일치, 3게이트 green), 기능�
 - 보리 최종 `[x]` — 이 슬라이스 확정되면 **③-4도 함께 `[x]`** 처리(같은
   커밋의 후속 정리이므로).
 
+## 분리설계 슬라이스 완료 — 감시관 리뷰 통과, 보리 최종 확인 대기
+
+작업자 커밋 `602f75f`("리포트 모듈을 §6 줄수 한도에 맞게 파일 분리") — push
+확인, CI "verify" 초록(run `34180988394`, headSha 일치, 3게이트 green).
+
+- **줄수**: `ReportSummaryContent.jsx` 190 / `ReportDetailView.jsx` 143 /
+  `report.js` 69 / `reportSummary.js` 99 / `reportDetail.js` 131 — 전부 200줄
+  이내, §6 문제 해소 확인.
+- **로직 무변경 검증**: 감시관이 이동된 함수 5개(`buildMonthReport`·
+  `buildReportDayRows`·`buildDetailReport`·`detailReportClientOptions`·
+  `detailCommissionLabel`)와 컴포넌트 조각 4개(`ReportDayTable`+
+  `renderSummaryDayTables`·`ReportSummaryContent`·`ReportClientPickerModal`·
+  `ReportDetailContent`)를 이동 전/후로 **직접 byte 단위 diff 대조** — 전부
+  완전히 동일(코드 한 글자도 안 바뀜, import 경로만 정리됨) 확인.
+- **소비처**: `ReportPage.jsx`·`report.test.js` import 3줄로 분리(정확히
+  설계안대로), `ReportShareModal.jsx`는 무변경(설계안 예측대로), 테스트 파일
+  `ReportDetailView.test.js` → `ReportSummaryContent.test.js` 이름 변경(import
+  1줄 외 본문 무변경).
+- **감시관 §5 7항목**: 범위 100% 일치·몰래 증설 없음·타입 꼼수 0·200줄 전부
+  통과·테스트 assertion 무변경(진실성 문제 없음)·`.md` 변경 0·요구사항(로직
+  무변경 이동) 충족 — 전부 통과.
+- **브라우저 검증**: 착수지시서에서 이미 "불필요"로 합의됨(순수 리팩터링,
+  화면 동작 변화 없음) — CI+§5로 완료 조건 충족.
+
 ## 다음 세션 시작 시 할 일
 
-1. 위 분리설계안으로 **보리 착수 승인** 받기.
-2. 승인되면 작업자에게 전달.
-3. CI 초록 + 감시관 §5 확인되면(브라우저 검증 불필요, 순수 리팩터링) 보리
-   `[x]` — ③-4까지 함께 확정.
-4. 그 다음은 **이관 계획 ③ 전체 완료** → `STATUS.md` "다음 할 일" ④(매출 탭
+1. **보리 최종 확인** → `[x]` — 이 분리설계 슬라이스 + ③-4를 함께 확정.
+2. 확정되면 **이관 계획 ③ 전체 완료** → `STATUS.md` "다음 할 일" ④(매출 탭
    수치 불일치 조사)로 이동.
