@@ -398,7 +398,76 @@ diff/사용처로 재확인했다.
 - 이번엔 **작업자가 커밋까지만 하고 보리가 직접 push**해 AGENTS §3 절차대로 정상 진행됐다
   (8-4에서 지적된 문제 재발 없음).
 
-### 10-5. 승인 대기
+### 10-5. 승인 완료
 
-- 위 10-1~10-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치, 탭 전환
-  확인)까지 마친 상태다. **`[x]` 확정은 보리의 명시 승인이 있어야 한다.**
+- 보리 명시 승인: **"승인/다음 진행해"**(2026-09-08). 3차 하단 네비게이션 CSS 분리 슬라이스를
+  `[x]`로 닫는다. 전체 `main-calendar.css` 책임 분리는 아래 11번 슬라이스가 남아 `[~]`.
+
+## 11. 4차 착수지시 — 일지 정비/주유/기타(day-log-expenses) 전용 CSS 분리 `[~]`
+
+### 11-1. 기준과 목적
+
+- 작업 기준: react-app `0be168fe3d4ab5af5804e0c8af734b65ec5e39d2`, `HEAD`=`origin/main`,
+  작업트리 클린.
+- §3 설계표의 "day-log-expenses.css(신규) — 일지 안 정비/주유/기타 카드와 선택창" 책임.
+  원 설계 문서는 이 블록을 "일지 전용"으로 분류했는데, 착수 전 감시관이 그 분류가 맞는지
+  실측으로 재확인했다(아래 근거).
+- **착수 전 확인한 위험과 결론**: 이 블록의 클래스 이름 접두사(`maint-fuel-*`, `action-icon-btn`,
+  `expense-kind-pick`, `compact-add-btn` 등)는 `side-menu.css`에도 같은 이름의 규칙이 있고,
+  `action-icon-btn`은 `MaintFuelPage`·`CarListItem`·`ClientListItem` 등 일지와 무관한
+  10여 개 화면에서도 쓰인다 — 언뜻 "공유"로 보였다. 그러나 `main-calendar.css`의 실제 규칙은
+  전부 `.work-log-page .maint-fuel-item`처럼 **`.work-log-page`(일지 화면 루트, `DayLogPage`
+  전용 래퍼) 조상 선택자로 스코프**돼 있어(예: `.work-log-page .call-detail-actions
+  .action-icon-btn`), `MaintFuelPage` 등 다른 화면의 bare `.action-icon-btn`과 선택자 자체가
+  다르고 특이도도 더 높다. 즉 실제로는 순수 일지 전용이 맞고, 다른 화면에 영향 없음을
+  `grep`으로 직접 확인했다(`node`로 두 파일의 선언 내용도 대조, 완전히 다른 규칙임을 확인).
+- 현재 정확한 범위: `src/main-calendar.css` **609~690**(`.work-log-page .maint-fuel-item`부터
+  `.work-log-page .maint-fuel-select-inline .expense-kind-pick .modal-btn`까지, 82줄).
+  바로 앞은 `.work-log-page .call-detail-daily-summary .summary-grand-total`(콜상세 일일합계,
+  손대지 않음), 바로 뒤는 `.btn-group-toggle`(692줄, 손대지 않음). 둘 다 빈 줄로 구분된 깨끗한
+  경계다.
+- 소비 컴포넌트: `ExpenseGroups.jsx`·`ExpenseSelectPanel.jsx`(둘 다 `DayLogExpenses.jsx`의
+  자식) — 이 CSS를 다른 CSS 파일이 정의하지 않는다.
+
+### 11-2. 작업자 수정 범위 — 정확히 2파일
+
+1. `src/main-calendar.css`
+   - 현재 609~690의 `.work-log-page .maint-fuel-item`부터
+     `.work-log-page .maint-fuel-select-inline .expense-kind-pick .modal-btn`까지, 연속 블록만
+     제거한다.
+   - 바로 앞 `.work-log-page .call-detail-daily-summary .summary-grand-total` 관련 규칙과
+     바로 뒤 `.btn-group-toggle`은 손대지 않는다.
+2. `src/components/day-log/day-log-expenses.css` **신규**
+   - 위 82줄을 선택자·선언·값·순서 그대로 한 번만 옮긴다.
+   - 파일 책임을 설명하는 짧은 주석 외에 정리·병합·축약·재정렬을 하지 않는다.
+3. `src/components/day-log/DayLogExpenses.jsx`
+   - 기존 import들(`KINDS`·`ExpenseFormModal`·`ExpenseGroups`·`ExpenseSelectPanel`·
+     `InlineSheet`) 뒤, `KIND_ADD_CLASS` 선언 전에 `import './day-log-expenses.css'` 한 줄만
+     추가한다.
+   - 컴포넌트·로직·이벤트 코드는 변경하지 않는다.
+
+(수정 파일은 정확히 2개 기존 + 1개 신규 — 이전 두 슬라이스와 동일한 카운팅 방식.)
+
+### 11-3. 이번 슬라이스 금지 범위
+
+- 콜상세 폼·카드·목록, 고정노선, 공통 변수·제어 스타일(§3 설계표의 나머지 책임)은 이동하지
+  않는다.
+- `calendar.css`, `day-log.css`, `account-flow.css`, `side-menu.css`,
+  `components/day-log/message-template.css`, `components/bottom-nav.css`를 수정하지 않는다.
+- 색상·크기·간격·z-index·선택자 의미·애니메이션·동작을 바꾸지 않는다. `.work-log-page` 조상
+  스코프를 반드시 그대로 유지한다(스코프를 벗겨 bare 선택자로 만들지 않는다 — 11-1의 특이도
+  근거가 깨진다).
+- Store, DB, Supabase, 동기화, 화면 기능, 테스트 데이터 구조를 변경하지 않는다.
+- 같은 선언을 양쪽 파일에 남기는 복제, 줄 수만 줄이는 압축, 작업자 `.md` 수정은 금지한다.
+
+### 11-4. 작업자 검증·인계
+
+- `rg`로 `.work-log-page .maint-fuel-*` 등 이 블록 선택자가 신규 파일에만 존재하는지, 여전히
+  `.work-log-page` 조상이 붙어 있는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build`를 통과시키고 React 저장소에 코드만
+  커밋한다. **커밋까지만 하고 push는 하지 않는다**(9-4·10-4와 동일 절차).
+- 변경 파일·커밋 SHA·검증 결과를 감시관에게 전달한다.
+- 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 게스트로 정비/주유/기타 항목을
+  1건 이상 추가한 상태에서 라이트·다크로 카드·선택창을 대조하고, `MaintFuelPage`(마이페이지 ›
+  정비/주유/기타, `.work-log-page` 밖 화면)가 이번 변경으로 전혀 영향받지 않았는지도 함께
+  확인한다. §5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.

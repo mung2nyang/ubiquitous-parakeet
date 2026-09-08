@@ -3,12 +3,14 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1차 홈 달력 `[x]`,
-> 2차 메시지 선택창 `[x]`, 3차 하단 네비 CI+감시관 검증 완료, 보리 최종 승인
-> 대기 `[~]`.** react-app `0be168f`, CI green(verify/deploy), 라이트/다크
-> 하단 네비 컴퓨티드 스타일 완전 일치+탭 전환 동작 확인, 감시관 §5 7항목
-> 통과. 이번엔 작업자 커밋→보리 직접 push로 §3 절차 정상 진행. 전체 CSS
-> 해체는 `[~]` 유지. 상세 `docs/report.md` §9~§10.)
+> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1~3차(홈 달력·메시지
+> 선택창·하단 네비) 전부 `[x]`.** 3차는 react-app `0be168f`, CI green, 라이트/
+> 다크 컴퓨티드 스타일 완전 일치+탭 전환 확인, 보리 명시 승인 **"승인/다음
+> 진행해"**로 닫음. **4차 일지 정비/주유/기타(day-log-expenses) CSS 분리
+> 착수지시 확정 `[~]`.** 착수 전 감시관이 `action-icon-btn` 등 겹치는 클래스명이
+> `MaintFuelPage` 등 다른 화면에도 쓰이는 걸 발견해 직접 조사 — `main-calendar.css`
+> 쪽 규칙은 전부 `.work-log-page` 조상으로 스코프돼 있어 실제 영향 없음을
+> `grep`·선언 대조로 확인 후 착수지시 작성. 상세 `docs/report.md` §10~§11.)
 
 ---
 
@@ -79,16 +81,26 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
   대조·닫기 동작까지 실측 확인, §5 7항목 통과 + 보리 명시 승인 **"승인
   다음진행"** 2026-09-08(작업자가 push까지 완료했던 관찰도 이 승인으로 수용).
   상세 `docs/report.md` §7~§8.
-- **3차 하단 네비게이션 CSS 분리 — 코드·CI·감시관 검증 완료, 보리 승인 대기 `[~]`.**
-  `main-calendar.css` 994~1043(파일 끝, `.bottom-nav-bar`~`.nav-item.active`) 50줄을
-  신규 `src/components/bottom-nav.css`로 옮기고 `BottomNav.jsx`가 직접
-  import(react-app `0be168f`, 정확히 지시한 3파일만 변경 — 기존 2+신규 1).
-  CI green(verify/deploy) + 감시관이 분리 전(`bafccfb`)·후(`0be168f`)를 각각
-  로컬 빌드해 라이트/다크 하단 네비 컴퓨티드 스타일(배경·테두리·그림자·
-  아이콘·활성/비활성 색상)을 문자열 비교(완전 일치)·탭 전환(active 상태)
-  동작까지 실측 확인, §5 7항목 통과. **이번엔 작업자가 커밋까지만 하고
-  보리가 직접 push**해 §3 절차 정상 진행(지난 슬라이스 관찰 재발 없음).
-  상세 `docs/report.md` §9~§10.
+- **3차 하단 네비게이션 CSS 분리 `[x]`.** `main-calendar.css` 994~1043(파일 끝,
+  `.bottom-nav-bar`~`.nav-item.active`) 50줄을 신규 `src/components/bottom-nav.css`로
+  옮기고 `BottomNav.jsx`가 직접 import(react-app `0be168f`, 정확히 지시한
+  3파일만 변경 — 기존 2+신규 1). CI green(verify/deploy) + 감시관이 분리 전
+  (`bafccfb`)·후(`0be168f`)를 각각 로컬 빌드해 라이트/다크 하단 네비 컴퓨티드
+  스타일 완전 일치·탭 전환(active 상태) 동작까지 실측 확인, §5 7항목 통과.
+  이번엔 작업자가 커밋까지만 하고 보리가 직접 push해 §3 절차 정상 진행.
+  보리 명시 승인 **"승인/다음 진행해"** 2026-09-08. 상세 `docs/report.md` §9~§10.
+- **4차 일지 정비/주유/기타(day-log-expenses) CSS 분리 착수지시 확정, 작업자
+  착수 가능 `[~]`.** 현재 `main-calendar.css` 609~690(`.work-log-page
+  .maint-fuel-item`~`.work-log-page .maint-fuel-select-inline .expense-kind-pick
+  .modal-btn`, 82줄)을 신규 `src/components/day-log/day-log-expenses.css`로
+  옮기고 `DayLogExpenses.jsx`가 직접 import한다. 수정은 기존 2파일+신규
+  1파일뿐이다. **착수 전 감시관이 클래스명 겹침(`action-icon-btn` 등이
+  `MaintFuelPage`·`CarListItem`·`ClientListItem`에도 쓰임) 위험을 발견해
+  직접 조사** — `main-calendar.css` 쪽 규칙은 전부 `.work-log-page` 조상
+  스코프라 다른 화면에 영향 없음을 확인했다. 콜상세·고정노선·공통 및
+  `calendar.css`·`day-log.css`·`account-flow.css`·`side-menu.css`·
+  `message-template.css`·`bottom-nav.css`는 이번 슬라이스에서 금지. 상세
+  착수지시는 `docs/report.md` §11.
 - **§1 홈 캘린더 UI 5건 — 기능 검증 완료, 전체 상태 `[~]`.** 마지막
   `b7104e1`(`white-space: nowrap`)은 CI "verify" 초록(run `34191474760`,
   headSha 일치, test·typecheck·build 성공) + 보리 브라우저 검증·승인 완료.
