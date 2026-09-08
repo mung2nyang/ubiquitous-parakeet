@@ -1,155 +1,185 @@
-# docs/report.md — UI 비교 수정 슬라이스: 홈(캘린더) 화면
+# docs/report.md — `main-calendar.css` 책임 분리 전수 조사·설계안
 
-## f24bd8e 검토: 회귀 2건 해결 확인 + §1-6("마이페이지" 줄바꿈) 재발 — 진단 정정
+## 0. 현재 상태와 금지 범위
 
-**f24bd8e 확인 완료.** CI 초록(run `34190354247`, headSha 일치) + 감시관이 직접
-브라우저(다크모드)로 재확인 — 정비비 배지 빨간 배경·흰 글씨 정상 복귀,
-날짜 칸 클릭 하이라이트도 회색으로 정상 복귀. **회귀 2건은 해결.**
+- 상태: **`[x]` 첫 홈 달력 CSS 분리 완료·승인.** 전체 `main-calendar.css` 책임 분리는 후속 슬라이스가 남아 `[~]`.
+- 비교 기준: 분리 전 react-app `b7104e1`, 분리 후 `ca80554`(둘 다 당시 `origin/main`과 일치).
+- 조사 대상: `react-app/src/main-calendar.css` 1,282줄 전체와 실제 JSX/CSS import 사용처.
+- 이번 설계에서 제외: `account-flow.css`, `side-menu.css`의 이동·정리·수정.
+- Store, DB, 동기화, 화면 기능, 색상·크기·간격·선택자 의미는 전부 변경 금지.
+- 이 책임 분리가 끝날 때까지 다음 UI 비교 수정은 착수하지 않는다.
 
-그런데 보리가 하단 네비 "마이페이지" 줄바꿈이 fe98184 이후에도 그대로라고
-지적 → 확인해보니 **§1-6 항목의 최초 진단(폰트 목록이 짧아서 넓게 그려짐)이
-틀렸었음.** 정정:
+## 1. 현재 CSS 유입 구조
 
-- fe98184에서 바꾼 폰트 목록(`-apple-system, BlinkMacSystemFont, "Segoe UI"...`)은
-  전부 **로마자 전용 폰트**라 한글 글자("마이페이지") 모양·너비엔 전혀 영향을
-  못 줌 — 한글은 어차피 OS의 한글 폰트(Windows는 맑은 고딕 등)로 그려지기
-  때문. 최초 진단("짧은 폰트 목록 때문에 더 넓게 그려짐")이 틀린 원인 추정이었음.
-- 실측(`canvas.measureText` + 실제 강제 `white-space: nowrap` 테스트): "마이페이지"
-  실제 너비는 약 **52.99px**로 60px 칸에 여유 있게 들어감 — 그런데도
-  `white-space: nowrap`이 없으면 이 환경(Windows/Chrome)의 한글 줄바꿈 규칙
-  때문에 경계에서 줄이 갈라짐(원본 CSS에도 이 규칙이 원래 없음 — 원본은
-  자기 환경에서 우연히 안 갈라졌던 것으로 보임, 아슬아슬한 경계라 어느 쪽이든
-  환경에 따라 갈라질 수 있는 상태였음).
-- **진짜 고칠 내용**: `white-space: nowrap` 한 줄이 유일하게 확실한 해결책 —
-  실제로 브라우저에 강제 적용해 한 줄로 들어가는 것 확인 완료.
-- 폰트 목록 변경(fe98184) 자체는 되돌릴 필요 없음 — 원본과 동일한 값이라
-  무해하고 다른 라틴 문자 표시엔 여전히 맞는 방향, 다만 "이게 줄바꿈을
-  고친다"는 설명은 정정.
+1. `main.jsx`가 `index.css`를 먼저 불러온다.
+2. `app/App.jsx`가 `account-flow.css` → `side-menu.css` 순서로 불러온다.
+3. `AppShellRoutes.jsx`가 `MainPageRoute.jsx`를 정적 import하고, `MainPageRoute.jsx`가
+   `CalendarPage.jsx`와 `DayLogPage.jsx`를 모두 정적 import한다.
+4. `CalendarPage.jsx`가 `main-calendar.css` → `components/calendar/calendar.css` 순서로,
+   `DayLogPage.jsx`가 `components/day-log/day-log.css`를 불러온다.
+5. `RevenuePage.jsx`와 `LinkedDriverManagementPage.jsx`도 `main-calendar.css`를 직접 import한다.
 
-### 수정 지시 3 (작업자 전달용)
+결론: 파일명과 달리 `main-calendar.css`는 홈에만 한정되지 않는다. `/app` 라우트 트리의
+정적 import 때문에 하단 네비게이션을 포함한 여러 앱 화면에 전역으로 적용되고, 매출·기사관리
+화면은 이 파일을 직접 의존한다. `MaintFuelPage`·`ReportPage`·`TaxInvoicePage` 등은 직접
+import하지 않으면서도 현재 정적 라우트 그래프를 통해 공통 규칙을 공급받는다.
 
-> AGENTS.md의 §1 작업자 규칙을 준수하라. .md 파일은 수정하지 말고 지시된
-> 코드 작업만 하라.
+## 2. 1,282줄 전수 책임 분류
 
-`src/main-calendar.css`의 `.nav-item span { font-size: var(--fs-floor);
-font-weight: 700; }` 블록에 `white-space: nowrap;` 한 줄만 추가(하단 네비
-4개 라벨 전부에 적용되는 공용 규칙이라 "마이페이지"만 따로 손대지 않음 —
-다른 라벨은 원래도 안 갈라지니 영향 없음). 다른 파일·로직 손대지 말 것.
-`npm test`/`npm run typecheck` 재실행 → 커밋 1개 추가, push는 보리가.
+아래 표가 모든 규칙을 빠짐없이 덮는다. “공유”는 두 화면 이상이 실제 사용하는 규칙이다.
 
-## 보리 브라우저 검증에서 회귀 2건 발견 (2026-09-08) — 수정 지시 대기 (해결됨, 위 참고)
-
-**보리가 다크모드 실검증 중 fe98184가 새로 깨뜨린 문제 2건을 직접 찾음.**
-둘 다 이번 슬라이스가 만든 회귀(착수지시서 밖 항목이 아니라, 착수지시서
-항목 자체가 불완전하게 고쳐진 것) — 원인까지 코드+브라우저로 확인 완료.
-
-1. **캘린더 날짜 칸의 "차량 정비비" 배지(칩)가 다크모드에서 배경·글자색 없이
-   숫자만 남음.** 원인: 지시서 3번(`main-calendar.css`의 `:root`를
-   `:not([data-theme="dark"])`로 좁힌 것) 때문에, 다크모드에서
-   `--maint-badge-bg`/`--maint-badge-text` 변수가 완전히 정의되지 않게 됨
-   (`account-flow.css`의 `[data-theme="dark"]` 블록이 `--work-badge-*`/
-   `--off-badge-*`는 재정의하지만 `--maint-badge-*`는 원래부터 정의한 적이
-   없음 — 원본도 다크에서 이 두 값을 라이트와 **똑같이** 재선언해 둠,
-   `ubiquitous-parakeet/style.css:83-84`·`108-109` 확인).
-2. **다크모드에서 날짜 칸을 눌렀을 때 흰색 하이라이트가 여전히 뜸**(지시서
-   3번으로 고쳤다고 봤던 항목, 실제론 절반만 고쳐짐). 원인: `--hover-bg`를
-   무조건 선언하는 `:root {...}` 블록이 `main-calendar.css` **말고
-   `src/side-menu.css`에도 하나 더** 있었음(1~5줄) — 지난 조사 때 이 파일을
-   놓쳐서 여기서 여전히 라이트 값(`#edf2f7`)이 다크 값(`#383838`)을 이김.
-   (`getComputedStyle` 실측: 다크모드인데 `--hover-bg` = `#edf2f7`로 확인.)
-
-### 수정 지시 (작업자 전달용, 다음 커밋 1개로)
-
-> AGENTS.md의 §1 작업자 규칙을 준수하라. .md 파일은 수정하지 말고 지시된
-> 코드 작업만 하라.
-
-1. `src/side-menu.css` 1번째 줄 `:root {` → `:root:not([data-theme="dark"]) {`
-   로 변경. 블록 안 값(`--fs-7`·`--hover-bg`·`--shadow-md`)은 그대로, 선택자만.
-2. `src/account-flow.css`의 `[data-theme="dark"] { ... }` 블록 안에 아래 2줄
-   추가(원본 다크모드 값과 완전히 동일):
-   ```
-   --maint-badge-bg: #e53e3e;
-   --maint-badge-text: #ffffff;
-   ```
-3. 다른 파일·로직 손대지 말 것. `npm test`/`npm run typecheck` 재실행 →
-   기존 커밋(`fe98184`)에 이어 **수정 커밋 1개 추가**(reset 금지, AGENTS §3).
-   push는 보리가.
-
-## 진행 상태 — `[~]` CI 초록·감시관 §5 통과, 보리 브라우저 검증 중 회귀 발견 → 수정 대기
-
-- **커밋**: react-app `fe98184` "fix: 홈 캘린더 UI를 원본과 맞추기" (작업자, push 완료).
-- **CI**: GitHub Actions "CI" run [`34189318780`](https://github.com/mung2nyang/react-app/actions/runs/34189318780) `conclusion=success`, headSha `fe98184` 일치 확인.
-  (작업자가 로컬 `npm run build`에서 Windows 크래시(0xC0000409)를 보고했으나, **CI 빌드는 정상 통과** —
-  로컬 환경(OneDrive 경로 등) 문제로 결론, 코드 문제 아님.)
-- **감시관 §5 리뷰**: `git show --stat fe98184` = 지시서의 파일 4개와 정확히 일치, 그 외 파일 0.
-  `git show fe98184` 라인 단위로 아래 "구체적으로 바꿀 내용" 5개 항목과 정확히 일치(추가 로직 없음).
-  `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as` 신규 0건. `.md` 파일 diff 0(작업자 규칙 준수).
-  `.test.*` 파일 변경 없음(순수 CSS 값·인라인 style 추가라 새 테스트 불필요, 기존 테스트 약화 없음).
-- **감시관 관찰 (미확인 — 실행 지시 아님)**: `main-calendar.css`(1281줄)·`account-flow.css`(593줄)가
-  AGENTS §6 "200줄 이하" 기준을 이미 크게 초과한 상태(이번 슬라이스가 만든 게 아니라 기존 상태,
-  이번엔 각각 1~2줄만 추가). CSS 파일도 §6 분리설계 대상으로 볼지는 대화창에서 보리에게 질문만
-  하고 답변 전까지는 이 파일에 확정 항목으로 안 올림.
-
-> 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12).
-> 이관 계획 ①~③은 전부 `[x]` 확정됨(상세는 `STATUS.md` "완료" 절).
-> ④(매출 탭 수치 불일치 조사)는 보리 지시(2026-09-08)로 "원본 vs react-app
-> UI 전체 비교" 작업이 새로 우선순위에 올라오면서 뒤로 밀림 — 조사 자체는
-> 진행 안 됨, 필요해지면 이 파일에 다시 착수지시서 작성.
-
-## 배경
-
-`docs/ui-comparison-report.md` §1(홈 캘린더)에 보리가 직접 화면을 짚고
-감시관이 코드로 원인까지 확인해 확정한 6개 항목 중, 실제 수정이 필요한
-5개를 이번 슬라이스로 고친다. (3번 "벨/햄버거 아이콘 배경"은 문제 아님으로
-확인돼 제외.)
-
-## 이번 슬라이스에서 고칠 것 (5건)
-
-| # | 문제 | 원인 | 고칠 파일 |
+| 현재 줄 | 선택자/스타일 묶음 | 책임 | 실제 사용 화면·컴포넌트 |
 |---|---|---|---|
-| 1 | 연/월 옆에 원본엔 없는 "▼" 화살표가 보임 | `CalendarDateSelect`의 화살표 아이콘(`span.app-dropdown-chevron`)이 항상 보이는 상태 — 원본은 이 위치에서 화살표가 안 보임(이 컴포넌트는 홈 화면에만 쓰여서 다른 화면 영향 없음) | `src/components/calendar/calendar-date-select.css` |
-| 2 | 상단 헤더(로고~날짜 알약)가 원본보다 위로 붙음 | 원본은 헤더 위쪽 여백이 `margin-top: 40px`인데 react-app엔 이 여백이 아예 없음(0) | `src/main-calendar.css` |
-| 4 | 날짜 칸 클릭 시 다크모드에서 흰색이 뜸 | 다크 전용 색 변수(`--hover-bg`/`--today-bg` 등)가 `account-flow.css`의 `[data-theme="dark"]`에서 정해지는데, `main-calendar.css`의 무조건 `:root { ... }`가 같은 변수를 라이트 값으로 다시 선언 — 코드 로딩 순서상 이게 나중에 적용돼 다크모드에서도 라이트 색이 이김 | `src/main-calendar.css` |
-| 5 | "차량 정비비" 글자가 빨간색이어야 하는데 기본색으로 보임 | 정비비 줄(`div`)에만 색 지정이 빠져 있음(바로 아래 "차량 주유비"/"통행료·기타" 줄은 각각 파란/빨간 지정이 있음) | `src/components/calendar/CalendarMonthSummary.jsx` |
-| 6 | 하단 네비 "마이페이지" 글자가 "마이페이"/"지"로 줄바꿈됨 | 전체 앱 글꼴 목록이 원본보다 짧아서(`system-ui, "Segoe UI", sans-serif`), 이 환경에서 같은 글자를 그리는 데 더 넓은 폭이 필요해져 60px 칸에서 넘침 | `src/account-flow.css` |
+| 1~14 | 라이트 테마 변수(`--today-*`, badge, hover, shadow 등) | 공통/공유 | 홈 달력, 일지, 모든 관리 화면의 공통 제어 스타일 |
+| 16~27 | 앱 body, `.container.main-app-container` | 공통/공유 | `AppShell` 아래 전체 앱 화면 |
+| 29~53 | `.main-page .header`, `.banner-*` | 홈 달력 전용 | `CalendarHeader` |
+| 55~118 | `.date-navigator`, `.date-select-*`, `.arrow-btn` | 공통/공유 | 홈, 정비/주유/기타, 리포트, 매출, 세금계산서, 기사관리 |
+| 120~196 | `.calendar-grid`, `.day-header`, `.date-cell`, 3종 badge | 홈 달력 전용 | `CalendarGrid`, `CalendarCell` |
+| 198~225 | `.summary-card/title/row` | 공통/공유 | 홈, 정비, 리포트, 매출, 세금계산서, 기사관리 |
+| 227~253 | `.main-page .summary-client-commission-*` | 홈 달력 전용 | `CalendarMonthSummary`의 거래처 수수료 들여쓰기 |
+| 255~267 | `.summary-row.total`, `.summary-value` | 공통/공유 | 위 요약 카드 사용 화면 전체 |
+| 269~284 | `.inline-icon(.sm)` | 홈 달력 전용(현재 소비처 1곳) | `CalendarMonthSummary` 지출 아이콘 |
+| 286~290 | `.summary-hint` | 공통 계열·현재 미사용 | 프로덕션 JSX 소비처 0; 삭제하지 않고 공통 파일로 보존 |
+| 292~303 | `.settings-header/title` | 공통/공유 | 일지 헤더와 차량·거래처·정비·리포트·매출·마이페이지 등 관리 화면 |
+| 305~320 | `.modal-title-stack`, `.autosave-status` | 일지 전용 | `DayLogHeader`, `AutoSaveStatus` |
+| 322~342 | `.icon-btn` | 공통/공유 | 달력 헤더와 앱 내 대부분의 뒤로가기·닫기 버튼 |
+| 344~390 | `.work-log-page` 및 일지 섹션/토글 보정 | 일지 전용 | `DayLogPage`, `OffToggle`, 일지 섹션들 |
+| 392~427 | 콜·지출 추가 행/버튼 | 일지 내부 공유 | `CallDetailList`와 `DayLogExpenses`가 공동 사용 |
+| 429~591 | 콜상세 입력 패널/필드/저장 동작부 스타일 | 일지 전용 | `CallDetailForm` |
+| 593~756 | 콜상세 카드·연락·문자·일일합계 스타일 | 일지 전용 | `CallDetailCard`, `CallDetailList` |
+| 758~839 | 정비/주유/기타 카드·선택창 스타일 | 일지 전용 | `ExpenseGroups`, `ExpenseSelectPanel`, `DayLogExpenses` |
+| 841~877 | `.message-template-*` | 메시지 선택창 전용 | `MessageTemplateSheet` |
+| 879~883 | `.btn-group-toggle` | 일지 전용 | `OffToggle` |
+| 884~895 | `.toggle-btn` 기본형 | 공통/공유 | 일지뿐 아니라 앱설정·차량·정비·매출·세금계산서·미수금 |
+| 897~927 | 휴무 상태·고정노선 섹션 기초 | 일지 전용 | `OffToggle`, `DayLogPage`, `FixedCountSection`, `PalletSection` |
+| 929~941 | `.input-box` 기본형 | 공통/공유 | 일지, 인증, 차량·거래처·기사 폼, 고객센터, 리포트, 매출 등 |
+| 943~1021 | 고정횟수·빠른버튼·노선칩 | 일지 전용 | `FixedCountSection`, `FixedRouteChips`, `PalletSection` |
+| 1023~1099 | 콜상세 카드/결제 기본형 | 일지 전용 | `CallDetailList`, `CallDetailCard` |
+| 1101~1124 | `.unpaid-summary-card` | 홈 달력 전용 | `CalendarMonthSummary` |
+| 1126~1204 | 콜상세 2열·입력·카드·합계 기본형 | 일지 전용 | `CallDetailForm`, `CallDetailCard`, `CallDetailList` |
+| 1205~1214 | 일·토·오늘 날짜와 날짜 텍스트 | 홈 달력 전용 | `CalendarGrid`, `CalendarCell` |
+| 1216~1231 | `.main-practice-note/back` | 홈 계열·현재 미사용 | 프로덕션 JSX 소비처 0; 이번 이동에서 삭제하지 않고 보존 |
+| 1233~1282 | `.bottom-nav-bar`, `.nav-item` | 하단 네비게이션 전용 | `BottomNav` — 모든 `/app/*` 화면에 고정 표시 |
 
-## 구체적으로 바꿀 내용
+추가 확인:
 
-1. **`calendar-date-select.css`**: `.app-dropdown-chevron`에 `display: none;` 한 줄 추가(화살표 완전히 숨김, 클릭·키보드 조작 등 드롭다운 동작 자체는 그대로 — 장식용 아이콘만 안 보이게 함).
-2. **`main-calendar.css`**: `.main-page .header { margin-bottom: 10px; }` → `margin-top: 40px;` 한 줄 추가(원본 값 그대로). `margin-bottom`은 이번에 보고된 문제가 아니므로 손대지 않음.
-3. **`main-calendar.css`**: 파일 맨 위 `:root { ... }` 선택자를 `:root:not([data-theme="dark"]) { ... }`로 변경(이 앱은 다크모드를 `<html data-theme="dark">` 속성 하나로만 켜고 끔 — "시스템 자동" 같은 제3의 모드가 없어서 이 조건 하나로 라이트/다크가 정확히 나뉨). 블록 안 변수 값·개수는 그대로, 선택자만 바뀜.
-4. **`CalendarMonthSummary.jsx`**: "차량 정비비" 줄의 `<div className="summary-row" style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed var(--border-color)' }}>`에 `color: 'var(--sunday-color)'`를 같은 style 객체 안에 추가. **굵게(font-weight)는 넣지 않는다** (보리 결정, `ui-comparison-report.md` §1-5 참고).
-5. **`account-flow.css`**: `body { font-family: system-ui, 'Segoe UI', sans-serif; }`를 원본과 동일한 `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`로 교체. 이 줄은 앱 전체 기본 글꼴이라 모든 화면에 적용되지만, 원본도 원래 전체 화면에 이 글꼴을 쓰고 있어서 이게 정확한 원본 일치 방향.
+- `.work-log-call-modal .input-box`는 현재 프로덕션 소비처가 없지만 일지 소유 규칙으로 보존한다.
+- 기존 `calendar.css`는 `.date-cell { position: relative; }`, `.unpaid-dot`, 서브차량 배너만
+  보유하며 `main-calendar.css` 뒤에 로드돼 날짜 셀 기준점을 보정한다.
+- 기존 `day-log.css`는 `main-calendar.css`의 일지 규칙 뒤에 로드돼 인라인 시트·스크롤 여백·
+  섹션 제목 등을 마지막으로 보정한다. 이후 분리에서도 이 “마지막 보정” 순서를 유지해야 한다.
+- `side-menu.css`와 `account-flow.css`에도 일부 같은 이름의 공통 선택자가 있지만 이번 대상이
+  아니다. 해당 파일은 손대지 않고 현재보다 뒤에서 적용되는 `main-calendar.css` 쪽 선언의
+  상대 순서를 보존한다.
 
-## 안 건드릴 것
+## 3. 최종 책임 구조 설계
 
-- `docs/ui-comparison-report.md` §1-1(사이드메뉴) 4건 — 별도 슬라이스(아래 "다음" 참고).
-- §2~13(마이페이지~고객센터) — 아직 보리 검토 전 초안, 이번 슬라이스 대상 아님.
-- 데이터 저장·동기화 로직, Store, Supabase 관련 코드 — 이번 슬라이스는 전부 화면에 "어떻게 보이는지"만 다루는 CSS·인라인 스타일 수정이라 해당 없음.
+| 목표 파일 | 책임 | 옮길 현재 범위 | 불러오는 위치·순서 | 예상 영향 |
+|---|---|---|---|---|
+| `components/calendar/calendar.css`(기존) | 홈 헤더·달력 셀·badge·홈 정산 보정·미수 카드·서브차량 배너 | 29~53, 120~196, 227~253, 269~284, 1101~1124, 1205~1231 | `CalendarPage.jsx`; 기존처럼 공통 스타일 뒤, 파일 안에서는 옮긴 기본 규칙 → 기존 `.date-cell` 위치 보정/`unpaid-dot`/서브배너 순 | 홈·서브차량 달력만. 약 242줄로, 항상 함께 읽는 단일 화면 스타일이므로 §6의 응집도 우선(~250줄) 사유 1줄 기록 |
+| `app-shell-base.css`(신규) | 라이트 앱 변수·비계정 body·480px 앱 컨테이너 | 1~27 | `App.jsx`에서 `account-flow.css`·`side-menu.css` 다음 | 모든 앱 화면. 값과 선택자 그대로 이동 |
+| `shared-controls.css`(신규) | 월 이동기, 요약 카드, 설정 헤더, 아이콘 버튼, 토글·입력 기본형 | 55~118, 198~225, 255~267, 286~303, 322~342, 884~895, 929~941 | `App.jsx`에서 `app-shell-base.css` 다음 | 홈·일지·관리·재무 화면 공동. 약 170줄, 기존 전역 cascade 유지 |
+| `components/day-log/day-log-shell.css`(신규) | 일지 헤더·페이지·섹션·휴무·콜/지출 공통 추가버튼 | 305~320, 344~427, 879~883, 897~913 | `DayLogPage.jsx`에서 세부 일지 CSS보다 먼저 | 일지 화면만 |
+| `components/day-log/fixed-route.css`(신규) | 고정횟수·파렛트·빠른노선 칩 | 915~927, 943~1021 | `day-log-shell.css` 다음 | 일지 고정노선 영역만 |
+| `components/day-log/call-detail-form.css`(신규) | 콜상세 입력 폼 | 429~591, 1126~1157, 1198~1204 | 고정노선 CSS 다음 | `CallDetailForm`; 약 202줄로 한 폼의 상호의존 규칙이라 ~250줄 사유 기록 |
+| `components/day-log/call-detail-card.css`(신규) | 콜 카드·결제·연락/문자 버튼 | 593~727, 1028~1099, 1159~1182 | form CSS 다음 | `CallDetailCard`; 약 231줄, 카드 상태가 함께 움직여 ~250줄 사유 기록 |
+| `components/day-log/call-detail-list.css`(신규) | 콜 목록 컨테이너·일일 합계 | 729~756, 1023~1026, 1184~1196 | card CSS 다음 | `CallDetailList`만 |
+| `components/day-log/day-log-expenses.css`(신규) | 일지 안 정비·주유·기타 카드와 선택창 | 758~839 | call CSS 다음 | 일지 비용 영역만 |
+| `components/day-log/message-template.css`(신규) | 문자 양식 선택 overlay/sheet | 841~877 | `MessageTemplateSheet.jsx`에서 직접 import | 메시지 선택창만; 다른 일지 스타일과 선택자 겹침 없음 |
+| `components/bottom-nav.css`(신규) | 고정 하단탭 | 1233~1282 | `BottomNav.jsx`에서 직접 import | 모든 `/app/*` 화면; 고유 선택자라 순서 영향 없음 |
+| `components/day-log/day-log.css`(기존) | 인라인 시트와 최종 일지 보정 | 현재 내용 유지 | 위 일지 파일들 다음, **마지막** import | 현재 cascade를 그대로 보존 |
 
-## §4 플레이북 해당 여부
+모든 책임 이동이 끝나면 `main-calendar.css`는 비게 된다. 마지막 정리 슬라이스에서 이 파일과
+`CalendarPage.jsx`·`RevenuePage.jsx`·`LinkedDriverManagementPage.jsx`의 직접 import를 제거한다.
+새 파일은 원래 선언을 한 번만 소유하며, 동일 선언을 복제하지 않는다.
 
-**미해당.** 건드리는 파일 5곳 모두 `src/store/**`·`supabaseClient`·`cloud*`·`hydrate*`·`outbox*`·`mutation*`·`commit*`·`localStorage`·`domain/finance*`·`domain/receivables*` 어디에도 안 걸림 — 화면 표시(CSS·인라인 스타일)만 바꾸는 슬라이스.
+## 4. 구현 슬라이스와 첫 구현의 정확한 범위
 
-## 실패 시 처리
+책임 하나씩 별도 슬라이스로 진행한다. 각 슬라이스는 기존 파일에서 해당 규칙을 삭제하고
+소유 파일에 같은 순서·같은 선언을 옮긴다. 이름 변경·압축·병합·값 정리는 하지 않는다.
 
-신규 저장소·복구 레이어 없음(§7 해당 없음). 전부 기존 CSS 규칙·JSX 인라인 style에 값 추가/선택자 조정뿐이라 실패할 경우 원인은 오타·선택자 실수 정도 — 롤백은 해당 줄만 되돌리면 됨.
+### 첫 구현 — 홈 달력 전용 스타일만
 
-## 기대 동작 (완료 판정 기준)
+수정 파일은 딱 2개다.
 
-- [ ] 홈 화면 연/월 옆에 화살표가 안 보인다(라이트·다크 모두).
-- [ ] 홈 화면 상단 헤더가 원본만큼 아래로 내려와 있다(로고~날짜 알약 시작 위치).
-- [ ] 다크모드에서 날짜 칸을 눌렀을 때 흰색이 아니라 회색 계열로 하이라이트된다.
-- [ ] "차량 정비비" 글자·금액이 빨간색으로 보인다(굵게는 아님).
-- [ ] 하단 네비 "마이페이지" 글자가 두 줄로 안 깨지고 한 줄로 보인다.
-- [ ] `npm test` / `npm run typecheck` / `npm run build` 통과(CI에서 자동 확인).
+1. `src/main-calendar.css`: 29~53, 120~196, 227~253, 269~284, 1101~1124,
+   1205~1231의 홈 전용 블록만 제거.
+2. `src/components/calendar/calendar.css`: 위 블록을 원래 상대 순서대로 먼저 두고,
+   기존 `.date-cell { position: relative; }` → `.unpaid-dot` → 서브차량 배너를 뒤에 유지.
 
-## 다음 슬라이스 예고
+`CalendarPage.jsx`의 기존 import 순서(`main-calendar.css` 다음 `calendar.css`)는 이 첫 구현에서
+바꾸지 않는다. 공통·일지·메시지·하단 네비 스타일도 건드리지 않는다. 예상 줄 수는
+`main-calendar.css` 약 1,086줄, `calendar.css` 약 242줄이다.
 
-`docs/ui-comparison-report.md` §1-1(사이드메뉴) 4건 중 작은 것부터:
-- "관리"/"경영" 순서 반전, 배너 이미지(라이트/다크 전용 PNG 2장) 복원,
-  "{기사이름} 기사 관리" 문구 중복(이건 먼저 "이름이 비는 게 정상 데이터
-  상태인지" 확인 질문 필요).
-- 톱니바퀴(서브차량 전용 설정) 항목은 **범위가 훨씬 큼**(설정값 자체를
-  메인/서브로 나눠 새로 저장해야 함) — 별도 세션에서 범위부터 다시 잡아야
-  함, 이번 다음 슬라이스에 포함 안 함.
+첫 구현이 검증·승인된 뒤에만 메시지 선택창, 하단 네비, 일지 세부 책임, 공통 스타일을 각각
+별도 슬라이스로 옮긴다. 특히 하단 네비는 첫 홈 달력 슬라이스에 섞지 않는다.
+
+## 5. 첫 구현 결과와 감시관 직접 검증
+
+### 5-1. 작업자 구현·CI
+
+- 작업자 커밋/보리 push: react-app `ca80554b17647bba2b5041581ab2a983c8a9e7b0`
+  (`refactor: 홈 달력 전용 스타일을 calendar.css로 분리`). 현재 `HEAD`=`origin/main`, 작업트리 클린.
+- 변경 파일은 지시한 2개뿐이다: `src/main-calendar.css`,
+  `src/components/calendar/calendar.css`.
+- diff는 `calendar.css` +205/-5, `main-calendar.css` +0/-201(합계 +205/-206)의 순수 이동과 책임 주석 정리다.
+  React 컴포넌트·Store·DB·동기화·화면 기능·테스트·문서는 작업자가 건드리지 않았다.
+- GitHub Actions CI `34194765082`: headSha가 위 커밋과 일치하고 `test`·`typecheck`·`build`
+  3단계 모두 `success`. 감시관은 AGENTS 규칙대로 이를 로컬에서 재실행하지 않았다.
+
+### 5-2. 선언 동일성·줄 수
+
+- PostCSS로 분리 전/후 `main-calendar.css`+`calendar.css`를 파싱해 선택자·선언·값의
+  canonical multiset을 비교했다: 전 186규칙, 후 186규칙, 차이 0. 선언 복제·누락·값 변경 0.
+- import는 계속 `CalendarPage.jsx`에서 `main-calendar.css` → `calendar.css` 순서이며,
+  JSX/import 파일 수정도 없다.
+- 결과 줄 수: `main-calendar.css` 1,081줄, `calendar.css` 246줄. 전자는 아직 해체 중인
+  임시 대형 파일이고, 후자는 홈 달력 한 화면의 상호의존 규칙이라 설계 때 승인한 §6
+  응집도 예외(~250줄) 범위다.
+
+### 5-3. 브라우저 전후 대조
+
+- 분리 전 Pages 산출물(run `34191474754`, `b7104e1`)과 분리 후 Pages 산출물
+  (run `34194765087`, `ca80554`)을 각각 읽기 전용 localhost로 띄웠다. 개발/배포 모드
+  차이를 제거하고 두 화면 모두 390×844, 2026년 9월, 게스트, 같은 조작·데이터로 맞췄다.
+- 메시지 선택창 확인에 필요한 최소 게스트 데이터만 각 격리 origin의 메모리 상태에 동일하게
+  만들었다(`검증 상차`→`검증 하차`, 운송료 0원). 계정 로그인·원격 전송은 없었고 저장소
+  파일·DB·Supabase 데이터는 변경하지 않았다.
+- 아래 캡처는 JPEG 바이트 배열 길이와 각 바이트를 직접 비교했다. 전부 길이가 같고
+  불일치 바이트가 **0**이었다.
+
+| 비교 화면 | 조건 | 결과 |
+|---|---|---|
+| 홈 달력 `/app` | 라이트, 동일 1건 데이터 | 완전 일치(불일치 0) |
+| 홈 달력 `/app` | 다크, 동일 1건 데이터 | 완전 일치(불일치 0) |
+| 일일운행 `/app/day/2026-09-08` | 다크, 빈 상태 | 완전 일치(불일치 0) |
+| 문자 양식 선택 dialog | 라이트, 동일 운행 1건 | 완전 일치(불일치 0) |
+| 매출 `/app/revenue` | 다크, 동일 운행 1건 | 완전 일치(불일치 0) |
+| 정비/주유/기타 `/app/expenses` | 다크 | 완전 일치(불일치 0) |
+| 운송비 내역서 `/app/report` | 다크, 동일 운행 1건 | 완전 일치(불일치 0) |
+| 세금계산서 `/app/tax` | 다크 | 완전 일치(불일치 0) |
+| 하단 네비게이션 | 위 모든 화면 | 위치·색·활성 상태 포함 완전 일치 |
+
+`/app/logs/:logId`와 `/app/drivers/:linkId`는 게스트 검증 세션에 실제 연동 기사/유효
+`linkId`가 없어 임의 ID를 만들지 않았다. 대신 커밋에서 이동한 선택자는 모두 홈 컴포넌트
+소비처로 한정되고, 서브배너의 기존 규칙과 공통·기사관리 규칙은 이동·수정되지 않았음을
+diff/사용처로 재확인했다.
+
+### 5-4. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 승인된 CSS 2파일만 변경.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0.
+3. 타입 꼼수 없음: 통과 — CSS 이동이며 `any`·캐스팅·타입 변경 0.
+4. 200줄 원칙: 통과 — `calendar.css` 246줄은 사전 설계에 기록한 단일 화면 응집도 예외.
+5. 테스트 진실성: 통과 — 테스트 수정 0, CI test 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 홈 전용만 이동, 하단 네비·일지·메시지·공통 및
+   `account-flow.css`·`side-menu.css` 무변경, 색상·크기·간격·선택자 의미·기능 무변경.
+
+## 6. 첫 슬라이스 승인 완료
+
+- 보리 명시 승인: **“문서도 커밋 후 승인”**(2026-09-08). CI·브라우저·감시관 §5 근거를
+  확인한 첫 홈 달력 CSS 분리 슬라이스를 `[x]`로 닫는다.
+- 전체 책임 분리는 아직 `[~]`이다. 이후에도 다음 UI 수정은 금지다. 메시지 선택창·하단
+  네비·일지·공통 스타일을 §3 책임
+  경계대로 각각 별도 슬라이스로 옮겨 `main-calendar.css` 해체를 먼저 끝낸다.
