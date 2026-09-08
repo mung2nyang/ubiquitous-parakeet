@@ -471,3 +471,58 @@ diff/사용처로 재확인했다.
   1건 이상 추가한 상태에서 라이트·다크로 카드·선택창을 대조하고, `MaintFuelPage`(마이페이지 ›
   정비/주유/기타, `.work-log-page` 밖 화면)가 이번 변경으로 전혀 영향받지 않았는지도 함께
   확인한다. §5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+
+## 12. 4차 구현 결과와 감시관 직접 검증
+
+### 12-1. 작업자 구현·CI
+
+- 작업자 커밋: react-app `688c3c0c27c4e09f211a165c8d281288e0823e9f`
+  (`refactor: 일지 정비/주유/기타 스타일을 day-log-expenses.css로 분리`). 작업자가 커밋 후
+  이번엔 보리가 직접 push(§3 절차 정상).
+- 변경 파일은 지시한 정확히 3개(기존 2 + 신규 1): `src/main-calendar.css`(609~690의
+  `.work-log-page .maint-fuel-*` 82줄 제거, 앞뒤 무변경), `src/components/day-log/
+  day-log-expenses.css`(신규, `.work-log-page` 조상 스코프 그대로 보존), `src/components/
+  day-log/DayLogExpenses.jsx`(`import './day-log-expenses.css'` 1줄 추가). diff +85/-83.
+- `rg` 재확인: 이동한 선택자 전부 `.work-log-page` 조상이 그대로 붙어 있고, 신규 파일에만
+  1회씩 존재. 줄 수: `day-log-expenses.css` 84, `DayLogExpenses.jsx` 53, `main-calendar.css`
+  909 — 전부 §6 200줄 이내.
+- GitHub Actions CI: `verify`·`deploy` 모두 headSha `688c3c0...`와 일치, `conclusion: success`.
+
+### 12-2. 감시관 직접 브라우저 대조
+
+- 분리 전 `0be168f`, 분리 후 `688c3c0`를 각각 로컬 worktree에서 `npm run build`해 정적
+  서버로 띄우고 두 탭을 390×844로 맞춘 뒤, 게스트로 "검증 정비"/50,000원 정비 항목을 동일하게
+  1건씩 추가했다.
+- **컴퓨티드 스타일 전수 대조**: `.maint-fuel-item`(카드 패딩·테두리·둥근모서리·배경·그림자)·
+  `.maint-fuel-title`(flex·gap·글자크기)·`.maint-fuel-icon` 색상·`.maint-payment-badge`·
+  `.maint-fuel-total`을 라이트 모드에서 JSON으로 추출해 비교 — **완전 일치**(위치 좌표만
+  두 빌드의 이전 테스트 잔여 데이터 차이로 다름, 기능·스타일과 무관).
+- **다크 모드**: `.maint-fuel-item`·`.maint-payment-badge`의 배경·테두리·그림자·글자색을
+  동일한 방식으로 비교 — **완전 일치**.
+- **`.work-log-page` 스코프 실측 확인(11-1 위험 검증)**: `MaintFuelPage`(마이페이지 ›
+  정비/주유/기타)에서 같은 정비 항목의 "수정" 버튼(`.action-icon-btn`)이 `.work-log-page`
+  밖에 있음을 `closest()`로 확인하고, 그 컴퓨티드 스타일(36px 아이콘형이 아니라 `side-menu.css`
+  텍스트 버튼형 — width 34.96px·padding 6px·border-radius 6px·font-weight 700)이 분리
+  전·후 두 빌드에서 **완전 일치**함을 확인 — 착수 전 우려했던 교차 영향이 실제로 없음을
+  실측으로 재확인했다.
+- `.expense-kind-pick`/`.modal-btn`(정비 종류 선택 패널)은 앱 자체 UI에서 `compact-add-btn`이
+  `display: none`(이번 슬라이스 범위 밖의 기존 규칙)이라 현재 클릭으로 열리지 않는 상태 —
+  diff의 정확한 byte 단위 일치(11-2 기준)로 대신 확인했다.
+
+### 12-3. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 지시한 3파일(기존 2+신규 1)만 변경.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0.
+3. 타입 꼼수 없음: 통과 — `any`·`@ts-ignore`·캐스팅 0, `@ts-check` 유지.
+4. 200줄 원칙: 통과 — `day-log-expenses.css` 84·`DayLogExpenses.jsx` 53·`main-calendar.css`
+   909줄.
+5. 테스트 진실성: 통과 — 테스트 파일 변경 0, CI test 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 지시한 3파일 외 무변경, `.work-log-page` 스코프 보존,
+   `MaintFuelPage` 등 다른 화면 무영향 실측 확인, 라이트·다크·색상·크기·간격 무변경.
+
+### 12-4. 승인 대기
+
+- 위 12-1~12-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치,
+  `.work-log-page` 스코프·`MaintFuelPage` 무영향 재확인)까지 마친 상태다. **`[x]` 확정은
+  보리의 명시 승인이 있어야 한다.**
