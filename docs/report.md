@@ -743,3 +743,58 @@ diff/사용처로 재확인했다.
   추가 버튼, 휴무 토글, 콜상세 추가 버튼)을 라이트·다크로 대조한다. 다른 화면(앱설정 토글,
   차량관리 등)의 `.toggle-btn`/`.modal-section-title`이 이번 변경으로 전혀 영향받지 않았는지도
   함께 확인한다. §5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+
+## 16. 6차 구현 결과와 감시관 직접 검증
+
+### 16-1. 작업자 구현·CI
+
+- 작업자 커밋: react-app `99e67243c9c3105ea0373be5ccefdc94b2dab0c9`
+  (`refactor: 일지 셸 스타일을 day-log-shell.css로 분리`). 작업자 커밋 후 보리가 직접
+  push(§3 절차 정상).
+- 변경 파일은 지시한 정확히 3개(기존 2 + 신규 1): `src/main-calendar.css`(195~278·
+  609~612·627~636 세 구간 101줄 제거), `src/components/day-log/day-log-shell.css`
+  (신규, 세 블록을 상대 순서 그대로 이어붙임 — 합쳐진 선택자 `.call-detail-add-btn,
+  .maint-fuel-add-btn`도 쪼개지 않고 그대로), `src/components/day-log/DayLogPage.jsx`
+  (`import './day-log-shell.css'`를 기존 `import './fixed-route.css'` 바로 앞에 추가).
+  diff +104/-101.
+- `rg` 재확인: 이동한 세 블록의 선택자 전부 신규 파일에만 존재. 공유 규칙 `.toggle-btn`
+  기본형(524줄)·`.modal-section-title` 기본형(537줄)·`.input-box`(544줄) 모두
+  `main-calendar.css`에 그대로 남아 있음(옮기지 않음 지시 준수).
+- 줄 수: `day-log-shell.css` 103, `DayLogPage.jsx` 177, `main-calendar.css` 714 — 전부
+  §6 200줄 이내.
+- GitHub Actions CI: `verify`·`deploy` 모두 headSha `99e6724...`와 일치, `conclusion: success`.
+
+### 16-2. 감시관 직접 브라우저 대조
+
+- 분리 전 `4fe84e8`, 분리 후 `99e6724`를 각각 로컬 worktree에서 `npm run build`해 정적
+  서버로 띄우고 두 탭을 390×844로 맞췄다(기존 게스트 데이터가 브라우저 localStorage에
+  남아 있어 "검증 정비" 50,000원·3회 운행 상태 그대로 재사용).
+- **컴퓨티드 스타일 전수 대조**: `.work-log-page`(text-align)·`.modal-section`(margin·padding·
+  border·border-radius·backgroundColor·boxShadow)·`.modal-section-title`(day-log.css 최종
+  보정까지 포함한 실제 렌더 값)·`.maint-fuel-add-btn`(정비 추가 버튼)·`.btn-group-toggle`을
+  라이트 모드에서 JSON으로 추출해 비교 — **완전 일치**.
+- **휴무 토글(죽은 코드 아닌 살아있는 블록 검증)**: "휴무" 버튼을 눌러 `.toggle-btn.active-off`·
+  `.modal-work-details.is-off`가 실제로 나타나는지, 그 컴퓨티드 스타일(배경·글자색·테두리·
+  opacity·pointer-events)이 두 빌드에서 동일한지 확인 — **완전 일치**.
+- `.call-detail-add-row`/`.call-detail-add-btn`(콜상세 "추가" 버튼)은 게스트 데이터에
+  "운행 일지 세부 입력" 설정이 꺼져 있어 이번 회차에는 화면에 나타나지 않았다 — diff의 정확한
+  byte 단위 일치(16-1 기준)로 대신 확인했다(이전 슬라이스들의 동일 판단 선례).
+
+### 16-3. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 지시한 3파일(기존 2+신규 1)만 변경.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0.
+3. 타입 꼼수 없음: 통과 — `any`·`@ts-ignore`·캐스팅 0, `@ts-check` 유지.
+4. 200줄 원칙: 통과 — `day-log-shell.css` 103·`DayLogPage.jsx` 177·`main-calendar.css`
+   714줄.
+5. 테스트 진실성: 통과 — 테스트 파일 변경 0, CI test 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 지시한 3파일 외 무변경, 공유 규칙(`.toggle-btn`·
+   `.modal-section-title`·`.input-box`) 보존 확인, 합쳐진 선택자 무변경, 라이트·다크·
+   휴무 토글까지 실측 확인.
+
+### 16-4. 승인 대기
+
+- 위 16-1~16-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치, 휴무
+  토글 살아있는 블록 재확인, 공유 규칙 보존 확인)까지 마친 상태다. **`[x]` 확정은 보리의
+  명시 승인이 있어야 한다.**
