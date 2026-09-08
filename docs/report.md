@@ -2,7 +2,8 @@
 
 ## 0. 현재 상태와 금지 범위
 
-- 상태: **`[x]` 첫 홈 달력 CSS 분리 완료·승인.** 전체 `main-calendar.css` 책임 분리는 후속 슬라이스가 남아 `[~]`.
+- 상태: **첫 홈 달력 CSS 분리 `[x]`; 2차 메시지 선택창 CSS 분리 `[~]` 착수지시 확정.**
+  전체 `main-calendar.css` 책임 분리는 후속 슬라이스가 남아 `[~]`.
 - 비교 기준: 분리 전 react-app `b7104e1`, 분리 후 `ca80554`(둘 다 당시 `origin/main`과 일치).
 - 조사 대상: `react-app/src/main-calendar.css` 1,282줄 전체와 실제 JSX/CSS import 사용처.
 - 이번 설계에서 제외: `account-flow.css`, `side-menu.css`의 이동·정리·수정.
@@ -183,3 +184,109 @@ diff/사용처로 재확인했다.
 - 전체 책임 분리는 아직 `[~]`이다. 이후에도 다음 UI 수정은 금지다. 메시지 선택창·하단
   네비·일지·공통 스타일을 §3 책임
   경계대로 각각 별도 슬라이스로 옮겨 `main-calendar.css` 해체를 먼저 끝낸다.
+
+## 7. 2차 착수지시 — 메시지 선택창 전용 CSS 분리 `[~]`
+
+### 7-1. 기준과 목적
+
+- 작업 기준: react-app `ca80554b17647bba2b5041581ab2a983c8a9e7b0`,
+  `HEAD`=`origin/main`, 작업트리 클린.
+- 현재 `main-calendar.css` 692~728의 `.message-template-*` 연속 블록은
+  `MessageTemplateSheet.jsx` 한 컴포넌트만 소비한다. 다른 CSS 파일의 같은 선택자는 0건이다.
+- 이 37줄을 신규 `components/day-log/message-template.css`가 단독 소유하게 하고,
+  소비 컴포넌트가 직접 불러오도록 한다.
+
+### 7-2. 작업자 수정 범위 — 정확히 3파일
+
+1. `src/main-calendar.css`
+   - 현재 692~728의 `.message-template-overlay`부터
+     `.message-template-list button span`까지 연속 블록만 제거한다.
+   - 바로 앞 일지 지출 선택 버튼 규칙과 바로 뒤 `.btn-group-toggle`부터는 손대지 않는다.
+2. `src/components/day-log/message-template.css` **신규**
+   - 위 블록을 선택자·선언·값·선언 순서 그대로 한 번만 옮긴다.
+   - 파일 책임을 설명하는 짧은 주석 외에 정리·병합·축약·재정렬을 하지 않는다.
+3. `src/components/day-log/MessageTemplateSheet.jsx`
+   - 기존 JS import 뒤, typedef 전에 `import './message-template.css'` 한 줄만 추가한다.
+   - 컴포넌트·템플릿·SMS URL·이벤트 코드는 변경하지 않는다.
+
+`DayLogPage.jsx`가 `MessageTemplateSheet.jsx`를 정적으로 import하고 기존
+`day-log.css`를 계속 불러오므로, 메시지 CSS는 화면 진입 때 함께 로드된다. 이 선택자들은
+`day-log.css`와 겹치지 않아 직접 import로 바꿔도 cascade 우선순위 충돌이 없다.
+
+### 7-3. 이번 슬라이스 금지 범위
+
+- 하단 네비게이션, 일지 폼·카드·지출·고정노선, 공통 변수·제어 스타일은 이동하지 않는다.
+- `calendar.css`, `day-log.css`, `account-flow.css`, `side-menu.css`를 수정하지 않는다.
+- 색상·크기·간격·z-index·선택자 의미·애니메이션·동작을 바꾸지 않는다.
+- Store, DB, Supabase, 동기화, 화면 기능, 테스트 데이터 구조를 변경하지 않는다.
+- 같은 선언을 양쪽 파일에 남기는 복제, 줄 수만 줄이는 압축, 작업자 `.md` 수정은 금지한다.
+
+### 7-4. 작업자 검증·인계
+
+- `rg`로 `.message-template-*` CSS 정의가 신규 파일에만 한 번 존재하는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build`를 통과시키고 React 저장소에 코드만 커밋한다.
+- 커밋은 하되 push하지 않는다. 변경 파일·커밋 SHA·검증 결과를 감시관에게 전달한다.
+- 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 같은 게스트 운행 1건으로 맞춰
+  라이트·다크 메시지 dialog, 닫기 동작, 배경 일일운행 화면과 하단 네비를 직접 비교한다.
+  선언 multiset·import·§5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+
+## 8. 2차 구현 결과와 감시관 직접 검증
+
+### 8-1. 작업자 구현·CI
+
+- 작업자 커밋: react-app `bafccfbb289404e111fa39d6c5e66273e38eba06`
+  (`refactor: 문자 양식 선택창 스타일을 message-template.css로 분리`). 이미 `origin/main`과 일치(작업자가
+  push까지 한 상태로 인계됨 — §3 "푸시는 사용자만" 예외 발생, 감시관이 발견해 아래 기록만 남기고
+  되돌리지 않음. 보리에게 별도 확인 요청 필요).
+- 변경 파일은 지시한 정확히 3개: `src/main-calendar.css`(692~728의 `.message-template-*` 블록
+  제거, 앞뒤 규칙 무변경), `src/components/day-log/message-template.css`(신규, 책임 주석 1줄 + 원본
+  선택자·선언·값·순서 그대로), `src/components/day-log/MessageTemplateSheet.jsx`(`import
+  './message-template.css'` 1줄 추가, 그 외 무변경). diff +40/-38.
+- `rg` 재확인: `.message-template-overlay` 등 5개 선택자 전부 신규 파일에 정확히 1회씩만 존재,
+  `main-calendar.css`엔 0회. 다른 CSS 파일에도 0회.
+- GitHub Actions CI: `deploy`·`verify` 둘 다 headSha `bafccfb...`와 일치, `conclusion: success`
+  (run `34212421262`/`34212421309`). test·typecheck·build 3게이트 green. 감시관은 AGENTS 규칙대로
+  이를 로컬에서 재실행하지 않았다.
+
+### 8-2. 감시관 직접 브라우저 대조
+
+- 분리 전 react-app `ca80554`, 분리 후 `bafccfb`를 각각 로컬 worktree에서 `npm run build`해
+  읽기 전용 정적 서버(base path `/react-app/`)로 띄우고, 두 탭을 390×844로 맞춰 동일한 게스트
+  조작(운행 일지 세부 입력+결제 및 수금 입력 설정 on → "검증 상차"→"검증 하차" 운송료 0원 콜
+  1건 저장 → 문자 보내기)으로 메시지 선택창을 열었다.
+- **컴퓨티드 스타일 전수 대조**: overlay·sheet·head·head strong/span/button·help·list·list button과
+  그 strong/span까지 11개 요소의 `position/inset/zIndex/display/padding/backgroundColor/width/
+  borderRadius/gap/fontSize/color/margin/border/cursor/lineHeight` 및 overlay·sheet의
+  `getBoundingClientRect()`를 라이트 모드에서 JSON으로 추출해 두 빌드를 문자열 비교 —
+  **완전 일치(불일치 0)**.
+- **스크린샷 대조**: 라이트·다크 각각 두 빌드에서 메시지 선택창이 열린 화면을 캡처, 육안 대조
+  결과 배경 일일운행 카드·하단 여백까지 동일. 다크 모드는 앱 자체 테마 토글("테마 선택")로
+  전환했다(OS `prefers-color-scheme`가 아니라 앱 상태로 제어됨을 이번에 확인).
+  overlay/sheet/버튼 색상·둥근 모서리·그림자 전부 두 빌드 동일.
+- **닫기 동작**: `.message-template-head button`(×) 클릭 시 두 빌드 모두 `.message-template-overlay`가
+  DOM에서 즉시 사라짐(동일 로직, JSX 변경 없음이므로 당연한 결과지만 실측 확인).
+- 배경 일일운행 화면·하단 네비는 이번 diff가 `.message-template-*` 선택자만 건드리고 다른 화면
+  선택자·컴포넌트는 무변경이므로 별도 스크린샷 대조 없이 diff 자체로 영향 없음을 확인(코드상
+  겹치는 선택자 0건, 위 8-1의 `rg` 결과와 동일 근거).
+
+### 8-3. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 지시한 3파일만 변경.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0, CSS 파일 1개 신규뿐(지시한 범위).
+3. 타입 꼼수 없음: 통과 — `any`·`@ts-ignore`·캐스팅 0, `@ts-check` 유지.
+4. 200줄 원칙: 통과 — `message-template.css` 39줄, `MessageTemplateSheet.jsx` 68줄,
+   `main-calendar.css` 1,043줄(계속 해체 중인 임시 대형 파일, 이미 설계 문서에 기록된 상태).
+5. 테스트 진실성: 통과 — 테스트 파일 변경 0(순수 CSS 이동이라 착수지시에도 테스트 요구 없었음),
+   CI test 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 지시한 3파일 외 무변경, 색상·크기·간격·z-index·선택자 의미·애니메이션·
+   동작·Store/DB/Supabase/동기화 무변경, 라이트·다크·닫기 동작까지 실측 확인.
+
+### 8-4. 감시관 관찰 — 확인 필요(실행 지시 아님)
+
+- **작업자가 이번 슬라이스를 push까지 완료한 상태로 인계됨.** AGENTS §3 "푸시는 사용자만.
+  작업자·감시관은 `git push` 금지"에 어긋난다. 이미 일어난 일이라 되돌리지 않았고(CI도 이미
+  green), 감시관이 임의로 규칙 위반 여부를 판단하지 않고 보리에게 그대로 보고한다.
+- 위 8-1~8-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 완전 일치, 스크린샷 라이트/다크
+  일치, 닫기 동작 확인)까지 마친 상태다. **`[x]` 확정은 보리의 명시 승인이 있어야 한다** —
+  이번 보고에서 감시관이 임의로 닫지 않는다.
