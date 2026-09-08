@@ -793,8 +793,87 @@ diff/사용처로 재확인했다.
    `.modal-section-title`·`.input-box`) 보존 확인, 합쳐진 선택자 무변경, 라이트·다크·
    휴무 토글까지 실측 확인.
 
-### 16-4. 승인 대기
+### 16-4. 승인 완료
 
-- 위 16-1~16-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치, 휴무
-  토글 살아있는 블록 재확인, 공유 규칙 보존 확인)까지 마친 상태다. **`[x]` 확정은 보리의
-  명시 승인이 있어야 한다.**
+- 보리 명시 승인: **"승인/다음 진행해"**(2026-09-08). 6차 일지 셸(day-log-shell) CSS 분리
+  슬라이스를 `[x]`로 닫는다. 전체 `main-calendar.css` 책임 분리는 아래 17번 슬라이스가
+  남아 `[~]`.
+
+## 17. 7차 착수지시 — 콜 목록·일일 합계(call-detail-list) 전용 CSS 분리 `[~]`
+
+### 17-1. 기준과 목적
+
+- 작업 기준: react-app `99e67243c9c3105ea0373be5ccefdc94b2dab0c9`, `HEAD`=`origin/main`,
+  작업트리 클린.
+- §3 설계표의 "call-detail-list.css(신규) — 콜 목록 컨테이너·일일 합계" 책임. 콜상세
+  폼·카드는 이번 범위 밖(각각 별도 슬라이스로 이어감 — 15-1에서 예고한 재조사 방식 그대로
+  이번에도 적용해 셋 중 가장 단순한 목록부터 먼저 확정했다).
+- 15-1에서 확인한 이중 레이어 원칙을 그대로 적용: `.work-log-page`로 스코프된 "실제 적용"
+  규칙과, 스코프 없는 "죽은 코드"(또는 진짜 공유) bare 규칙을 각각 실측으로 구분했다.
+- `CallDetailList.jsx`가 쓰는 고유 클래스는 `.call-detail-section`·`.call-detail-daily-summary`
+  (+ 자식 `.commission-row`·`.summary-grand-total`) 뿐이다(`.modal-section`·
+  `.call-detail-add-row`·`.call-detail-add-btn`·`.compact-add-btn`은 이미 6차
+  day-log-shell.css가 가져갔다). `grep` 재확인 결과 이 클래스들은 다른 컴포넌트·다른 CSS
+  파일에서 정의·소비되지 않는다.
+
+### 17-2. 현재 정확한 범위(3블록)
+
+- **블록 1(살아있음)**: `main-calendar.css` **495~522**
+  (`.work-log-page .call-detail-daily-summary`부터 `.summary-grand-total strong`까지, 28줄).
+- **블록 2(살아있음, 유일한 정의)**: `main-calendar.css` **558~561**(bare `.call-detail-section`,
+  4줄) — `.work-log-page` 스코프 버전이 따로 없다. 다른 화면 소비처도 0이라 그대로 옮겨도
+  안전하다.
+- **블록 3(죽은 코드, 보존 이동)**: `main-calendar.css` **694~706**(bare
+  `.call-detail-daily-summary` + `> div`, 13줄) — 블록 1의 `.work-log-page` 스코프 버전에
+  항상 덮여 실제로는 적용되지 않는다(특이도 0,2,0 vs 0,1,0). 15-1 원칙대로 삭제하지 않고
+  그대로 옮겨 보존한다.
+- **경계 확인**: 블록 1 앞(489~493)은 `.work-log-page .detail-message-btn`(콜상세 카드
+  몫, 손대지 않음). 블록 1과 2 사이(524~556)는 공유 `.toggle-btn`/`.modal-section-title`/
+  `.input-box` 기본형(손대지 않음). 블록 3 앞(687~692)은 `.call-detail-fare-line`(콜상세
+  카드 몫), 블록 3 뒤(708~710)는 `.call-vat-row`(콜상세 폼 몫, 마찬가지로 `.work-log-page`
+  스코프 버전에 덮이는 죽은 코드지만 이번 슬라이스 대상 아님) — 전부 손대지 않는다.
+
+### 17-3. 작업자 수정 범위 — 정확히 2파일
+
+1. `src/main-calendar.css`
+   - 495~522, 558~561, 694~706 **세 구간만** 제거한다.
+   - 524~556(공유 3종), 687~692(`.call-detail-fare-line`), 708~710(`.call-vat-row`)은
+     절대 옮기거나 수정하지 않는다.
+2. `src/components/day-log/call-detail-list.css` **신규**
+   - 세 블록을 495~522 → 558~561 → 694~706 순서 그대로, 선택자·선언·값·순서를 바꾸지 않고
+     옮긴다. 죽은 코드(블록 3)도 삭제하지 않는다.
+   - 파일 책임을 설명하는 짧은 주석 외에 정리·병합·축약·재정렬을 하지 않는다.
+3. `src/components/day-log/CallDetailList.jsx`
+   - 기존 import들(`callFareTotal`·`getDetailPaymentSummary`·`commissionInfo`·
+     `CallDetailCard`) 뒤, typedef 주석 전에 `import './call-detail-list.css'` 한 줄만
+     추가한다.
+   - 컴포넌트·로직·이벤트 코드는 변경하지 않는다.
+
+(수정 파일은 정확히 2개 기존 + 1개 신규.)
+
+### 17-4. 이번 슬라이스 금지 범위
+
+- 콜상세 폼(`.call-detail-panel` 계열, `.call-vat-row` 포함)·콜상세 카드
+  (`.call-detail-card` 계열, `.call-detail-fare-line` 포함)는 옮기지 않는다 — 각각 별도
+  재조사 후 별도 슬라이스로 이어간다.
+- 공유 `.toggle-btn`·`.modal-section-title`·`.input-box` 기본형은 옮기지 않는다.
+- `calendar.css`, `day-log.css`, `account-flow.css`, `side-menu.css`,
+  `components/day-log/message-template.css`, `components/day-log/day-log-expenses.css`,
+  `components/day-log/fixed-route.css`, `components/day-log/day-log-shell.css`,
+  `components/bottom-nav.css`를 수정하지 않는다.
+- 색상·크기·간격·z-index·선택자 의미·애니메이션·동작을 바꾸지 않는다.
+- Store, DB, Supabase, 동기화, 화면 기능, 테스트 데이터 구조를 변경하지 않는다.
+- 같은 선언을 양쪽 파일에 남기는 복제, 줄 수만 줄이는 압축, 작업자 `.md` 수정은 금지한다.
+
+### 17-5. 작업자 검증·인계
+
+- `rg`로 세 블록의 선택자가 신규 파일에만 존재하는지, `.toggle-btn`/`.modal-section-title`
+  기본형·`.input-box`·`.call-detail-fare-line`·`.call-vat-row`가 여전히
+  `main-calendar.css`에 그대로 남아 있는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build`를 통과시키고 React 저장소에 코드만
+  커밋한다. **커밋까지만 하고 push는 하지 않는다.**
+- 변경 파일·커밋 SHA·검증 결과를 감시관에게 전달한다.
+- 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 게스트로 "운행 일지 세부 입력"을
+  켜고 콜상세 항목을 2건 이상(수수료 있는 거래처 포함) 등록한 상태에서 콜 목록 하단의
+  "일일 합계"(수수료 행·합계 행 포함)를 라이트·다크로 대조한다. §5 7항목도 다시 판정하며,
+  보리 최종 승인 전에는 `[x]`로 닫지 않는다.
