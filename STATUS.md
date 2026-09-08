@@ -3,11 +3,11 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-08 (이관 계획 ③-1 `[x]` 확정(`63d48e3`). **③-2(캘린더
-> 카드 연결) 작업자 완료·push(`e00a004`)·CI "verify" 초록(run
-> `34176240684`, conclusion=success, headSha 일치, 3게이트 green)·감시관
-> §5 7항목 통과 — `[~]` 유지, 보리 브라우저 실검증 후 `[x]` 확정 예정.**
-> 아래 "지금 하는 일"에 브라우저 검증 순서 있음.)
+> 최종 갱신: 2026-09-08 (**이관 계획 ③-2(캘린더 카드 연결) `[x]` 확정**
+> — 기본 커밋 `e00a004` + 브라우저 검증 중 발견한 수정 커밋 `3045c45`
+> (정산 카드 제목을 원본처럼 "총 N회 운행"으로, 원본에 없던 하단 안내
+> 문구·로그아웃 버튼 제거) 둘 다 CI 초록·감시관 §5 통과·보리 브라우저
+> 실검증 완료. 다음은 ③-3(리포트 요약 화면 연결) 착수지시서 작성 대기.)
 
 ---
 
@@ -40,32 +40,14 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
 ③-1(신규 공용 계산 함수, 화면 연결 없음) → ③-2(캘린더 카드 연결) →
 ③-3(리포트 요약 화면 연결). ③-1 완료 상세는 아래 "완료" 절.
 
-**③-2(캘린더 카드 연결) 작업자 완료, 감시관 §5 리뷰 통과, 보리 브라우저
-실검증 대기 중(`[~]`).** 캘린더 카드가 ③-1의 `monthSettlementSummary`를
-쓰도록 연결 — 거래처별 행·파렛트 행·기사차량 수수료 행·거리 행·지출 3종
-행 렌더링 추가, 기존 `getOwnerMonthlyFinanceDetail` 경유 `commissionTotal`
-계산(안 쓰게 된 `useOwnerProfile`/`useOwnerDrivers` 구독 2개 포함) 제거.
-부가세 계산도 원본대로(flat 10%, `vatExempt` 미고려)로 바뀜. 서브차량
-실거리 표시는 `subDistanceOn` 설정이 react-app에 없어 이번엔 메인만
-(회귀 아님, 원본 기능 중 미이관분). — react-app `e00a004`(5 files:
-`CalendarPage.jsx`·`CalendarMonthSummary.jsx`·`main-calendar.css`+28·
-`CalendarPage.test.js`·신규 `CalendarMonthSummary.test.js`+136). CI
-"verify" 초록 run `34176240684`(conclusion=success·headSha 일치·3게이트
-green). 감시관 §5 7항목 통과: diff가 지시서와 사실상 일치(거래처별/파렛트/
-서브수수료/거리/지출 3종 행 전부 지시 순서·조건대로 구현, CSS 포팅도 원본과
-byte 단위 일치), 타입 꼼수 0, `.md` 변경 0, 127/117줄(§6 이내), 테스트
-2파일 전부 실제 렌더 결과 대조(신규 `CalendarMonthSummary.test.js` "0이면
-숨김/값 있으면 표시" 케이스 포함). **감시관 관찰(미확인, 보리에게 대화창
-질문만 던짐 — 이번 세션에 답 받으면 등재)**: `CalendarPage.jsx`에서
-`showToast` prop을 `showToast: _showToast`로 구조분해했는데, 이 prop은
-전에도 지금도 컴포넌트 안에서 안 씀(동작 무변화) — 지시서에 없던 손질이라
-왜 건드렸는지 확인 필요.
+**③-2(캘린더 카드 연결) `[x]` 확정 — 상세는 아래 "완료" 절.**
 
-**보리 브라우저 실검증 순서**: `npm run dev` → 홈 캘린더(메인, 고정노선
-거래처+콜상세 여러 거래처+파렛트+정비/주유/기타 지출이 있는 달) 열어
-거래처별 매출·수수료 행·파렛트·지출 3종이 원본 화면과 같은 숫자로 나오는지
-확인 → 소속기사(서브차량) 계정으로 로그인해 그 화면의 "기사차량 수수료"
-행이 새로 보이는지 확인 → 문제 없으면 `[x]` 승인.
+**다음 할 일 = ③-3(리포트 요약 화면 연결) 착수지시서 작성.**
+`lib/report.js`의 `buildMonthReport`가 ③-1의 `monthSettlementSummary`를
+쓰도록 교체, `ReportPage.jsx`/`ReportDetailView.jsx`의 `ReportSummaryContent`도
+캘린더 카드와 같은 구조(거래처별 행·파렛트·서브수수료·지출 3종)로 갱신.
+착수 전 `domain/day-record.js`의 `monthWorkFareSummary`가 이제 소비처
+0곳이 되므로 삭제 여부도 지시서에 포함해야 함.
 
 원본↔React UI 전수 대조 1차 조사 전체 내용(재무 숫자 불일치 등 나머지 발견 항목)은
 `docs/archive/audit.md` "원본↔React UI 전수 대조 — 1차 조사" 절로 옮김(동결, 참고용).
@@ -208,6 +190,31 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
   상태가 생기진 않음 — 기존 데이터에도 없음(보리 확인) — 사실상 닫힌 문제, 참고용으로만 유지.
 
 ## 완료 (커밋·푸시됨)
+- **이관 계획 ③-2 — 캘린더 카드를 공용 계산 함수로 연결**: `CalendarPage.jsx`가
+  ③-1의 `monthSettlementSummary`를 쓰도록 교체 — 거래처별 매출/수수료 행·
+  파렛트 행·기사차량 수수료 행·거리 행(메인만, 서브는 `subDistanceOn` 설정
+  자체가 없어 미이관)·지출 3종(정비/주유/기타, 지금까지 카드에 아예 없던
+  행) 렌더링 추가, 기존 `getOwnerMonthlyFinanceDetail` 경유 합산
+  `commissionTotal`(안 쓰게 된 `useOwnerProfile`/`useOwnerDrivers` 구독
+  2개 포함) 제거 — 보리 확인("원본대로") 반영. 부가세 계산도 원본대로
+  (flat 10%, `vatExempt` 미고려)로 바뀜. 원본 수수료 들여쓰기 CSS
+  (`#mainPage .summary-client-commission-*`)를 `.main-page` 스코프로
+  포팅. — react-app `e00a004`(5 files). 브라우저 검증 중 보리가 발견한
+  원본 불일치 2건 — 정산 카드 제목이 "총 N회 운행"이 아니라 "횟수 N회 ·
+  세부 입력 M건"으로 돼 있던 것, 원본에 없던 하단 안내 문구("{이름}님 ·
+  달력에 횟수 기록")·로그아웃 버튼("처음으로 돌아가기", 원본 로그아웃은
+  개인정보 페이지 1곳뿐임을 감시관이 확인) — 을 같은 슬라이스 수정 커밋
+  `3045c45`로 반영(2 files, `userName`/`onBackToAuth` prop 선언은 부모
+  호환 위해 유지, 렌더링만 제거). 두 커밋 다 CI "verify" 초록(run
+  `34176240684`/`34176962060`, conclusion=success·headSha 일치·3게이트
+  green)·감시관 §5 7항목 통과(diff가 지시서·수정 지시문과 정확히 일치,
+  타입 꼼수 0, `.md` 변경 0, 127/117줄(§6 이내), 신규
+  `CalendarMonthSummary.test.js`(136줄, "0이면 숨김/값 있으면 표시" 케이스
+  포함)+기존 `CalendarPage.test.js` 갱신 전부 실제 렌더 결과 대조). 리뷰
+  중 나온 `showToast: _showToast` 구조분해(지시서 밖 손질)는 작업자 확인
+  결과 정당한 사유(원래 있던 prop을 재작성 중 빠뜨려 부모(`MainPageRoute.jsx`)
+  전달값과 타입이 안 맞던 것을 고친 것, 동작 무변화)로 결론 — 별도 조치
+  불필요. 보리 브라우저 실검증 통과 + `[x]` 2026-09-08. 상세 `docs/report.md`.
 - **이관 계획 ③-1 — "월간 정산" 공용 계산 함수**: 신규
   `domain/monthSettlement.js`의 `monthSettlementSummary(workData, year,
   month, options)` — 원본 `updateSummary`(script.js:3529-3634)+호출부
