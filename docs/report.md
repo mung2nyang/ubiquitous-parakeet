@@ -1,6 +1,44 @@
 # docs/report.md — UI 비교 수정 슬라이스: 홈(캘린더) 화면
 
-## 진행 상태 — `[~]` CI 초록·감시관 §5 통과, 보리 브라우저 검증 대기
+## 보리 브라우저 검증에서 회귀 2건 발견 (2026-09-08) — 수정 지시 대기
+
+**보리가 다크모드 실검증 중 fe98184가 새로 깨뜨린 문제 2건을 직접 찾음.**
+둘 다 이번 슬라이스가 만든 회귀(착수지시서 밖 항목이 아니라, 착수지시서
+항목 자체가 불완전하게 고쳐진 것) — 원인까지 코드+브라우저로 확인 완료.
+
+1. **캘린더 날짜 칸의 "차량 정비비" 배지(칩)가 다크모드에서 배경·글자색 없이
+   숫자만 남음.** 원인: 지시서 3번(`main-calendar.css`의 `:root`를
+   `:not([data-theme="dark"])`로 좁힌 것) 때문에, 다크모드에서
+   `--maint-badge-bg`/`--maint-badge-text` 변수가 완전히 정의되지 않게 됨
+   (`account-flow.css`의 `[data-theme="dark"]` 블록이 `--work-badge-*`/
+   `--off-badge-*`는 재정의하지만 `--maint-badge-*`는 원래부터 정의한 적이
+   없음 — 원본도 다크에서 이 두 값을 라이트와 **똑같이** 재선언해 둠,
+   `ubiquitous-parakeet/style.css:83-84`·`108-109` 확인).
+2. **다크모드에서 날짜 칸을 눌렀을 때 흰색 하이라이트가 여전히 뜸**(지시서
+   3번으로 고쳤다고 봤던 항목, 실제론 절반만 고쳐짐). 원인: `--hover-bg`를
+   무조건 선언하는 `:root {...}` 블록이 `main-calendar.css` **말고
+   `src/side-menu.css`에도 하나 더** 있었음(1~5줄) — 지난 조사 때 이 파일을
+   놓쳐서 여기서 여전히 라이트 값(`#edf2f7`)이 다크 값(`#383838`)을 이김.
+   (`getComputedStyle` 실측: 다크모드인데 `--hover-bg` = `#edf2f7`로 확인.)
+
+### 수정 지시 (작업자 전달용, 다음 커밋 1개로)
+
+> AGENTS.md의 §1 작업자 규칙을 준수하라. .md 파일은 수정하지 말고 지시된
+> 코드 작업만 하라.
+
+1. `src/side-menu.css` 1번째 줄 `:root {` → `:root:not([data-theme="dark"]) {`
+   로 변경. 블록 안 값(`--fs-7`·`--hover-bg`·`--shadow-md`)은 그대로, 선택자만.
+2. `src/account-flow.css`의 `[data-theme="dark"] { ... }` 블록 안에 아래 2줄
+   추가(원본 다크모드 값과 완전히 동일):
+   ```
+   --maint-badge-bg: #e53e3e;
+   --maint-badge-text: #ffffff;
+   ```
+3. 다른 파일·로직 손대지 말 것. `npm test`/`npm run typecheck` 재실행 →
+   기존 커밋(`fe98184`)에 이어 **수정 커밋 1개 추가**(reset 금지, AGENTS §3).
+   push는 보리가.
+
+## 진행 상태 — `[~]` CI 초록·감시관 §5 통과, 보리 브라우저 검증 중 회귀 발견 → 수정 대기
 
 - **커밋**: react-app `fe98184` "fix: 홈 캘린더 UI를 원본과 맞추기" (작업자, push 완료).
 - **CI**: GitHub Actions "CI" run [`34189318780`](https://github.com/mung2nyang/react-app/actions/runs/34189318780) `conclusion=success`, headSha `fe98184` 일치 확인.
