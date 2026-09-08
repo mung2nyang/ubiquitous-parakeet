@@ -64,6 +64,44 @@
 그 외 캘린더 그리드·요일·칩·"월간 운송료 정산" 카드의 나머지 항목(거래처별
 행·부가세·합계 등)은 구조·숫자 동일(③ 슬라이스에서 이미 원본과 맞춤 확인됨).
 
+### 1-1. 메뉴(사이드메뉴) — 보리 직접 검토·확정 (2026-09-08)
+
+> 화면 인벤토리 13개와 별개로, 모든 화면에서 공통으로 열리는 좌측 사이드메뉴.
+> 보리가 직접 캡처로 짚어주고 감시관이 코드로 원인까지 확인.
+
+1. 🟡 **"관리"↔"경영" 섹션 순서가 반대** — CSS `order` 속성으로 실제 화면
+   순서가 소스 순서와 다름(처음에 DOM 순서만 보고 "같다"고 잘못 판단했었음,
+   재확인함). **원본 실제 화면**: 경영→관리→서류→설정. **react-app**:
+   관리→경영→서류→설정("서류"/"설정" 순서는 둘 다 동일, 이 부분만 다름) —
+   [style.css](ubiquitous-parakeet/style.css) 다크/라이트 섹션에 `order` 지정,
+   [SideMenu.jsx](react-app/src/components/SideMenu.jsx)엔 없음(작성 순서 그대로 노출).
+2. 🔴 **"2222 일지"(소속기사 차량) 옆 톱니바퀴(빠른 설정) 버튼이 react-app에
+   없음** — 원본은 `showSubCarSettings()`로 그 차량 전용 설정 화면
+   (`subCarSettingsPage`, [index.html:1389](ubiquitous-parakeet/index.html:1389))
+   에 바로 들어감. react-app은 이 버튼 자체가 없고, 관련 설정이 "앱 설정"
+   화면([AppSettingsPage.jsx](react-app/src/components/AppSettingsPage.jsx))
+   맨 아래로 옮겨가 있음. **추가로 확인된 더 큰 문제**: 원본은 메인차량과
+   기사(서브)차량의 "운행 일지 세부 입력" 토글 6종(달력표시방식·결제수금·
+   운행시간·플랫폼·계기판·화물톤수)을 각각 따로 가지는데, react-app은
+   이 설정값이 [practiceSettings.js](react-app/src/domain/practiceSettings.js)
+   기준 **메인/서브 구분 없이 딱 한 벌뿐** — 화면 위치만 옮기는 수준이 아니라
+   **서브차량 전용 데이터 필드 자체를 새로 만들어야 하는 작업**. 다음 감시관이
+   범위를 다시 잡아야 함.
+3. 🔴 **사이드메뉴 배너 이미지 — 다크/라이트 전용 이미지 2개가 통째로 누락**
+   — 원본은 `images/banner_image_Light.png`·`images/banner_image_dark.png`를
+   테마별로 각각 보여주는데([index.html:108-110](ubiquitous-parakeet/index.html:108)),
+   react-app `public/images/`엔 이 두 파일 자체가 없고 범용
+   `banner_image.png` 하나만 씀([SideMenu.jsx](react-app/src/components/SideMenu.jsx)) —
+   이미지 안에 있던 "운행 일지" 글자를 없애고 대신 `<span>` 텍스트로 옆에
+   붙여서 흉내만 냄. 보리가 직접 제작한 원본 이미지 파일을 그대로 써야 함.
+4. 🔴 **"{기사이름} 기사 관리" 메뉴 항목 텍스트가 "기사 기사 관리"로 중복
+   표시됨** — [SideMenu.jsx:165,169](react-app/src/components/SideMenu.jsx:165)
+   `${item.driverName} 기사 관리` 템플릿에서, 연동된 기사의 이름이 비어
+   있으면 `driverName`이 fallback 값 `"기사"`로 채워지면서
+   (`LinkedDriverManagementPage.jsx:94` `link.driverName || '기사'`) "기사
+   기사 관리"라는 중복 문구가 남. 이름이 실제로 비어 있는 게 정상 데이터
+   상태인지, 이름 표시 자체가 문제인지 확인 필요.
+
 ## ⚠️ 2~13번 섹션은 자동 비교 초안 — 아직 보리 검토 전
 
 아래 2~13번(마이페이지~고객센터)은 감시관이 스크린샷·코드로 1차 조사한
