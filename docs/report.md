@@ -596,3 +596,55 @@ diff/사용처로 재확인했다.
 - 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 게스트로 "고정 노선" 켠 상태에서
   운행 횟수 빠른 버튼·자주 다니는 노선 칩·파렛트 섹션을 라이트·다크로 대조한다. §5 7항목도
   다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+
+## 14. 5차 구현 결과와 감시관 직접 검증
+
+### 14-1. 작업자 구현·CI
+
+- 작업자 커밋: react-app `4fe84e8d9e2e0e7b8d3b47c5d990d99ea0203fff`
+  (`refactor: 고정노선·파렛트 스타일을 fixed-route.css로 분리`). 작업자 커밋 후 보리가
+  직접 push(§3 절차 정상).
+- 변경 파일은 지시한 정확히 3개(기존 2 + 신규 1): `src/main-calendar.css`(645~657 +
+  673~751 두 구간 92줄 제거, **중간 659~671의 `.input-box`는 그대로 보존**),
+  `src/components/day-log/fixed-route.css`(신규, 두 블록을 상대 순서 그대로 이어붙임),
+  `src/components/day-log/DayLogPage.jsx`(`import './fixed-route.css'`를 기존
+  `import './day-log.css'` 바로 앞에 추가 — 지시대로 "마지막 보정" 순서 유지). diff +96/-94.
+- `rg` 재확인: 이동한 선택자 전부 신규 파일에만 1회씩 존재, `.input-box`는
+  `main-calendar.css` 645줄에 그대로 남아 있음.
+- 줄 수: `fixed-route.css` 95, `DayLogPage.jsx` 176, `main-calendar.css` 815 — 전부 §6
+  200줄 이내.
+- GitHub Actions CI: `verify`·`deploy` 모두 headSha `4fe84e8...`와 일치, `conclusion: success`.
+
+### 14-2. 감시관 직접 브라우저 대조
+
+- 분리 전 `688c3c0`, 분리 후 `4fe84e8`를 각각 로컬 worktree에서 `npm run build`해 정적
+  서버로 띄우고 두 탭을 390×844로 맞춘 뒤, 게스트로 "운행 횟수 버튼 사용"을 켜고 "3회" 빠른
+  버튼을 눌러 활성 상태를 동일하게 만들었다.
+- **컴퓨티드 스타일 전수 대조**: `.fixed-count-quick-buttons`(grid 컬럼폭·gap)·
+  `.quick-count-btn`(기본/활성 배경·테두리·글자색)·`.fixed-route-input-row`(grid 컬럼폭)·
+  `.fixed-route-unit`을 라이트 모드에서 JSON으로 추출해 비교 — **완전 일치**.
+- **제외 대상 `.input-box` 재검증**: 같은 화면의 `.input-box`(운행 횟수 직접입력 필드) 컴퓨티드
+  스타일도 함께 대조 — **완전 일치**(13-1에서 우려한 끼임 처리가 실제로 안전했음을 재확인).
+- **다크 모드**: `.quick-count-btn`(기본/활성)·`.input-box`의 배경·테두리·글자색을 동일한
+  방식으로 비교 — **완전 일치**.
+- `.fixed-route-quick-buttons`/`.fixed-route-chip*`(자주 다니는 노선 칩)·`PalletSection`은
+  게스트 기본 데이터에 등록된 노선/파렛트 설정이 없어 화면에 나타나지 않았다 — diff의 정확한
+  byte 단위 일치(13-2 기준, 원본 선택자·선언·값 그대로 이동)로 대신 확인했다(선례:
+  message-template의 `.expense-kind-pick` 처리와 동일 판단).
+
+### 14-3. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 지시한 3파일(기존 2+신규 1)만 변경.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0.
+3. 타입 꼼수 없음: 통과 — `any`·`@ts-ignore`·캐스팅 0(grep 오탐 "company" 1건 확인 후 제외),
+   `@ts-check` 유지.
+4. 200줄 원칙: 통과 — `fixed-route.css` 95·`DayLogPage.jsx` 176·`main-calendar.css` 815줄.
+5. 테스트 진실성: 통과 — 테스트 파일 변경 0, CI test 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 지시한 3파일 외 무변경, `.input-box` 보존 확인, 라이트·다크·
+   색상·크기·간격 무변경.
+
+### 14-4. 승인 대기
+
+- 위 14-1~14-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치,
+  `.input-box` 보존 재확인)까지 마친 상태다. **`[x]` 확정은 보리의 명시 승인이 있어야 한다.**
