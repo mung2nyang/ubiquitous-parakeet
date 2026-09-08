@@ -347,3 +347,58 @@ diff/사용처로 재확인했다.
 - 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 하단 네비가 보이는 모든 주요 화면
   (홈·일일운행·매출·마이페이지 등)에서 라이트·다크로 대조하고, 탭 전환(active 상태) 동작도
   확인한다. §5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+
+## 10. 3차 구현 결과와 감시관 직접 검증
+
+### 10-1. 작업자 구현·CI
+
+- 작업자 커밋: react-app `0be168fe3d4ab5af5804e0c8af734b65ec5e39d2`
+  (`refactor: 하단 네비 스타일을 bottom-nav.css로 분리`). **이번엔 작업자가 커밋까지만 하고
+  보리가 직접 push**(9-4 지시대로, 8-4 관찰 이후 정상 절차로 복귀).
+- 변경 파일은 지시한 정확히 3개(기존 2 + 신규 1): `src/main-calendar.css`(994~1043 끝 50줄
+  제거, 파일이 `.work-log-call-modal .input-box`로 정확히 끝남), `src/components/bottom-nav.css`
+  (신규, 책임 주석 1줄 + 원본 선택자·선언·값·순서 그대로), `src/components/BottomNav.jsx`
+  (`import './bottom-nav.css'` 1줄 추가, `TABS` 배열·로직 무변경). diff +53/-51.
+- `rg` 재확인: `.bottom-nav-bar`·`.nav-item`(및 `svg`/`span`/`.active`) 선택자가 신규 파일에만
+  존재, `main-calendar.css`와 다른 CSS 파일엔 0회. 줄 수: `bottom-nav.css` 52,
+  `BottomNav.jsx` 77, `main-calendar.css` 992 — 전부 §6 200줄 이내.
+- GitHub Actions CI: `verify`·`deploy` 모두 headSha `0be168f...`와 일치, `conclusion: success`.
+  감시관은 로컬 재실행하지 않았다.
+
+### 10-2. 감시관 직접 브라우저 대조
+
+- 분리 전 `bafccfb`, 분리 후 `0be168f`를 각각 로컬 worktree에서 `npm run build`해 읽기 전용
+  정적 서버(base path `/react-app/`)로 띄우고 두 탭을 390×844로 맞췄다.
+- **컴퓨티드 스타일 전수 대조**: `.bottom-nav-bar`(position/bottom/left/width/display/
+  justifyContent/alignItems/padding/backgroundColor/borderTop/boxShadow/zIndex 등)·
+  `.nav-item`(flex 방향/gap/색상/커서 등)·아이콘 svg(width/height/stroke)·라벨 span
+  (font/whiteSpace)과 각 `getBoundingClientRect()`, 활성 탭 색상(`rgb(49, 130, 206)`)을
+  라이트 모드에서 JSON 문자열로 추출해 두 빌드 비교 — **완전 일치(불일치 0)**.
+- **다크 모드**: 앱 자체 테마 토글로 전환 후 `.bottom-nav-bar`의 배경·상단 테두리·그림자·
+  글자색과 활성/비활성 탭 색상(`rgb(66, 153, 225)`/`rgb(160, 160, 160)`)을 동일한 방식으로
+  비교 — **완전 일치**.
+- **탭 전환(active 상태) 동작**: 두 빌드 모두 "매출" 탭 클릭 시 `.nav-item.active span`의
+  텍스트가 "매출"로 바뀜을 실측 확인(로직 무변경이므로 당연한 결과지만 실측함).
+- 다른 화면(콜상세·정비 등)은 이번 diff가 `.bottom-nav-bar`/`.nav-item` 선택자만 건드리고
+  다른 컴포넌트는 무변경이므로 별도 스크린샷 없이 diff·`rg` 결과로 영향 없음을 확인.
+
+### 10-3. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 지시한 3파일(기존 2+신규 1)만 변경.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0.
+3. 타입 꼼수 없음: 통과 — `any`·`@ts-ignore`·캐스팅 0, `@ts-check` 유지.
+4. 200줄 원칙: 통과 — `bottom-nav.css` 52·`BottomNav.jsx` 77·`main-calendar.css` 992줄.
+5. 테스트 진실성: 통과 — 테스트 파일 변경 0, CI test 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 지시한 3파일 외 무변경, 색상·크기·간격·z-index·선택자 의미·
+   애니메이션·동작·Store/DB/Supabase/동기화 무변경, 라이트·다크·탭 전환까지 실측 확인.
+
+### 10-4. 절차 관찰
+
+- 이번엔 **작업자가 커밋까지만 하고 보리가 직접 push**해 AGENTS §3 절차대로 정상 진행됐다
+  (8-4에서 지적된 문제 재발 없음).
+
+### 10-5. 승인 대기
+
+- 위 10-1~10-3 결과는 CI green + 감시관 실측(컴퓨티드 스타일 라이트/다크 완전 일치, 탭 전환
+  확인)까지 마친 상태다. **`[x]` 확정은 보리의 명시 승인이 있어야 한다.**
