@@ -3,12 +3,12 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1~6차 전부 `[x]`,
-> 7차 콜 목록·일일 합계(call-detail-list) CI+감시관 검증 완료, 보리 최종
-> 승인 대기 `[~]`.** react-app `07346a8`, CI green, 라이트/다크 컴퓨티드
-> 스타일 완전 일치, 공유·인접 규칙(`.toggle-btn`·`.call-detail-card`·
-> `.call-vat-row`) 보존 확인. 콜상세 폼·카드는 각각 별도 재조사 후 슬라이스
-> 예정. 상세 `docs/report.md` §17~§18.)
+> 최종 갱신: 2026-09-08 (**`main-calendar.css` 책임 분리 1~7차 전부 `[x]`.**
+> 7차는 react-app `07346a8`, 보리 명시 승인 **"승인하고 오늘작업 그만"**으로
+> 닫고 세션 종료. **남은 건 콜상세 카드(call-detail-card.css)·콜상세 폼
+> (call-detail-form.css) 두 슬라이스뿐 — 이 둘이 끝나면 §3 설계표 전체
+> 완료.** 다음 세션은 콜상세 카드 재조사부터 이어간다. 상세
+> `docs/report.md` §18~§19.)
 
 ---
 
@@ -115,19 +115,15 @@ react-app으로 옮기는 작업(Step 10·11, 이관 로드맵 본편)을 먼저
   green + 감시관 실측(셸 스타일 라이트/다크 완전 일치, 휴무 토글로 살아있는
   블록 재확인, 공유 규칙 보존 확인), §5 7항목 통과. 보리 명시 승인
   **"승인/다음 진행해"** 2026-09-08.
-- **7차 콜 목록·일일 합계(call-detail-list) CSS 분리 — 코드·CI·감시관 검증
-  완료, 보리 승인 대기 `[~]`.** `main-calendar.css` 495~522(`.work-log-page
-  .call-detail-daily-summary` 등 28줄) + 558~561(bare `.call-detail-section`,
-  유일한 정의) + 694~706(죽은 bare `.call-detail-daily-summary`, 보존 이동),
-  총 45줄을 신규 `src/components/day-log/call-detail-list.css`로 옮기고
-  `CallDetailList.jsx`가 직접 import(react-app `07346a8`, 정확히 지시한
-  3파일만 변경). CI green + 감시관이 분리 전(`99e6724`)·후(`07346a8`)를
-  각각 로컬 빌드해 콜상세 1건(운송료 100,000원)의 "일일 합계" 카드 라이트/
-  다크 컴퓨티드 스타일 완전 일치 확인, 공유·인접 규칙(`.toggle-btn`·
-  `.call-detail-card`·`.call-vat-row`) 보존 확인, §5 7항목 통과. 수수료
-  행(`.commission-row`)은 게스트 데이터에 수수료 거래처가 없어 diff의
-  byte 단위 일치로 대신 확인. 콜상세 폼·카드는 각각 별도 재조사 후 별도
-  슬라이스로 이어간다. 상세 `docs/report.md` §17~§18.
+- **7차 콜 목록·일일 합계(call-detail-list) CSS 분리 `[x]`.**
+  `main-calendar.css` 495~522(`.work-log-page .call-detail-daily-summary`
+  등 28줄) + 558~561(bare `.call-detail-section`, 유일한 정의) +
+  694~706(죽은 bare `.call-detail-daily-summary`, 보존 이동), 총 45줄을
+  신규 `src/components/day-log/call-detail-list.css`로 옮기고
+  `CallDetailList.jsx`가 직접 import(react-app `07346a8`). CI green +
+  감시관 실측(일일 합계 카드 라이트/다크 완전 일치, 공유·인접 규칙 보존
+  확인), §5 7항목 통과. 보리 명시 승인 **"승인하고 오늘작업 그만"**
+  2026-09-08 — 세션 종료.
 - **§1 홈 캘린더 UI 5건 — 기능 검증 완료, 전체 상태 `[~]`.** 마지막
   `b7104e1`(`white-space: nowrap`)은 CI "verify" 초록(run `34191474760`,
   headSha 일치, test·typecheck·build 성공) + 보리 브라우저 검증·승인 완료.
@@ -210,12 +206,13 @@ typecheck·test·strict-inventory 직접 재실행해 작업자 숫자 완전 �
 ## 다음 할 일
 
 **현재 순서(보리 지시, 2026-09-08)**:
-① `main-calendar.css` 전수 조사·분리설계 완료 → ② 홈 달력 전용 CSS 이동 **`[x]`
-완료** → ③ 메시지 선택창 CSS 분리 **`[x]` 완료** → ④ **현재: 하단 네비게이션
-CSS 분리 착수지시 확정 `[~]`** → ⑤ 일지 세부·공통 스타일을 승인된 책임 경계대로
-각각 별도 슬라이스로 이동해 `main-calendar.css` 해체 완료 → ⑥ 원본↔React UI
-비교의 다음 화면 수정 재개. 기존 이관 계획 ④(매출 탭 수치 불일치·거래처/미수금
-데이터 차이 원인 조사)는 그 뒤까지 보류한다.
+① `main-calendar.css` 전수 조사·분리설계 **`[x]` 완료** → ②~⑦ 홈 달력·메시지
+선택창·하단 네비·일지 정비/주유/기타·고정노선/파렛트·일지 셸·콜 목록 CSS 분리
+7개 슬라이스 **전부 `[x]` 완료** → ⑧ **다음 세션: 콜상세 카드(call-detail-card.css)
+재조사·착수지시** → ⑨ 콜상세 폼(call-detail-form.css) 재조사·착수지시 →
+⑩ `main-calendar.css` 해체 완료 → ⑪ 원본↔React UI 비교의 다음 화면 수정 재개.
+기존 이관 계획 ④(매출 탭 수치 불일치·거래처/미수금 데이터 차이 원인 조사)는
+그 뒤까지 보류한다.
 
 ### 감시관 관찰 (미확인 — 실행 지시 아님)
 - **홈 화면 하단 "{이름}님 · 달력에 횟수 기록" 문구 고정 표시 의심**(구 ③
