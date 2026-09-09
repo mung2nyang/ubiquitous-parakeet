@@ -1362,3 +1362,85 @@ diff/사용처로 재확인했다.
 - 이 슬라이스가 승인되면 `main-calendar.css` 책임 분리(§3 설계표) **전체가
   완료**된다 — 다음은 STATUS.md "다음 할 일"의 ⑪(원본↔React UI 비교 재개)로
   넘어간다.
+
+## 25. 10차(해체) 구현 결과와 감시관 직접 검증
+
+### 25-1. 작업자 구현·CI
+
+- 작업자 커밋: react-app `18a1693c863bb219ab12b39e5368fadbd2202977`
+  (`refactor: main-calendar.css 공통 규칙을 app-shell/shared-controls로 해체`).
+  보리가 직접 push.
+- 변경 파일은 지시한 정확히 8개(기존 5 + 신규 2 + 스텁 유지 1): `src/main-calendar.css`
+  (231줄 제거, "의도적으로 비어 있음" 주석 1줄만 남김), `src/app-shell-base.css`
+  (신규 29줄, 블록 A), `src/shared-controls.css`(신규 187줄, 블록 B1→B2 순서),
+  `src/components/day-log/day-log-shell.css`(+17줄, 블록 C `.modal-title-stack`/
+  `.autosave-status` 끝에 추가), `src/app/App.jsx`(+2줄, `side-menu.css` 다음
+  `app-shell-base.css`·`shared-controls.css` import), `src/components/calendar/
+  CalendarPage.jsx`·`src/components/RevenuePage.jsx`·`src/components/drivers/
+  LinkedDriverManagementPage.jsx`(각 `main-calendar.css` import 1줄 제거). diff
+  +236/-233.
+- 감시관이 `git show`로 8파일 전부 재대조: 지시서 24-2/24-3과 선택자·값·순서·
+  파일 배치까지 byte 단위 일치. 지시서 밖 파일 변경 0.
+- 줄 수: `app-shell-base.css` 29·`shared-controls.css` 187·`day-log-shell.css`
+  139·`App.jsx` 149·`CalendarPage.jsx` 119·`RevenuePage.jsx` 30·
+  `LinkedDriverManagementPage.jsx` 200(기존 201에서 부수적으로 §6 경계 안으로
+  들어옴, 지시서에 미리 기록된 참고 사항 그대로) — 전부 §6 200줄 이내.
+- **테스트 파일 의존성 직접 재검증**: `node --test src/components/day-log/
+  inlineSheetCss.test.js` 단독 재실행 — 3개 테스트 전부 통과(`main-calendar.css`를
+  직접 읽는 회귀 검사 포함). `npm test` 전체도 154개 전부 통과, 실패 0.
+- GitHub Actions CI: `verify`·`deploy` 모두 headSha `18a1693...`와 일치,
+  `conclusion: success`.
+
+### 25-2. 감시관 직접 브라우저 대조
+
+- 분리 전 `8a93668`·분리 후 `18a1693`을 각각 로컬 git worktree에서 `npm run build`해
+  정적 서버로 띄우고(base path `/react-app/` 재현) 390×844로 맞춘 뒤, 두 빌드에
+  독립적으로 게스트 로그인 → **공통 규칙을 직접 소비하던 4개 화면**(홈 캘린더,
+  일일운행(일지), 매출, 앱 설정)을 라이트·다크로 대조.
+- **컴퓨티드 스타일 전수 대조**: `body`·`.container.main-app-container`(홈,
+  app-shell-base.css 몫) / `.date-navigator`·`.arrow-btn`·`.summary-card`·
+  `.summary-row.total`(홈, shared-controls.css 몫) / `.icon-btn`(스코프 없는
+  순수 인스턴스로 재확인)·`.autosave-status`·`.modal-title-stack`(일지,
+  day-log-shell.css로 옮긴 예외분)·`.toggle-btn`·`.input-box`(일지) /
+  `.date-navigator`·`.toggle-btn`(매출, 페이지별 다른 컨텍스트에서 재확인) —
+  총 13개 항목을 라이트·다크 각각 JSON으로 추출해 두 빌드를 문자열 비교 —
+  **완전 일치**(불일치 0).
+- `.icon-btn` 첫 재확인 시 `.icon-btn.top-notification-btn`(다른 파일의
+  기존 오버라이드, 이번 변경과 무관)이 잡혀 `border-radius: 50%`로 나온 것을
+  발견 → 수식어 없는 순수 인스턴스(일지 뒤로가기 버튼)로 다시 측정해
+  `border-radius: 12px`(이동한 규칙 그대로) 확인, 오검출이었음을 확정.
+- 스크린샷 육안 대조(라이트 2장, 다크 2장, 두 빌드 총 8장 — 홈·매출)도 픽셀
+  단위로 동일해 보임.
+- **기사연동관리 화면은 게스트 모드에서 접근 불가**(연동 기사 데이터가 있는
+  로그인 계정 전용)라 직접 스크린샷 대조는 못 했다 — 대신 diff가 다른 두
+  화면과 동일한 패턴(중복 import 제거뿐, 자체 CSS는 `linked-driver.css`가
+  전담)임을 확인했고, 전역 `App.jsx` 공급 체인 자체가 홈·매출 두 화면에서
+  이미 완전 일치로 검증됐으므로 위험도는 낮다고 판단. 이 화면만은 보리가
+  로그인 계정으로 직접 확인해 주시길 요청.
+
+### 25-3. AGENTS §5 최종 판정
+
+1. 범위 일치: 통과 — 지시한 8파일(기존 5+신규 2+스텁 유지 1)만 변경, 지시서
+   밖 파일 0.
+2. 몰래 증설 없음: 통과 — 신규 계층·컴포넌트·상태·함수 0. 새 CSS 파일 2개는
+   지시서에 사전 명시된 것.
+3. 타입 꼼수 없음: 통과 — `any`·`@ts-ignore`·캐스팅 0, JSX 3파일은 import
+   삭제뿐, `App.jsx`는 import 추가뿐.
+4. 200줄 원칙: 통과 — 8파일 전부 §6 200줄 이내(`LinkedDriverManagementPage.jsx`는
+   201→200으로 부수적 개선).
+5. 테스트 진실성: 통과 — 테스트 파일 변경 0, `inlineSheetCss.test.js` 단독
+   재실행 포함 CI test 전부 성공.
+6. 문서 일치: 통과 — 작업자 `.md` 수정 0, 감시관이 이 문서와 `STATUS.md`만 갱신.
+7. 요구사항 완전성: 통과 — 4블록 전부 정확한 목적지로 이동, `main-calendar.css`는
+   삭제 대신 스텁 보존(지시대로), 라이트·다크 13항목 실측 완전 일치. 기사연동관리
+   1개 화면만 보리 직접 확인 필요.
+
+### 25-4. 남은 절차
+
+- CI green + 감시관 §5 7항목 통과 + 브라우저 실측(3/4 화면 완전 일치, 1개 화면은
+  구조적 근거로 저위험 판단) — **최종 `[x]` 확정은 보리의 명시 승인**이 필요,
+  특히 기사연동관리 화면은 보리가 직접 열어봐 주시면 좋다. 아직 승인 전이라
+  `[~]` 유지.
+- 승인 시 `main-calendar.css` 책임 분리 §3 설계표가 **전체 완료**된다. 다음은
+  STATUS.md "다음 할 일" ⑪ — 원본↔React UI 전수 대조의 다음 화면(보류해 뒀던
+  이관 계획 ④ 등)으로 넘어간다.
