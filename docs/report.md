@@ -1104,3 +1104,105 @@ diff/사용처로 재확인했다.
   CSS 분리 슬라이스를 `[x]`로 닫는다.
 - 남은 건 콜상세 폼(call-detail-form.css) 1개 슬라이스뿐 — 그게 끝나면 §3 설계표
   전체 완료(`main-calendar.css` 해체). 재조사·착수지시서는 §22.
+
+## 22. 9차 착수지시 — 콜상세 폼(call-detail-form) 전용 CSS 분리 `[~]`
+
+### 22-1. 기준과 목적
+
+- 작업 기준: react-app `a731ca12bdf05e12f43eb455043b9717d41c05a6`, `HEAD`=`origin/main`,
+  작업트리 클린. 현재 `main-calendar.css` 436줄.
+- §3 설계표의 "call-detail-form.css(신규) — 콜상세 입력 폼" 책임. §3 설계표의 마지막
+  컴포넌트 전용 조각이다 — 이 슬라이스가 끝나면 `main-calendar.css`엔 공통/공유
+  규칙만 남는다(§3의 `app-shell-base.css`/`shared-controls.css` 몫, 별도 해체
+  슬라이스 대상 — 이번 범위 밖).
+- 15-1·20-1 원칙을 그대로 적용: `.work-log-page`로 스코프된 "실제 적용" 규칙과,
+  스코프 없는 bare 규칙(죽은 코드 또는 진짜 공유)을 실측으로 구분했다.
+- `CallDetailForm.jsx`가 쓰는 고유 클래스: `call-detail-modal-title`·
+  `call-detail-copy-prev-btn`·`call-detail-panel`(+`call-route-panel`·
+  `call-money-panel`·`call-two-column-panel`·`call-client-panel`·`call-remarks-panel`)·
+  `call-inline-field`(+`platform-main-row`)·`call-platform-quick-list`·
+  `call-receipt-group`·`call-vat-row`·`payment-due-date-box`·`payment-term-guide`·
+  `billing-settings-note`(+`vat-preview`)·`call-detail-form-actions`·`load-label`·
+  `unload-label`·`input-with-suffix`·`input-error`. `grep` 확인 결과 이 클래스들의
+  CSS 정의·JSX 소비처는 `CallDetailForm.jsx` 하나뿐이다.
+- **교차 확인 — `.billing-settings-note`**: 이 클래스명이 `BillingSettingsPage.jsx`
+  (거래처/기사관리 쪽, 일지와 무관)에도 나온다. 확인 결과 그 페이지는 별도
+  파일(`components/drivers/linked-driver.css`)의 `.billing-settings-card
+  .billing-settings-note`(다른 조상 스코프)에서 스타일을 받고 있어, `main-calendar.css`의
+  `.work-log-page .billing-settings-note`와 서로 겹치지 않는다 — 20-1의
+  `.action-icon-btn`과 달리 실제 교차 공유가 아니므로 예외 처리 불필요, 그대로
+  call-detail-form.css로 이동해도 안전하다.
+- `.work-log-call-modal .input-box`(434~436)는 8차 슬라이스에서 판단을 보류했던
+  항목이다. 이번에 전체 저장소(`rg`)를 다시 확인해도 소비처 0(초기 커밋부터 미사용) —
+  `.input-box` 계열이라는 점, 남은 두 곳(폼·해체 대상 공유 파일) 중 컴포넌트
+  전용 파일에 속하는 쪽이 자연스럽다는 점에서 이번에 call-detail-form.css로
+  이동해 마무리한다(공유 파일로 보내면 다음 "해체" 슬라이스에서 또 재검토해야 함).
+
+### 22-2. 현재 정확한 범위(4블록)
+
+- **블록 A(살아있음)**: `main-calendar.css` **195~357**
+  (`.work-log-page .call-detail-modal-title`부터
+  `.work-log-page .call-detail-form-actions .modal-btn`까지, 163줄, 완전 연속).
+  이 구간 전체가 폼 전용 스코프 규칙이라 20-2처럼 중간에 다른 컴포넌트 몫이 끼어있지
+  않다.
+- **블록 B(bare, 보존 이동)**: `main-calendar.css` **396~427**
+  (bare `.call-two-column-panel`부터 `.input-box.input-error`까지, 32줄) — 블록 A의
+  `.work-log-page` 스코프 버전에 대부분 덮이는 죽은 코드(특이도 0,2,0 vs 0,1,0)이지만
+  15-1 원칙대로 삭제하지 않고 그대로 옮겨 보존한다.
+- **블록 C(bare, 보존 이동)**: `main-calendar.css` **430~432**
+  (bare `.call-vat-row`, 3줄) — 블록 A의 `.work-log-page .call-vat-row`에 덮이는
+  죽은 코드, 보존 이동.
+- **블록 D(소비처 0, 보존 이동)**: `main-calendar.css` **434~436**
+  (`.work-log-call-modal .input-box`, 3줄) — 22-1 사유로 이번에 함께 이동.
+- **경계 확인**: 블록 A 앞(1~193)은 공통/공유(손대지 않음). 블록 A와 B 사이(359~394)는
+  공유 bare `.toggle-btn`/`.modal-section-title`/`.input-box` 기본형(손대지 않음,
+  이후 해체 슬라이스 몫). 블록 B~D 사이 순서는 원본 그대로.
+
+### 22-3. 작업자 수정 범위 — 정확히 2파일+신규 1
+
+1. `src/main-calendar.css`
+   - 195~357(블록 A), 396~427(블록 B), 430~432(블록 C), 434~436(블록 D) **네 구간만**
+     제거한다.
+   - 1~193, 359~394(공유 bare 3종)는 절대 옮기거나 수정하지 않는다.
+2. `src/components/day-log/call-detail-form.css` **신규**
+   - 블록 A → B → C → D 순서 그대로, 선택자·선언·값·순서를 바꾸지 않고 옮긴다.
+     죽은 코드(블록 B·C)와 소비처 0 규칙(블록 D)도 삭제하지 않는다.
+   - 파일 책임을 설명하는 짧은 주석 1줄만 허용, 정리·병합·축약·재정렬 금지.
+   - 예상 약 204줄(§6 200줄 상한 초과) — 5차·6차·8차 선례와 동일하게 "한 폼
+     컴포넌트가 함께 움직이는 상호의존 규칙"이라는 이유로 §6 응집도 우선 예외
+     (~250줄 이내)를 적용한다. 파일 맨 위 주석에 이 사유를 1줄 기록한다(추가
+     보고서 슬라이스 불필요, 8차와 동일 처리).
+3. `src/components/day-log/CallDetailForm.jsx`
+   - 기존 import들(`draftFromDetail`·`emptyDraft` 등) 뒤, typedef 주석 전에
+     `import './call-detail-form.css'` 한 줄만 추가한다.
+
+### 22-4. 이번 슬라이스 금지 범위
+
+- 공유 `.toggle-btn`·`.modal-section-title`·`.input-box` 기본형은 옮기지 않는다
+  (359~394, 다음 "해체" 슬라이스 몫).
+- 공통 규칙(1~193: 테마 변수, body, container, date-navigator, summary-card,
+  settings-header, icon-btn 등)도 옮기지 않는다.
+- `calendar.css`, `day-log.css`, `account-flow.css`, `side-menu.css`,
+  `components/day-log/message-template.css`, `components/day-log/day-log-expenses.css`,
+  `components/day-log/fixed-route.css`, `components/day-log/day-log-shell.css`,
+  `components/day-log/call-detail-list.css`, `components/day-log/call-detail-card.css`,
+  `components/bottom-nav.css`, `components/drivers/linked-driver.css`를 수정하지
+  않는다.
+- 색상·크기·간격·z-index·선택자 의미·애니메이션·동작을 바꾸지 않는다.
+- Store, DB, Supabase, 동기화, 화면 기능, 테스트 데이터 구조를 변경하지 않는다.
+- 같은 선언을 양쪽 파일에 남기는 복제, 줄 수만 줄이는 압축, 작업자 `.md` 수정은 금지한다.
+
+### 22-5. 작업자 검증·인계
+
+- `rg`로 네 블록의 선택자가 신규 파일에만 존재하는지, `.toggle-btn`/`.modal-section-title`/
+  `.input-box` 기본형이 여전히 `main-calendar.css`에 그대로 남아 있는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build`를 통과시키고 React 저장소에 코드만
+  커밋한다. **커밋까지만 하고 push는 하지 않는다.**
+- 변경 파일·커밋 SHA·검증 결과를 감시관에게 전달한다.
+- 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 게스트로 콜상세 입력 폼을
+  열어 상차지/하차지·운송료·화물톤수·출발/도착시간·계기판·플랫폼·거래처·계산서·
+  부가세 해제·입금 예정일·비고 전 필드를 채워보고 저장까지, 라이트·다크로 대조한다.
+  §5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+- 이 슬라이스 승인 후 `main-calendar.css`엔 공통/공유 규칙만 남는다 — 다음은
+  §3 설계표의 마지막 단계인 해체(공통 규칙을 `app-shell-base.css`/
+  `shared-controls.css`로 재배치) 재조사다.
