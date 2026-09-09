@@ -941,3 +941,105 @@ diff/사용처로 재확인했다.
   끝난다.
 - 다음 세션 시작 시: `STATUS.md` "다음 할 일" 절 그대로 이어서, 콜상세 카드부터 15-1과
   같은 이중 레이어 방식으로 재조사 후 착수지시서 작성.
+
+## 20. 8차 착수지시 — 콜상세 카드(call-detail-card) 전용 CSS 분리 `[~]`
+
+### 20-1. 기준과 목적
+
+- 작업 기준: react-app `07346a8f33b7eb9f0771845f9f3ccecf790c9791`, `HEAD`=`origin/main`,
+  작업트리 클린. 현재 `main-calendar.css` 666줄.
+- §3 설계표의 "call-detail-card.css(신규) — 콜 카드·결제·연락/문자 버튼" 책임. 콜상세 폼은
+  이번 범위 밖(다음 슬라이스로 이어감).
+- 15-1·17-1 원칙을 그대로 적용: `.work-log-page`로 스코프된 "실제 적용" 규칙과, 스코프
+  없는 bare 규칙(죽은 코드 또는 진짜 공유)을 실측으로 구분했다.
+- `CallDetailCard.jsx`가 쓰는 고유 클래스: `call-detail-card`(+`unpaid-card`)·
+  `call-detail-card-head`·`call-detail-route`·`call-detail-actions`·`detail-meta-line`·
+  `commission-rate`·`call-detail-fare-line`·`call-detail-card-foot`·`detail-badges`·
+  `detail-badge`·`detail-payment-actions`·`call-phone-btn`(+`detail-call-phone`)·
+  `detail-message-btn`·`payment-toggle-btn`(+`unpaid`/`paid`). `grep` 확인 결과 이
+  클래스들의 CSS 정의·JSX 소비처는 `CallDetailCard.jsx` 하나뿐이다(다른 컴포넌트·다른
+  CSS 파일에 없음).
+- **예외 발견 — `.action-icon-btn` 합쳐진 선택자**: `main-calendar.css` 393~410
+  (`.work-log-page .call-detail-actions .action-icon-btn`,
+  `.work-log-page .maint-fuel-actions .action-icon-btn` 두 선택자를 한 규칙으로 묶음)은
+  콜상세 카드와 4차 슬라이스가 이미 가져간 `maint-fuel-actions`(day-log-expenses.css) 절반을
+  동시에 지정한다. 어느 한쪽 컴포넌트 파일로 쪼개면 선택자를 분리·재작성하게 돼 15-4/17-4
+  금지 규칙에 걸린다 — 6차 슬라이스가 같은 문제(`.call-detail-add-btn, .maint-fuel-add-btn`)를
+  `day-log-shell.css`로 보낸 선례와 동일하게 처리한다. `.action-icon-btn` 자체의 기본
+  스타일(hover 등)은 `side-menu.css:207`(이번 범위 밖)에 있고, 이 규칙은 크기만 재정의하는
+  특이도 (0,3,0) 오버라이드라 어느 파일에 있어도 동작은 그대로다.
+- `.work-log-call-modal .input-box`(664~666)는 프로덕션 소비처가 0(전체 `grep` 확인,
+  초기 커밋부터 미사용)이라 폼·카드 어느 쪽 것인지 판단 근거가 없다 — 이번엔 손대지 않고
+  폼 슬라이스에서 다시 검토한다.
+
+### 20-2. 현재 정확한 범위(5블록)
+
+- **블록 A(살아있음)**: `main-calendar.css` **359~391**
+  (`.work-log-page .call-detail-card`부터 `.work-log-page .call-detail-route`까지, 33줄).
+- **블록 B(살아있음)**: `main-calendar.css` **412~493**
+  (`.work-log-page .detail-meta-line`부터 `.work-log-page .detail-message-btn`까지, 82줄).
+  블록 A와 B 사이(392~411)는 위 예외 규칙(→ `day-log-shell.css`, 블록 E)이라 제외.
+- **블록 C(죽은 코드, 보존 이동)**: `main-calendar.css` **529~600**(bare `.call-detail-card`
+  부터 `.payment-toggle-btn.paid`까지, 72줄) — 블록 A·B의 `.work-log-page` 스코프 버전에
+  거의 다 덮이지만(특이도 0,2,0 vs 0,1,0), `.call-detail-card.unpaid-card`(왼쪽 빨간
+  테두리)처럼 스코프 버전이 없어 실제로 살아있는 규칙도 섞여 있다 — 어느 쪽이든 15-1
+  원칙대로 삭제하지 않고 순서 그대로 옮겨 보존한다.
+- **블록 D(죽은 코드, 보존 이동)**: `main-calendar.css` **635~658**(bare `.call-detail-route`
+  부터 `.call-detail-fare-line`까지, 24줄) — 블록 A·B 스코프 버전에 항상 덮이는 죽은 코드.
+- **블록 E(살아있음, 예외 이동처)**: `main-calendar.css` **393~410**
+  (`.action-icon-btn` 합쳐진 선택자, 18줄) → `day-log-shell.css`로.
+- **경계 확인**: 블록 A 앞(195~357)은 콜상세 폼 몫(손대지 않음). 블록 B와 C 사이
+  (495~527)는 공유 `.toggle-btn`/`.modal-section-title`/`.input-box` 기본형(손대지 않음).
+  블록 C와 D 사이(602~634)는 콜상세 폼 bare(`.call-two-column-panel`/`.call-inline-field`/
+  `.input-with-suffix`/`.input-box.input-error`, 손대지 않음). 블록 D 뒤(660~666)는
+  `.call-vat-row`(폼 몫)와 `.work-log-call-modal .input-box`(위 사유로 보류) — 손대지 않음.
+
+### 20-3. 작업자 수정 범위 — 정확히 4파일(기존 3 + 신규 1)
+
+1. `src/main-calendar.css`
+   - 359~410(블록 A+E), 412~493(블록 B), 529~600(블록 C), 635~658(블록 D) **네 구간만**
+     제거한다.
+   - 195~357, 495~527, 602~634, 660~666은 절대 옮기거나 수정하지 않는다.
+2. `src/components/day-log/call-detail-card.css` **신규**
+   - 블록 A → B → C → D 순서 그대로(블록 E 제외), 선택자·선언·값·순서를 바꾸지 않고 옮긴다.
+     죽은 코드(블록 C·D)도 삭제하지 않는다.
+   - 파일 책임을 설명하는 짧은 주석 1줄만 허용, 정리·병합·축약·재정렬 금지.
+   - 예상 약 213줄(§6 200줄 상한 초과) — 5차·6차·17차 선례와 동일하게 "한 카드 컴포넌트가
+     함께 움직이는 상호의존 규칙"이라는 이유로 §6 응집도 우선 예외(~250줄 이내)를 적용한다.
+     파일 맨 위 주석에 이 사유를 1줄 기록한다(추가 보고서 슬라이스 불필요, 5차·6차와 동일
+     처리).
+3. `src/components/day-log/day-log-shell.css`
+   - 기존 내용 끝에 블록 E(393~410, `.action-icon-btn` 합쳐진 선택자 18줄)를 그대로
+     추가한다. 선택자·선언·순서 변경 금지.
+4. `src/components/day-log/CallDetailCard.jsx`
+   - 기존 import들(`parseCurrencyValue`·`commissionInfo` 등·`icons.jsx`) 뒤,
+     typedef 주석 전에 `import './call-detail-card.css'` 한 줄만 추가한다.
+
+### 20-4. 이번 슬라이스 금지 범위
+
+- 콜상세 폼(`.call-detail-panel` 계열, `.call-two-column-panel`·`.call-inline-field`·
+  `.input-with-suffix`·`.call-vat-row` 포함)은 옮기지 않는다 — 다음 슬라이스.
+- `.work-log-call-modal .input-box`는 이번엔 그대로 둔다(20-1 사유).
+- 공유 `.toggle-btn`·`.modal-section-title`·`.input-box` 기본형은 옮기지 않는다.
+- `calendar.css`, `day-log.css`, `account-flow.css`, `side-menu.css`,
+  `components/day-log/message-template.css`, `components/day-log/day-log-expenses.css`,
+  `components/day-log/fixed-route.css`, `components/day-log/call-detail-list.css`,
+  `components/bottom-nav.css`를 수정하지 않는다.
+- 색상·크기·간격·z-index·선택자 의미·애니메이션·동작을 바꾸지 않는다. 블록 E의 합쳐진
+  선택자를 분리하거나 재작성하지 않는다.
+- Store, DB, Supabase, 동기화, 화면 기능, 테스트 데이터 구조를 변경하지 않는다.
+- 같은 선언을 양쪽 파일에 남기는 복제, 줄 수만 줄이는 압축, 작업자 `.md` 수정은 금지한다.
+
+### 20-5. 작업자 검증·인계
+
+- `rg`로 다섯 블록의 선택자가 신규 파일(또는 day-log-shell.css)에만 존재하는지, `.toggle-btn`/
+  `.modal-section-title`/`.input-box`/폼 관련 선택자가 여전히 `main-calendar.css`에 그대로
+  남아 있는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build`를 통과시키고 React 저장소에 코드만
+  커밋한다. **커밋까지만 하고 push는 하지 않는다.**
+- 변경 파일·커밋 SHA·검증 결과를 감시관에게 전달한다.
+- 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 게스트로 콜상세 카드를 미수/수금
+  상태 섞어서 2건 이상(수수료 있는 거래처 포함) 등록한 상태에서 카드 전체(머리·본문·
+  뱃지·연락/문자 버튼·결제 토글)를 라이트·다크로 대조하고, 정비/주유/기타의 수정·삭제
+  아이콘 버튼(`.action-icon-btn`, day-log-shell.css로 이동한 규칙 공유)도 함께 확인한다.
+  §5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
