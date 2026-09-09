@@ -857,3 +857,154 @@ vs [124-131](../../react-app/src/components/drivers/LinkedDriverManagementPage.j
   글자가 보이는지) (3) 배너 위치·크기가 원본과 육안으로 크게 다르지 않은지
   (완전 픽셀일치까지는 요구 안 함, 크게 어긋나면 `top`/`left` 값 조정)
   실측 확인. §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
+
+## 14. 착수지시 — 미연동 서브차량 등록 시 기사명·연락처 필수 해제
+
+### 14-1. 배경 (보리 지시, 2026-09-09)
+
+§1-1 4번("기사 기사 관리" 중복) 조사 중 보리가 지적: **미연동 서브차량
+등록 시 기사명·연락처를 무조건 입력하게 만든 건 보리의 의도가 아니었다.**
+코드 확인 결과 정확히 두 개의 서로 다른 검증이 섞여 있었다:
+
+- `domain/drivers.js`의 `upsertDriver`(진짜 **기사 연동/초대** 저장) —
+  이름·전화번호 필수. **이건 그대로 유지**(연동 시엔 실제 사람에게 연락해야
+  하므로 필수가 맞음).
+- `domain/cars.js`의 `upsertCar`(차량 등록, `type==='sub'`일 때) — **여기도
+  이름·전화번호를 필수로 막고 있었다**([cars.js:110-111](../../react-app/src/domain/cars.js:110)).
+  `CarFormModal.jsx`의 "기사 등록" 모달엔 "기사 연동"/"운행 일지"(미연동)
+  두 탭이 있는데(`CarDriverConnectPanel.jsx`), **탭 선택과 무관하게 이
+  `upsertCar` 필수 검증이 먼저 막아버려서** "운행 일지"(미연동, 연동 안 함)
+  탭을 골라도 이름·연락처 없이는 저장 자체가 안 됐다 — 이게 보리가
+  "내 선택이 아니다"라고 한 부분.
+- 보리 확인(대화 중): 전화번호는 **"입력했을 때만 형식 검증"**(비워도 되지만,
+  뭔가 입력했는데 10자리 미만이면 막음). 타이틀 표시(15번 슬라이스)는
+  사이드메뉴 항목과 관리 화면 제목 **둘 다** 적용.
+
+### 14-2. 설계
+
+- `domain/cars.js`의 `upsertCar` 안 `if (type === 'sub') { ... }` 블록
+  ([cars.js:109-113](../../react-app/src/domain/cars.js:109))을:
+  ```js
+  if (type === 'sub') {
+    // 이름·전화번호는 여기서 필수 아님(미연동·운행 일지 전용 등록 허용).
+    // 실제 기사 연동(초대) 시 필수 검증은 domain/drivers.js의 upsertDriver가 한다.
+    const phoneDigits = extra.driverPhone.replace(/\D/g, '')
+    if (extra.driverPhone && phoneDigits.length < 10) {
+      return { error: '연락처 형식을 확인해 주세요.', cars }
+    }
+    if (extra.driverPayMode === 'salary' && !(Number(extra.driverSalaryAmount) > 0)) {
+      return { error: '월급제는 급여 금액을 입력해 주세요.', cars }
+    }
+  }
+  ```
+  로 교체 — `driverName` 필수 체크 삭제, `driverPhone`은 **입력했을 때만**
+  10자리 이상 형식 검사.
+- `CarFormModal.jsx`(입력 폼 UI)는 손대지 않는다 — 라벨·placeholder에
+  원래도 "필수" 표시(`*` 등)가 없어서 UI 변경 불필요, 검증만 서버 쪽에서
+  풀린다.
+- `saveInviteAfterVehicle`(`lib/carInviteFromDraft.js`)·`upsertDriver`
+  (`domain/drivers.js`)는 **손대지 않는다** — "기사 연동" 탭을 골라
+  초대를 실제로 만들 때는 지금처럼 이름·전화번호 필수 그대로 유지된다
+  (14-1에서 확인한 대로 이미 올바르게 동작 중).
+
+### 14-3. 정확한 파일 목록 — 2개(전부 수정)
+
+1. `src/domain/cars.js` — `upsertCar`의 `type==='sub'` 검증 블록 교체(14-2).
+2. `src/domain/cars.test.js` — 아래 테스트 갱신(§5-5 테스트 진실성 대응,
+   지금 있는 테스트가 새 동작과 반대라 그대로 두면 실패함):
+   - [cars.test.js:36-44](../../react-app/src/domain/cars.test.js:36) `'기사차량은
+     기사명과 연락처가 없으면 거절한다'` → 이름·전화번호 **둘 다 비워도
+     저장된다**로 뒤집어 갱신(`assert.equal(result.error, undefined)`).
+   - 신규 테스트 추가: "전화번호를 입력했는데 형식이 틀리면 거절한다"
+     (이름 비움 + 전화번호 `'010'`처럼 10자리 미만 → 에러), "이름·전화번호
+     둘 다 비우면 통과한다"(정상 저장 확인).
+
+### 14-4. 이번 슬라이스 금지 범위
+
+- `domain/drivers.js`(`upsertDriver`, 기사 연동 검증)는 수정하지 않는다.
+- `CarFormModal.jsx`·`CarDriverConnectPanel.jsx`(입력 폼 UI)는 수정하지
+  않는다.
+- 15번(타이틀 표시 변경)은 이 슬라이스에 포함하지 않는다 — 검증 해제부터
+  먼저 끝내고 별도로 진행(§15).
+- Store, DB, Supabase, 동기화 로직은 변경하지 않는다.
+
+### 14-5. 작업자 검증·인계
+
+- `rg`로 이 2개 파일 외 변경이 없는지 확인.
+- `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
+- 감시관은 게스트로 "차량관리 → + 추가 → 기사 등록"에서 **기사명·연락처를
+  모두 비운 채** 차량번호·톤수만 입력해 저장이 되는지, 전화번호만 `010`처럼
+  짧게 입력했을 때 형식 오류로 막히는지, 기존처럼 이름·전화번호를 정상
+  입력하면 그대로 저장되는지(회귀 없음) 실측 확인. "기사 연동" 탭에서
+  초대코드로 저장할 때는 여전히 이름·전화번호가 필수인지도 함께 확인.
+  §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
+
+## 15. 착수지시 — "관리" 화면·사이드메뉴 타이틀에 기사명 반영
+
+### 15-1. 배경
+
+§14로 미연동 서브차량은 기사명 없이도 등록 가능해진다. 지금
+"{차량번호} 관리"(관리 화면 제목)·"{번호} 관리"(사이드메뉴 항목, 짧은
+뒷자리)로 고정된 타이틀을, **기사명이 있으면 "{기사이름} 기사 관리",
+없으면 "{차량번호 뒷자리} 기사 관리"**로 바꾼다(보리 확인 완료 — 사이드
+메뉴·관리 화면 제목 둘 다 적용). 표기 형식은 기존 연동 기사 화면·원본이
+쓰는 "{이름} 기사 관리"(공백 포함) 그대로 맞춘다.
+
+### 15-2. 설계
+
+- `src/app/subLogMenuItems.js`: `buildSubLogMenuItems`가 반환하는 각
+  항목에 `driverName` 필드 추가(`car.driverName`을 그대로 옮김,
+  `String(car.driverName || '').trim()`). `SubLogMenuItem` typedef도
+  `{ number: string, label: string, driverName: string }`로 갱신.
+- `src/components/SideMenu.jsx`: `subLogItems.map(...)` 블록의 표시 텍스트를
+  `{item.label} 관리` → `{item.driverName || item.label} 기사 관리`로,
+  `title` 속성도 동일하게 교체.
+- `src/components/drivers/LinkedDriverManagementPage.jsx`: 상단에
+  `import { getShortCarNum } from '../../domain/cars.js'` 추가. `title`
+  계산([LinkedDriverManagementPage.jsx:107-109](../../react-app/src/components/drivers/LinkedDriverManagementPage.jsx:107))을:
+  ```js
+  const title = unlinked
+    ? `${ctx.car?.driverName || getShortCarNum(plate) || '차량'} 기사 관리`
+    : ((link?.driverName || '기사') + ' 기사 관리')
+  ```
+  로 교체(연동 모드 쪽은 무변경). `notFound` 케이스도 이 `title` 값을
+  그대로 재사용하므로 자동으로 같은 표기를 따라간다.
+
+### 15-3. 정확한 파일 목록 — 4개(전부 수정)
+
+1. `src/app/subLogMenuItems.js` — `driverName` 필드 추가.
+2. `src/app/subLogMenuItems.test.js` — 기존 `deepEqual` 기대값 2곳에
+   `driverName: ''` 추가, 기사명이 있는 차량이 포함될 때 `driverName`이
+   그대로 나오는지 확인하는 테스트 1개 신규 추가.
+3. `src/components/SideMenu.jsx` — sub 로그 항목 표시 텍스트 교체(15-2).
+4. `src/components/drivers/LinkedDriverManagementPage.jsx` — `title`
+   계산 교체(15-2). **줄 수 주의**: §12에서 "245줄, 다음 200/250 초과 시
+   예외 없이 분리설계"로 못박아 뒀다 — 이번 변경은 import 1줄 + 로직
+   1줄 안팎이라 246~248줄 예상(250 이내), **작업자는 반드시 `wc -l`로
+   확인해 250을 넘기면 커밋하지 말고 감시관에게 먼저 보고**(§12 약속을
+   다시 어기지 않기 위함).
+
+### 15-4. 이번 슬라이스 금지 범위
+
+- `LinkedDriverClientsPage.jsx`("{번호} 거래처")·`MaintFuelPage.jsx`
+  ("{logId} 정비/주유/기타") 등 다른 화면의 타이틀은 건드리지 않는다 —
+  보리가 확인한 범위는 "관리" 화면 제목 + 사이드메뉴 항목뿐.
+  §1-1 4번(연동 기사 쪽 "기사 기사 관리")도 이 슬라이스에 포함하지 않는다
+  — 그쪽은 `domain/drivers.js` 흐름이라 이름이 항상 필수라 실질적으로
+  발생 안 함(이전 대화 결론 유지, 별도 처리 안 함).
+- `domain/cars.js`·`domain/drivers.js` 등 도메인/검증 로직은 §14에서 이미
+  끝났으므로 이 슬라이스에서 다시 손대지 않는다.
+- Store, DB, Supabase, 동기화 로직은 변경하지 않는다.
+
+### 15-5. 작업자 검증·인계
+
+- `rg`로 이 4개 파일 외 변경이 없는지 확인. `wc -l`로
+  `LinkedDriverManagementPage.jsx` 최종 줄 수를 보고에 반드시 포함.
+- `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
+- 감시관은 게스트로: (1) 기사명 없이 등록한 서브차량 — 사이드메뉴 항목이
+  "{차량번호 뒷자리} 기사 관리"로, "관리" 화면 진입 시 제목도 동일하게
+  표시되는지 (2) 기사명을 입력해 등록한 서브차량 — 사이드메뉴·관리 화면
+  제목 둘 다 "{기사이름} 기사 관리"로 표시되는지 (3) 기존 연동 기사 관리
+  화면 제목("{이름} 기사 관리")은 회귀 없는지 (4) `notFound` 케이스
+  (`/app/logs/9999/manage`) 제목이 "9999 기사 관리"로 나오는지 실측 확인.
+  §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
