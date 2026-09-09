@@ -1071,3 +1071,111 @@ CI green·§5 7항목·브라우저 실측 자체는 위 14-6 기록대로 문�
   화면 제목("{이름} 기사 관리")은 회귀 없는지 (4) `notFound` 케이스
   (`/app/logs/9999/manage`) 제목이 "9999 기사 관리"로 나오는지 실측 확인.
   §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
+
+## 16. 착수지시 — §14 정정: "기사 연동" 탭에서는 이름·연락처 여전히 필수
+
+### 16-1. 감시관 착오 (보리 지적, 2026-09-09)
+
+§14는 CI·테스트·감시관 브라우저 실측까지는 문제없이 통과했지만, **감시관이
+보리 의도를 잘못 짚어 §14 착수지시서 자체를 잘못 썼다.** 보리 설명(원문):
+
+> 차량정보에서 기사등록 — 기사명/전화번호 미기재 후 저장일 때, **"기사
+> 연동" 클릭 후 저장하면 → "기사명/전화번호를 저장해주세요"라는 경고
+> 팝업이나 기존처럼 강제로 기재하게끔 해야 함.** 지금 감시관이 만든 건
+> 기사연동/운행일지 클릭이 소용없이, 미기재 시 모두 운행일지로 만들어놨음.
+
+**정확한 재현**: `CarFormModal.jsx`의 "기사 등록" 모달엔 "기사 연동"/
+"운행 일지" 탭이 있는데(`CarDriverConnectPanel.jsx`), §14가 고친
+`domain/cars.js`의 `upsertCar`는 **`draft.connectMode`를 전혀 보지
+않는다** — 그래서 "기사 연동" 탭을 선택한 채로 이름·연락처 없이
+저장을 눌러도 **차단되지 않고 그냥 저장되며, 결과는 항상 미연동(운행
+일지) 차량이 된다.** 사용자 입장에서는 탭 선택 자체가 아무 의미가 없어진
+것 — 이게 "이해를 잘못했다"의 정확한 내용이다.
+
+**근본 원인(코드 위치까지 확정)**: `CarListPage.jsx`의 `save()`는 ①
+`requestVehicleSave`(→`upsertCar`)로 **차량을 먼저 무조건 저장**한 뒤
+② `saveInviteAfterVehicle`(→`domain/drivers.js`의 `upsertDriver`)로
+**초대(연동) 저장을 나중에 시도**한다. `connectMode==='link'`인데
+이름·연락처가 비었으면 ②에서 에러가 나긴 하지만, **①에서 이미 차량이
+저장돼버린 뒤**라 되돌릴 방법이 없고, `setModalOpen(false)`가 무조건
+실행돼 모달도 닫힌다 — "경고 팝업이 뜨고 저장을 막는" 게 아니라 "일단
+저장되고 토스트만 잠깐 뜨는" 것처럼 보이는 이유.
+
+### 16-2. 설계 — §14의 `domain/cars.js` 변경은 그대로 둔다
+
+**되돌리지 않는다**: `domain/cars.js`의 `upsertCar`가 이름·연락처를
+더 이상 요구하지 않는 것 자체는 맞다(미연동/운행 일지 저장은 이름 없이
+가능해야 함 — 보리의 원래 요구사항 그대로). **문제는 "기사 연동" 의도일
+때 이걸 걸러내는 관문이 아예 없었다는 것** — 이 관문을 `CarListPage.jsx`
+(UI 오케스트레이션 레이어)에 새로 추가한다. 차량 저장(`upsertCar`)과
+초대 저장(`upsertDriver`)을 각각 순수하게 유지하고, "지금 사용자가 실제로
+연동을 원하는가"라는 판단만 여기서 먼저 한다.
+
+- `src/domain/cars.js`에 신규 순수 함수 추가:
+  ```js
+  /**
+   * "기사 연동" 저장 전 확인 — 운행 일지(미연동)는 이 함수를 쓰지 않는다.
+   * @param {string} name @param {string} phone
+   * @returns {string|null} 에러 메시지, 문제 없으면 null
+   */
+  export function validateDriverLinkFields(name, phone) {
+    const phoneDigits = String(phone || '').replace(/\D/g, '')
+    if (!String(name || '').trim() || phoneDigits.length < 10) {
+      return '기사명과 연락처를 확인해 주세요.'
+    }
+    return null
+  }
+  ```
+- `src/components/cars/CarListPage.jsx`의 `save()` 맨 앞에 추가:
+  ```js
+  async function save() {
+    if (cloud && draft.type === 'sub' && draft.connectMode === 'link') {
+      const err = validateDriverLinkFields(draft.driverName, draft.driverPhone)
+      if (err) { showToast?.(err); return }
+    }
+    const inviteSnapshot = { ...draft }
+    // ...(이하 기존 그대로)
+  ```
+  **`cloud &&` 조건이 핵심**: 게스트는 "기사 연동" 탭 UI 자체가 없는데
+  (`showConnect = isSub && cloud`) `draft.connectMode` 기본값이 `'link'`라서,
+  이 조건 없이 걸면 게스트도 다시 막혀버린다(§14가 고치려던 문제 재발).
+  게스트는 애초에 이 검사를 완전히 건너뛰어야 한다.
+- `openEdit()`의 `connectMode: 'link'` 고정값을 `connectMode: linked ?
+  'link' : 'log'`로 수정([CarListPage.jsx:84](../../react-app/src/components/cars/CarListPage.jsx:84)
+  근처) — **이걸 안 고치면 새 버그가 생긴다**: 이미 미연동으로 등록해둔
+  차량을 수정할 때마다 `connectMode`가 매번 `'link'`로 리셋돼, 사용자가
+  탭을 안 건드리고 톤수만 고쳐도 위 새 검사에 걸려 저장이 막힌다. 이미
+  실제로 연동된 기사가 있는 차량(`linked`가 있음)만 `'link'` 기본값을
+  유지한다.
+
+### 16-3. 정확한 파일 목록 — 2개(전부 수정)
+
+1. `src/domain/cars.js` — `validateDriverLinkFields` 신규 함수 추가만
+   (기존 `upsertCar` 로직은 무변경).
+2. `src/components/cars/CarListPage.jsx` — `save()` 앞단 검사 추가,
+   `openEdit()`의 `connectMode` 기본값 수정.
+
+### 16-4. 이번 슬라이스 금지 범위
+
+- `domain/cars.js`의 `upsertCar` 자체 로직(§14 결과물)은 되돌리지 않는다.
+- `domain/drivers.js`·`saveInviteAfterVehicle`(`lib/carInviteFromDraft.js`)는
+  건드리지 않는다 — 이미 올바르게 동작 중(§14-6에서 코드로 확인 완료).
+- `CarFormModal.jsx`·`CarDriverConnectPanel.jsx`(탭 UI 자체)는 수정하지
+  않는다.
+- §15(타이틀 통일)는 별도로 진행 중이므로 이 슬라이스와 파일이 겹치지
+  않는지만 확인하고(겹치지 않음, 16-3 참고) 서로 손대지 않는다.
+
+### 16-5. 작업자 검증·인계
+
+- `rg`로 이 2개 파일 외 변경이 없는지 확인.
+- `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
+- 감시관은 **cloud 계정(로그인)으로**: (1) "기사 등록" 모달 기본 탭
+  "기사 연동" 상태에서 이름·연락처 비운 채 저장 → **"기사명과 연락처를
+  확인해 주세요." 토스트 표시 + 모달 안 닫힘(차량 미등록)** 확인 (2) 같은
+  화면에서 "운행 일지" 탭으로 바꾸고 저장 → 이름·연락처 없이도 정상 저장
+  (§14 동작 유지 확인) (3) "기사 연동" 탭에서 이름·연락처 정상 입력 후
+  저장 → 그대로 저장+초대 생성(회귀 없음) (4) 기존에 미연동으로 등록해둔
+  차량을 수정 화면에 다시 열었을 때 탭이 "운행 일지"로 남아있는지(또는
+  최소한 이름·연락처 없이 다른 필드만 고쳐도 저장되는지) 확인. 게스트
+  플로우(§14가 원래 고치려던 것)는 그대로 실측 재확인(회귀 없음).
+  §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
