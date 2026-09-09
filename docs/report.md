@@ -1165,7 +1165,13 @@ CI green·§5 7항목·브라우저 실측 자체는 위 14-6 기록대로 문�
     return null
   }
   ```
-- `src/components/cars/CarListPage.jsx`의 `save()` 맨 앞에 추가:
+- `src/components/cars/CarListPage.jsx`: 상단 import에 `hasMainCar`와
+  같은 배럴([`../../lib/cars.js`](../../react-app/src/lib/cars.js))에서
+  `validateDriverLinkFields`도 함께 가져온다(`domain/cars.js`를 이
+  배럴이 `export *`로 재수출하므로 이미 잡힘 — 새 배럴 항목 추가 불필요,
+  import 구문만 갱신). `save()`
+  ([CarListPage.jsx:94](../../react-app/src/components/cars/CarListPage.jsx:94))
+  맨 앞에 추가:
   ```js
   async function save() {
     if (cloud && draft.type === 'sub' && draft.connectMode === 'link') {
@@ -1179,20 +1185,44 @@ CI green·§5 7항목·브라우저 실측 자체는 위 14-6 기록대로 문�
   (`showConnect = isSub && cloud`) `draft.connectMode` 기본값이 `'link'`라서,
   이 조건 없이 걸면 게스트도 다시 막혀버린다(§14가 고치려던 문제 재발).
   게스트는 애초에 이 검사를 완전히 건너뛰어야 한다.
-- `openEdit()`의 `connectMode: 'link'` 고정값을 `connectMode: linked ?
-  'link' : 'log'`로 수정([CarListPage.jsx:84](../../react-app/src/components/cars/CarListPage.jsx:84)
-  근처) — **이걸 안 고치면 새 버그가 생긴다**: 이미 미연동으로 등록해둔
-  차량을 수정할 때마다 `connectMode`가 매번 `'link'`로 리셋돼, 사용자가
-  탭을 안 건드리고 톤수만 고쳐도 위 새 검사에 걸려 저장이 막힌다. 이미
-  실제로 연동된 기사가 있는 차량(`linked`가 있음)만 `'link'` 기본값을
-  유지한다.
+- `openEdit()`의 `connectMode: 'link'` 고정값
+  ([CarListPage.jsx:89](../../react-app/src/components/cars/CarListPage.jsx:89),
+  `const linked = drivers.find(...)`가 74번째 줄에 이미 있어 그 결과를
+  그대로 재사용)을 `connectMode: linked ? 'link' : 'log'`로 수정 —
+  **이걸 안 고치면 새 버그가 생긴다**: 이미 미연동으로 등록해둔 차량을
+  수정할 때마다 `connectMode`가 매번 `'link'`로 리셋돼, 사용자가 탭을 안
+  건드리고 톤수만 고쳐도 위 새 검사에 걸려 저장이 막힌다. 이미 실제로
+  연동된 기사가 있는 차량(`linked`가 있음)만 `'link'` 기본값을 유지한다.
+- `domain/cars.js`의 `upsertCar` 안 §14가 남긴 주석("실제 기사 연동(초대)
+  시 필수 검증은 domain/drivers.js의 upsertDriver가 한다")은 **틀린 말은
+  아니지만 이제 불완전**하다(진짜 관문은 `CarListPage.jsx`의 사전 검사임).
+  `validateDriverLinkFields` 함수 바로 위에 이 사실을 한 줄 남긴다("신규
+  등록 시 진짜 관문은 CarListPage.jsx save()의 사전 검사 — 여기 함수는
+  그게 호출하는 순수 검증 로직일 뿐").
 
-### 16-3. 정확한 파일 목록 — 2개(전부 수정)
+### 16-2-1. 알아둘 것 — 이번에 안 고치는 별개 기존 동작
 
-1. `src/domain/cars.js` — `validateDriverLinkFields` 신규 함수 추가만
-   (기존 `upsertCar` 로직은 무변경).
-2. `src/components/cars/CarListPage.jsx` — `save()` 앞단 검사 추가,
-   `openEdit()`의 `connectMode` 기본값 수정.
+재조사 중 §16과 무관한 **기존부터 있던** 동작을 하나 더 발견했다(이번
+슬라이스에서 고치지 않음, 참고용 기록만): cloud 세션에서 **기존 미연동
+차량을 수정(edit)** 할 때는 `CarListPage.jsx`의 `skipInvite = !editingId
+&& connectMode==='log'` 조건이 `editingId`가 있으면 항상 `false`가 되고,
+`openEdit()`이 미연동 차량에도 `inviteCode`를 자동 생성해두므로,
+`saveInviteAfterVehicle`이 (탭 선택과 무관하게) 실행돼 이름 없으면
+경고 토스트가 뜬다 — **다만 이건 ①에서 차량 저장 자체는 이미 성공한
+뒤라 수정 자체는 정상 반영된다(막히지 않음), 무관한 토스트만 잠깐
+보이는 수준.** 신규 등록 때처럼 "저장 자체가 막히는" 문제가 아니라서
+이번 §16 범위(보리가 지적한 신규 등록 케이스) 밖으로 두고 기록만 한다.
+16-5의 검증 시나리오 ④도 이 사실을 반영해 조정했다.
+
+### 16-3. 정확한 파일 목록 — 3개(전부 수정)
+
+1. `src/domain/cars.js` — `validateDriverLinkFields` 신규 함수 추가 +
+   기존 주석 한 줄 보강(기존 `upsertCar` 로직 자체는 무변경).
+2. `src/domain/cars.test.js` — `validateDriverLinkFields` 신규 함수의
+   단위 테스트 추가(이름·전화 정상/이름만 없음/전화만 짧음/둘 다 없음
+   4가지 케이스).
+3. `src/components/cars/CarListPage.jsx` — import 갱신, `save()` 앞단
+   검사 추가, `openEdit()`의 `connectMode` 기본값 수정.
 
 ### 16-4. 이번 슬라이스 금지 범위
 
@@ -1206,7 +1236,7 @@ CI green·§5 7항목·브라우저 실측 자체는 위 14-6 기록대로 문�
 
 ### 16-5. 작업자 검증·인계
 
-- `rg`로 이 2개 파일 외 변경이 없는지 확인.
+- `rg`로 이 3개 파일 외 변경이 없는지 확인.
 - `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
 - 감시관은 **cloud 계정(로그인)으로**: (1) "기사 등록" 모달 기본 탭
   "기사 연동" 상태에서 이름·연락처 비운 채 저장 → **"기사명과 연락처를
@@ -1214,7 +1244,11 @@ CI green·§5 7항목·브라우저 실측 자체는 위 14-6 기록대로 문�
   화면에서 "운행 일지" 탭으로 바꾸고 저장 → 이름·연락처 없이도 정상 저장
   (§14 동작 유지 확인) (3) "기사 연동" 탭에서 이름·연락처 정상 입력 후
   저장 → 그대로 저장+초대 생성(회귀 없음) (4) 기존에 미연동으로 등록해둔
-  차량을 수정 화면에 다시 열었을 때 탭이 "운행 일지"로 남아있는지(또는
-  최소한 이름·연락처 없이 다른 필드만 고쳐도 저장되는지) 확인. 게스트
-  플로우(§14가 원래 고치려던 것)는 그대로 실측 재확인(회귀 없음).
+  차량을 수정 화면에 다시 열었을 때 탭이 "운행 일지"로 기본값이 바뀌어
+  있는지, 그 상태에서 이름·연락처 없이 다른 필드(예: 톤수)만 고쳐도
+  "기사 등록" 모달의 새 사전 검사에는 안 걸리는지 확인 — **단, 16-2-1에
+  적어둔 별개 기존 동작 때문에 저장 자체는 되면서 무관한 경고 토스트가
+  같이 뜰 수 있다. 그건 이번 슬라이스가 고치는 대상이 아니므로 문제로
+  잡지 않는다(수정 자체가 실제로 반영됐는지만 확인).** 게스트 플로우
+  (§14가 원래 고치려던 것)는 그대로 실측 재확인(회귀 없음).
   §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
