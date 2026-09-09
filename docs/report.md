@@ -209,8 +209,99 @@ link = null)`도 기본값이 이미 `null`로 선언돼 있어 별도 수정이
 7. 요구사항 완전성: 통과 — 5-2에서 실데이터로 전부 실측 확인(계산 정확성 포함).
    기존 연동 기사 화면은 코드 검토로 확인(실사용자 플로우 실측은 생략).
 
-### 5-4. 남은 절차
+### 5-4. 승인 완료
 
-CI green + §5 7항목 통과 + 실측 검증 완료. **최종 `[x]` 확정은 보리의 명시
-승인** 필요 — 특히 `linked-driver.css` 0줄 변경(걱정하셨던 부분) 확인해 주시면
-좋음. 승인되면 2단계(거래처 태깅 버그 수정)로 넘어간다.
+보리 명시 승인: **"승인"**(2026-09-09). 1단계(관리 진입점 신설)를 `[x]`로 닫는다.
+
+## 6. 계획 정정 — 2·3단계를 "거래처 연결" 하나로 합침
+
+2단계 착수 전 재확인하다가 **1차 조사가 틀렸던 것을 발견**: "콜상세 입력 시 새
+거래처가 `scopedToVehicleNumber` 없이 자동 생성돼 섞인다"고 했었는데, 실제로는
+**콜상세 입력 화면에서 새 거래처가 자동 생성되는 경로 자체가 없다**(원본·
+react-app 둘 다 — `detail.client`는 그냥 문자열로만 저장되고 별도 거래처
+레코드를 안 만듦, `CallDetailForm.jsx`가 `requestClientSave`를 호출하는 곳이
+코드 전체에 없음을 확인). 그러니 "태깅이 빠지는 버그"는 존재하지 않는다.
+
+**실제 상황**: `scopedToVehicleNumber`를 붙여 거래처를 만드는 화면이 코드에
+정확히 2개 있는데(`OwnerScopedClientsView.jsx`=기사 본인용,
+`LinkedDriverClientsPage.jsx`=차주가 보는 기사별 거래처 화면) **둘 다 연동
+기사 전용**이다. 미연동 서브차량은 이런 화면 자체가 없어서 관련 거래처를
+전용으로 등록할 방법이 없다.
+
+**결론**: "2단계(태깅 수정)"와 "3단계(거래처 연결)"는 사실 같은 작업이다 —
+고칠 버그가 없고, 1단계처럼 `LinkedDriverClientsPage.jsx`를 미연동 서브차량도
+쓸 수 있게 확장하면 된다. 보리 확인·승인(2026-09-09, "좋아") — 이하 §7이 이
+합쳐진 슬라이스의 착수지시서다. ("연습운수"가 왜 한쪽 계정에만 있었는지는
+여전히 미해결 — 코드 문제가 아니라 실제 계정 데이터 차이일 가능성, 코드로는
+못 좁힘, 별도 참고 사항으로만 남김.)
+
+## 7. 착수지시 — 거래처 연결(구 2·3단계 통합)
+
+### 7-1. 기준과 목적
+
+- 작업 기준: react-app `0cc99c3`, 1단계 완료 시점.
+- 목적: 미연동 서브차량 "관리" 화면의 "거래처" 칩이 지금은 "준비 중입니다"
+  토스트만 뜨는데, 실제로 그 서브차량 전용 거래처 목록(등록·수정·삭제)을
+  보여주도록 연결한다 — `LinkedDriverClientsPage.jsx`(연동 기사 전용 거래처
+  화면)를 1단계와 같은 패턴으로 확장해서 재사용한다.
+- **1단계에서 만든 `domain/driverManagementContext.js`를 그대로 재사용**한다
+  (모드 판별·car/notFound 조회 로직 중복 없음) — 새 헬퍼 파일 불필요.
+
+### 7-2. 설계
+
+- `LinkedDriverClientsPage.jsx`가 `useParams()`로 `linkId`·`logId` 둘 다 받고
+  `resolveDriverManagementContext({ linkId, logId }, drivers, cars)` 호출 —
+  1단계 `LinkedDriverManagementPage.jsx`와 동일한 방식.
+- `scopeKey`: 연동 모드는 기존 그대로 `car?.number`(= `ctx.car?.number`로
+  치환), 미연동 모드는 `ctx.plate`.
+- 타이틀: 연동 "{기사이름} 기사 거래처" 그대로 / 미연동 "**{번호} 거래처**".
+- `notFound` 시 빈 화면 문구: 연동 "연동된 기사 정보를 찾을 수 없습니다."
+  그대로 / 미연동 "차량 정보를 찾을 수 없습니다."(1단계 관리 화면과 동일 문구).
+- `isDriverDirect`(레거시 계산서 처리방식 `driver_direct`) 분기는 **연동
+  모드에서만** 그대로 유지한다 — 미연동 서브차량은 이 레거시 상태에 도달할
+  경로가 없으므로(STATUS.md 기존 기록 "사실상 도달 불가") 미연동 모드는 항상
+  일반 거래처 목록(등록/수정/삭제 UI)을 보여준다. 코드는 `mode === 'linked' &&
+  isDriverDirect`처럼 조건을 좁히기만 하면 된다.
+- 등록/수정/삭제(`requestClientSave`/`requestClientDeletion`)·`ClientFormModal`은
+  **완전히 그대로 재사용**(로직 변경 없음) — `scopedToVehicleNumber`에 위
+  `scopeKey`만 정확히 들어가면 나머지는 기존 코드 그대로 정확히 동작한다.
+- 1단계에서 만든 "거래처" 칩(`LinkedDriverManagementPage.jsx`)의 미연동
+  분기를 토스트 대신 `navigate('/app/logs/${plate}/clients')`로 바꾼다(연동
+  분기는 기존 `/app/drivers/${linkId}/clients` 그대로 무변경).
+
+### 7-3. 정확한 파일 목록 — 3개(전부 수정, 신규 없음)
+
+1. `src/components/drivers/LinkedDriverClientsPage.jsx` — 위 설계대로 두 모드
+   지원. 예상 ~230~240줄 — §6 200줄 초과 시, 1단계에서 이미 같은 파일군
+   (`LinkedDriverManagementPage.jsx`)에 적용된 "≤250 응집도 예외"와 동일
+   근거(연동/미연동 두 모드를 한 화면에서 다루는 것 자체가 이 기능의 본질,
+   기계적 분할이 오히려 응집도를 해침)로 이번에도 ≤250 이내면 별도 분리설계
+   생략 — 파일 상단 주석에 사유 1줄 기록.
+2. `src/app/AppShellRoutes.jsx` — `logs/:logId/clients` 라우트 추가
+   (`LinkedDriverClientsPage` 재사용, 1줄).
+3. `src/components/drivers/LinkedDriverManagementPage.jsx` — "거래처" 칩의
+   미연동 분기 1줄만 토스트→navigate로 교체.
+
+### 7-4. 이번 슬라이스 금지 범위
+
+- `domain/driverManagementContext.js`(계산·판별 로직) 자체는 수정하지 않는다
+  (1단계에서 이미 완성, 그대로 재사용).
+- `OwnerScopedClientsView.jsx`(기사 본인용 화면)는 건드리지 않는다 — 이번은
+  차주가 보는 화면(`LinkedDriverClientsPage.jsx`)만 대상.
+- `requestClientSave`/`requestClientDeletion`/`ClientFormModal`/`clients.js`
+  등 거래처 저장·계산 로직 자체는 수정하지 않는다.
+- "연습운수" 등 기존에 이미 잘못 섞여 저장된 데이터를 자동으로 재배치·추정
+  이관하는 로직은 만들지 않는다(§6에서 이미 보류 결정).
+- `isDriverDirect` 관련 레거시 코드 정리(STATUS.md 백로그)는 이번 범위 밖.
+- Store, DB, Supabase, 동기화 자체 로직은 변경하지 않는다.
+
+### 7-5. 작업자 검증·인계
+
+- `rg`로 3파일 외 변경이 없는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
+- 감시관은 게스트로 미연동 서브차량 "관리" 화면 → "거래처" 칩 클릭 →
+  "{번호} 거래처" 화면 진입 확인 → 거래처 1건 등록(수정/삭제도) → 그 화면과
+  일반 거래처 목록(`/app/clients`) 양쪽에서 **새 거래처가 일반 목록엔 안 보이고
+  전용 화면에만 보이는지**(스코프 격리) 실측 확인. notFound 케이스·다크모드도
+  재확인. 기존 연동 기사 거래처 화면 회귀 없는지(코드 diff로 최소 확인, 필요
+  시 실측)까지 §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
