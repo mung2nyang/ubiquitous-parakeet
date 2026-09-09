@@ -350,7 +350,79 @@ react-app 둘 다 — `detail.client`는 그냥 문자열로만 저장되고 별
 
 ### 8-4. 남은 절차
 
-CI green + §5 7항목 통과 + 스코프 격리 실측 완료. 최종 `[x]`는 보리 명시
-승인 필요. 승인 시 남은 건 **정비/주유/기타 연결**(구 4단계) 하나뿐 —
-`MaintFuelPage.jsx`가 `vehicleNumber`로 필터링하도록 고치고 관리 화면에
-연결하는 작업, 다음 착수지시서는 이 슬라이스가 승인된 뒤 작성한다.
+CI green + §5 7항목 통과 + 스코프 격리 실측 완료. **최종 `[x]`는 아직 보리
+명시 승인 전** — §9(콜상세 폼 거래처 연결)를 보리가 바로 이어서 지시해서
+별도 `[x]` 확인 없이 다음 착수로 넘어갔다. 이 슬라이스 자체의 명시 승인은
+§9와 함께 나중에 받는다.
+
+## 9. 착수지시 — 콜상세 폼(일일 세부 일지)에 스코프 거래처 연결
+
+### 9-1. 배경과 목적 (보리 지시, 2026-09-09)
+
+§7~§8에서 미연동 서브차량 전용 거래처 화면을 만들었지만, **정작 그 서브차량의
+운행일지에서 콜상세(일일 세부 일지)를 입력할 때는 이 전용 거래처가 전혀
+연결돼 있지 않다** — 보리가 직접 지적: "미연동서브차량의 거래처랑 미연동
+서브차량 운행일지 일일세부일지랑도 연결해야해."
+
+- 확인된 원인: `CallDetailForm.jsx`(콜상세 입력 폼)의 거래처 자동완성
+  목록(line 133)과 즐겨찾기 칩(`pinnedClients`, line 30)이 **어느 일지(logId)를
+  쓰고 있는지 전혀 모른 채 항상 `!client.scopedToVehicleNumber`(미연동/일반
+  거래처)만** 보여준다. `DayLogPage.jsx`는 이미 `logId` prop을 갖고 있지만
+  `CallDetailForm`에 안 넘겨준다.
+- 결과: "2222 거래처"에 등록해도 "2222" 운행일지의 콜상세 입력 화면에선 안
+  보여서 매번 수기로 정확히 같은 이름을 타이핑해야 하고, 오타 나면 관리
+  화면의 "거래처 세금계산서" 집계(문자열 일치 기준)가 깨진다.
+
+### 9-2. 설계
+
+- `domain/clients.js`에 새 함수 `getClientsForLog(clients, logId)` 추가:
+  `logId`가 없거나 `'main'`이면 기존과 동일하게 `!scopedToVehicleNumber`인
+  거래처만, 아니면 `scopedToVehicleNumber === logId`인 거래처만 반환.
+- 기존 `pinnedClients(clients)`는 **호출자가 이미 scope를 좁힌 리스트를
+  넘긴다는 전제**로 바꾼다 — 함수 내부의 `!client.scopedToVehicleNumber`
+  조건을 제거하고 `isPinned && companyName`만 본다(현재 호출자가
+  `CallDetailForm.jsx` 단 한 곳뿐임을 `rg`로 확인 완료 — 계약 변경의 영향
+  범위가 이 슬라이스 안에서 끝남). 함수 상단 주석에 "호출 전 `getClientsForLog`
+  등으로 이미 scope를 좁혀서 넘길 것"이라고 명시.
+- `CallDetailForm.jsx`: `logId` prop 추가(옵션, 기본값 없이 그대로 문자열).
+  line 133의 인라인 필터와 line 30의 `pinnedClients(clients)` 호출을
+  `getClientsForLog(clients, logId)`로 먼저 좁힌 뒤 넘기도록 교체.
+- `DayLogPage.jsx`: 143~156번째 줄 근처 `<CallDetailForm ... />` 호출에
+  `logId={logId}` 한 줄만 추가(이미 컴포넌트 prop으로 `logId`를 갖고 있음,
+  새로 계산 안 함).
+- `selectedClient`/`applyClient`(이름으로 전체 `clients`에서 찾는 부분,
+  line 39·46)와 `DayLogPage.jsx`의 문자 발송용 `client={clients.find(...)}`
+  (line 171)는 **손대지 않는다** — 결제조건 힌트·문자 발송처럼 참고용 조회라
+  scope 밖 거래처와 이름이 겹칠 위험이 낮고, 지금 범위를 벗어난다.
+- `getFixedRouteClient({ clients })`(고정노선 거래처, 별개 개념)도 이번엔
+  손대지 않는다.
+
+### 9-3. 정확한 파일 목록 — 3개(전부 수정, 신규 없음)
+
+1. `src/domain/clients.js` — `getClientsForLog` 신규 함수 추가,
+   `pinnedClients` 계약 변경(위 설계대로).
+2. `src/components/day-log/CallDetailForm.jsx` — `logId` prop 추가, 자동완성·
+   즐겨찾기에 `getClientsForLog` 적용.
+3. `src/components/day-log/DayLogPage.jsx` — `<CallDetailForm>`에
+   `logId={logId}` 한 줄 추가.
+
+### 9-4. 이번 슬라이스 금지 범위
+
+- §9-2에서 "손대지 않는다"고 명시한 부분(`selectedClient`/`applyClient`/문자
+  발송 조회/`getFixedRouteClient`)은 건드리지 않는다.
+- `LinkedDriverClientsPage.jsx`·`LinkedDriverManagementPage.jsx`·
+  `driverManagementContext.js`(§7~§8 결과물)는 이번에 수정하지 않는다.
+- Store, DB, Supabase, 동기화 로직은 변경하지 않는다.
+- 색상·레이아웃 등 UI 스타일 변경 없음(로직만).
+
+### 9-5. 작업자 검증·인계
+
+- `rg`로 3파일 외 변경이 없는지, `pinnedClients`의 유일한 호출자가 여전히
+  `CallDetailForm.jsx` 하나뿐인지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
+- 감시관은 게스트로: (1) 메인 일지에서 콜상세 입력 시 기존처럼 일반 거래처만
+  자동완성에 보이는지(회귀 없음) (2) "2222 거래처"에 미리 등록해 둔 거래처가
+  "2222" 운행일지의 콜상세 자동완성·즐겨찾기 칩에 정확히 보이는지 (3) 그
+  거래처를 골라 콜상세 저장 후 "2222 관리" 화면의 "거래처 세금계산서"에
+  문자열이 정확히 일치해 집계되는지 실측 확인. §5 7항목 판정 후 보리 승인
+  전엔 `[x]`로 닫지 않는다.
