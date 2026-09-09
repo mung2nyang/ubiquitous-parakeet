@@ -858,6 +858,33 @@ vs [124-131](../../react-app/src/components/drivers/LinkedDriverManagementPage.j
   (완전 픽셀일치까지는 요구 안 함, 크게 어긋나면 `top`/`left` 값 조정)
   실측 확인. §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
 
+### 13-8. 구현 결과와 감시관 직접 검증 (2026-09-09)
+
+- 작업자 커밋: react-app `c8647fc`(`feat: 사이드메뉴 경영/관리 순서 반전
+  및 테마별 배너 복원`). 보리가 직접 push.
+- 변경 파일 정확히 지시한 4개(`git diff --stat 2c660d3 c8647fc`):
+  `public/images/banner_image_Light.png`·`banner_image_dark.png`(신규),
+  `SideMenu.jsx`(+3/-2), `side-menu.css`(+13/-7). diff가 §13-2·13-3 설계와
+  완전히 일치 — `order` 4줄, `BANNER_LIGHT`/`BANNER_DARK` 상수 교체,
+  `.menu-banner-text` 삭제, `[data-theme="dark"]` 토글 규칙까지 그대로.
+  타입 꼼수 0건. 지시서 밖 파일 변경 0.
+- GitHub Actions CI: `verify`(test+typecheck+build) `conclusion: success`,
+  headSha `c8647fc` 일치(감시관이 CI 자체를 다시 돌리진 않음).
+- **감시관 직접 브라우저 실측**(게스트, `npm run dev` 로컬):
+  - 라이트·다크 모두 사이드메뉴 순서가 **경영→관리→서류→설정**으로 원본과
+    정확히 일치(육안 확인).
+  - `getComputedStyle`로 배너 토글 실측: 라이트에서
+    `.menu-banner-light { display: block }` / `.menu-banner-dark { display:
+    none }`, `[data-theme="dark"]`에서 정반대로 정확히 뒤바뀜 — 텍스트
+    span 없이 이미지 자체(라이트/다크 각각 다른 실제 배너 파일)로 표시됨.
+- **AGENTS §5 판정**: 7항목 전부 통과(범위·증설·타입·200줄무관·테스트·문서
+  ·요구사항 완전성) — 지시서 밖 변경 0건(§12 때와 달리 이번엔 깨끗함).
+
+### 13-9. 승인 대기
+
+CI green + §5 7항목 통과 + 브라우저 실측 완료. 보리 최종 승인 시 `[x]`
+확정.
+
 ## 14. 착수지시 — 미연동 서브차량 등록 시 기사명·연락처 필수 해제
 
 ### 14-1. 배경 (보리 지시, 2026-09-09)
