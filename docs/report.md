@@ -483,9 +483,98 @@ CI green + §5 7항목 통과 + 스코프 격리 실측 완료. **최종 `[x]`�
 7. 요구사항 완전성: 통과 — 10-2에서 end-to-end 실측(자동완성 격리 + 저장 +
    집계까지) 전부 확인.
 
-### 10-4. 남은 절차
+### 10-4. 승인 완료
 
-CI green + §5 7항목 사실상 통과(200줄 건만 보리 확인 대기) + end-to-end 실측
-완료. **§7~8("거래처 연결")과 §9("콜상세 폼 연결") 둘 다 아직 `[x]` 미확정**
-— 보리가 200줄 건까지 포함해 한 번에 확인·승인해 주시면 두 슬라이스를 함께
-`[x]`로 닫는다. 승인 시 남은 건 **정비/주유/기타 연결**(구 4단계) 하나뿐.
+보리 명시 승인: **"필요하다면 알겠어"**(2026-09-09) — `domain/clients.js`
+204줄(200줄 초과 +4) 그대로 수용, §7~8("거래처 연결")·§9("콜상세 폼 연결")
+둘 다 `[x]`로 닫는다. 미연동 서브차량 데이터 분리 4단계 계획 중 ①~③(진입점·
+거래처 연결·콜상세 폼 연결) 전부 완료 — 남은 건 **④ 정비/주유/기타 연결**
+하나뿐. 착수지시서는 §11.
+
+## 11. 착수지시 — 정비/주유/기타 연결 (구 4단계, 마지막)
+
+### 11-1. 배경
+
+- §1(진입점)·§7~8(거래처 연결)·§9(콜상세 폼 연결)과 같은 문제의 마지막 조각.
+  `MaintFuelPage.jsx`("정비/주유/기타" 화면)는 `useOwnerExpenses(ownerKey)`로
+  **전체 항목을 필터 없이** 가져온다 — 메인 차량 항목(`vehicleNumber` 없음)과
+  모든 미연동 서브차량 항목(`vehicleNumber` = 그 차량번호)이 화면 하나에 다
+  섞여 나온다(§0에서 코드로 이미 확인한 원래 진단 그대로 유효).
+- 반대로 **저장 자체는 이미 차량별로 정확히 구분**된다 — 일지 화면 안의
+  "차량 정비/주유/기타" 인라인 입력(`useExpenseForm(ownerKey, dateKey,
+  showToast, logId)`)이 `logId !== 'main'`이면 이미 `vehicleNumber`를 정확히
+  태그해서 저장한다(1차 조사 §0에서 확인). **`MaintFuelPage.jsx` 자체의
+  "+ 추가"로 새로 등록하는 항목만 지금까지 태그가 전혀 안 붙었다**(항상
+  메인/미지정).
+- 목표: 거래처와 완전히 같은 패턴 — 메인 메뉴(`/app/expenses`)는 메인 차량
+  항목만, "{번호} 관리 → 정비/주유/기타" 칩은 그 차량 항목만 보여준다.
+
+### 11-2. 설계
+
+- **신규 파일** `src/domain/expenseScope.js`(작게 따로 뺌 — `domain/expenses.js`가
+  이미 정확히 200줄이라 그 파일에 더 얹지 않는다, §10-1의 200줄 사고 재발
+  방지): `getExpensesForLog(items, logId)` — `logId`가 없거나 `'main'`이면
+  `!item.vehicleNumber`인 항목만, 아니면 `item.vehicleNumber === logId`인
+  항목만 반환. `getClientsForLog`와 완전히 같은 모양.
+- `MaintFuelPage.jsx`:
+  - `logId` prop 추가(옵션).
+  - `items`를 그대로 두되(저장·삭제는 여전히 전체 배열 기준이어야 하므로),
+    화면 표시용으로 `const scopedItems = getExpensesForLog(items, logId)`을
+    만들어 `filterMonth(scopedItems, ...)`·`monthTotal(scopedItems, ...)`에
+    쓴다(현재 `items`를 쓰던 두 곳만 교체).
+  - 타이틀: `logId`가 없거나 `'main'`이면 기존 "정비/주유/기타" 그대로,
+    아니면 **"{logId} 정비/주유/기타"**.
+  - `openAdd()`: `emptyExpenseDraft(kind, undefined, logId && logId !== 'main'
+    ? logId : undefined)`로 바꿔서, 스코프 화면에서 새로 등록하는 항목이
+    정확히 그 차량 번호로 태그되게 한다(`upsertExpense`가 `draft.vehicleNumber`를
+    그대로 받아씀 — 계산 로직 자체는 수정 불필요).
+  - **이번엔 `driverManagementContext.js`를 안 쓴다** — 거래처/관리 화면과
+    달리 이 화면은 차량 레코드 존재 여부를 검증할 필요가 없다(문자열
+    `vehicleNumber` 일치만으로 충분, 일지 인라인 입력도 같은 방식). 차량이
+    삭제돼도 과거 지출 기록은 그대로 보여야 하므로 오히려 존재 검증을 안
+    하는 쪽이 맞다 — `notFound` 화면 없음.
+  - **예상 줄 수 ~205~210줄, §6 200줄 사전 승인 초과** — 이 페이지 하나로
+    메인/서브 스코프를 전부 처리하는 게 자연스럽고(§7-8·§9와 동일 판단),
+    기계적으로 쪼개면 오히려 응집도가 나빠진다. 파일 상단에 사유 주석 1줄.
+- `AppShellRoutes.jsx`: `logs/:logId/expenses` 라우트 추가(`MaintFuelPage`
+  재사용, `logId` 파라미터 전달).
+- `LinkedDriverManagementPage.jsx`: "정비/주유/기타" 칩의 onClick을 **연동·
+  미연동 두 모드 다** `showToast(SOON)` 대신
+  `navigate('/app/logs/${encodeURIComponent(plate)}/expenses')`로 바꾼다 —
+  이 칩은 연동 기사도 원래부터 필요했던 것(연동 기사의 일지 인라인 입력도
+  이미 `vehicleNumber` 태그가 붙으므로 자기 차량 지출을 볼 수 있어야 함),
+  거래처 칩과 달리 `plate` 하나로 두 모드 다 커버된다(`ctx.plate`가 연동·
+  미연동 둘 다 이미 채워져 있음, §7-2에서 이미 확인).
+
+### 11-3. 정확한 파일 목록 — 4개(신규 1 + 수정 3)
+
+1. `src/domain/expenseScope.js` **신규** — `getExpensesForLog`.
+2. `src/components/MaintFuelPage.jsx` — 위 설계대로 스코프 적용, 타이틀,
+   태깅.
+3. `src/app/AppShellRoutes.jsx` — `logs/:logId/expenses` 라우트 추가.
+4. `src/components/drivers/LinkedDriverManagementPage.jsx` — "정비/주유/기타"
+   칩 연결(두 모드 다).
+
+### 11-4. 이번 슬라이스 금지 범위
+
+- `domain/expenses.js`(기존 200줄 계산 로직) 자체는 수정하지 않는다.
+- `useExpenseForm.js`(일지 인라인 입력)는 이미 정확히 태깅하고 있으므로
+  손대지 않는다.
+- `domain/driverManagementContext.js`는 이번에 안 쓴다(11-2 사유).
+- `/app/expenses`(메인 메뉴) 라우트 자체의 경로·연결은 안 바꾼다 — 그 화면이
+  보여주는 **내용만** 메인 전용으로 좁혀진다(의도된 동작 변경, 사용자가
+  체감할 수 있음 — §11-1 목표 그대로).
+- Store, DB, Supabase, 동기화, 저장·삭제 로직(`upsertExpense`/`removeExpense`/
+  `saveExpenses`) 자체는 변경하지 않는다.
+
+### 11-5. 작업자 검증·인계
+
+- `rg`로 4파일 외 변경이 없는지 확인한다.
+- `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
+- 감시관은 게스트로: (1) 메인 메뉴 "정비/주유/기타"(`/app/expenses`)에 항목을
+  하나 등록 후, "2222 관리 → 정비/주유/기타" 화면엔 안 보이는지(스코프 격리
+  1/2) (2) "2222 관리 → 정비/주유/기타"에서 새로 항목을 등록하고, 그게 메인
+  메뉴 쪽엔 안 보이는지(격리 2/2) (3) "2222" 일지 안에서 인라인으로 등록한
+  정비/주유/기타 항목(기존 기능, 이미 태깅됨)이 "2222 관리 → 정비/주유/기타"
+  화면에 정확히 합쳐 보이는지(기존 태깅 데이터와의 연동 확인) — 전부 실측.
+  §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
