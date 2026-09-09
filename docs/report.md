@@ -728,3 +728,132 @@ vs [124-131](../../react-app/src/components/drivers/LinkedDriverManagementPage.j
 (헤더 중복 제거·245줄 정리) `[x]`로 닫는다. 이 세션 이후 작업자 대화는
 보리가 리셋 예정 — 다음 작업자 세션은 이 기록(§12 전체)과 `AGENTS.md`부터
 다시 읽고 시작해야 한다.
+
+## 13. 착수지시 — 사이드메뉴 UI 정리 §1-1 (1번 순서반전 + 3번 배너 이미지)
+
+### 13-1. 배경 (보리 지시, 2026-09-09)
+
+`docs/ui-comparison-report.md` §1-1(2026-09-08, 보리 직접 확정) 4건 중 다음
+착수건. **2번(톱니바퀴/세부입력 토글 메인·서브 분리)은 보리 결정으로 이번
+범위에서 제외** — "미연동 서브차량 일지 원본대조" 작업 때 함께 다루기로
+결정, 아래 "이관 완료 후 진행사항" 백로그로 이동(§13-6 참고). **4번("기사
+기사 관리" 중복 텍스트)은 코드 대조 결과 원본(`driver-link.js:29-33`)도
+`link.driverName || '기사'` + `${driverLabel} 기사 관리` 템플릿으로 완전히
+동일하게 동작함을 확인** — 이관 버그가 아니라 원본과 일치하는 정상 동작.
+보리 확인 대기 중(그대로 둘지/원본에 없는 개선을 새로 넣을지) — **이번
+슬라이스는 1번·3번만** 진행한다.
+
+### 13-2. 1번 — "관리"↔"경영" 섹션 순서 반전
+
+- **원인**: 원본 [style.css:476-479](../../ubiquitous-parakeet/style.css:476)가
+  `.side-menu-sections`(flex 컨테이너) 자식에 `order` 속성을 줘서 DOM 소스
+  순서(관리→경영→설정→서류)와 무관하게 시각 순서를 경영(1)→관리(2)→서류(3)→
+  설정(4)로 고정한다. [side-menu.css](../../react-app/src/side-menu.css)엔
+  이 4줄이 없어 소스 순서(관리→경영→서류→설정)가 그대로 노출됨.
+- **설계**: `SideMenu.jsx`는 손대지 않는다(DOM 순서·탭 이동 순서는 원본과
+  동일하게 유지 — 원본도 CSS로만 시각 순서를 바꾸고 DOM은 그대로였음).
+  `side-menu.css`의 `.management-section .side-menu-section-title::before`
+  등 색상 규칙([side-menu.css:105-108](../../react-app/src/side-menu.css:105))
+  바로 아래에 원본과 정확히 같은 4줄을 추가:
+  ```css
+  .business-section { order: 1; }
+  .management-section { order: 2; }
+  .document-section { order: 3; }
+  .settings-section { order: 4; }
+  ```
+
+### 13-3. 3번 — 사이드메뉴 배너 이미지 복원
+
+- **원인**: `ubiquitous-parakeet/images/`엔 `banner_image_Light.png`(2.26MB)·
+  `banner_image_dark.png`(719KB)가 실재하는데 react-app 이관 때 안 옮겨져
+  `public/images/`엔 범용 `banner_image.png` 하나만 있음(다른 화면 —
+  `AuthIntroView`·`AuthLoginView`·`AuthSignupView`·`CalendarHeader`·
+  `OnboardingPage` — 는 각자 자기 파일 안에 독립된 `BANNER` 상수를 갖고
+  있어 이번 변경과 무관, 그대로 둔다).
+- **파일 복사** (2개, 이관 누락분 그대로 가져오기):
+  - `ubiquitous-parakeet/images/banner_image_Light.png` →
+    `react-app/public/images/banner_image_Light.png`
+  - `ubiquitous-parakeet/images/banner_image_dark.png` →
+    `react-app/public/images/banner_image_dark.png`
+- **`SideMenu.jsx`**: `const BANNER = '/images/banner_image.png'`를
+  `BANNER_LIGHT`/`BANNER_DARK` 두 상수로 교체. 렌더 부분
+  ([SideMenu.jsx:144-147](../../react-app/src/components/SideMenu.jsx:144))을
+  ```jsx
+  <div className="menu-banner-wrap">
+    <img src={BANNER_LIGHT} alt="운행 일지" className="menu-banner-light" />
+    <img src={BANNER_DARK} alt="운행 일지" className="menu-banner-dark" />
+  </div>
+  ```
+  로 교체(텍스트 `<span className="menu-banner-text">` 삭제 — 이미지 안에
+  이미 "운행 일지" 글자가 들어있어 원본처럼 텍스트 중복 불필요).
+- **`side-menu.css`**: 원본 [style.css:546-566](../../ubiquitous-parakeet/style.css:546)+
+  [6140-6148](../../ubiquitous-parakeet/style.css:6140)의 전역+사이드메뉴 override
+  두 겹을 react-app은 사이드메뉴 전용이므로 한 겹으로 합쳐서 이식.
+  [side-menu.css:54-67](../../react-app/src/side-menu.css:54)의 세 규칙을
+  아래로 교체:
+  ```css
+  .menu-banner-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 58px;
+  }
+
+  .side-menu .menu-banner-light,
+  .side-menu .menu-banner-dark {
+    position: relative;
+    top: 3px;
+    left: -10px;
+    height: 56px;
+    object-fit: contain;
+  }
+
+  .menu-banner-dark { display: none; }
+  [data-theme="dark"] .menu-banner-light { display: none; }
+  [data-theme="dark"] .menu-banner-dark { display: block; }
+  ```
+  (`.menu-banner-text` 규칙은 완전히 삭제 — JSX에서 그 요소 자체가 없어지므로
+  죽는 CSS, 남겨두면 미사용 코드).
+
+### 13-4. 정확한 파일 목록 — 4개(자산 복사 2 + 코드 수정 2)
+
+1. `react-app/public/images/banner_image_Light.png` **신규(복사)**.
+2. `react-app/public/images/banner_image_dark.png` **신규(복사)**.
+3. `react-app/src/components/SideMenu.jsx` — 배너 상수·렌더 교체(13-3).
+4. `react-app/src/side-menu.css` — 순서 4줄 추가(13-2) + 배너 규칙 교체(13-3).
+
+**참고**: `side-menu.css`는 현재 2,184줄로 이미 §6 200줄을 크게 초과한
+기존 파일이지만, **`account-flow.css`·`side-menu.css` 자체 분리는
+`STATUS.md`에 이미 명시적으로 범위 제외된 상태**(main-calendar.css 책임
+분리 프로젝트 때 보리 결정) — 이번처럼 몇 줄만 추가하는 수정은 그 결정을
+다시 여는 게 아니므로 분리설계 재승인 불필요.
+
+### 13-5. 이번 슬라이스 금지 범위
+
+- `SideMenu.jsx`의 DOM 순서·섹션 구조·다른 메뉴 항목은 건드리지 않는다
+  (순서는 CSS `order`로만 변경 — 13-2 설계 그대로).
+- `AuthIntroView.jsx`·`AuthLoginView.jsx`·`AuthSignupView.jsx`·
+  `CalendarHeader.jsx`·`OnboardingPage.jsx`의 `BANNER` 상수·배너 렌더는
+  건드리지 않는다(각자 독립, 이번 대상 아님).
+- 2번(세부입력 토글 메인/서브 분리)·4번("기사 기사 관리")은 이번에 하지
+  않는다(13-1 참고).
+- `side-menu.css`의 다른 섹션(콜상세·메시지 등 무관 규칙)은 건드리지 않는다.
+- Store, DB, Supabase, 동기화 로직은 변경하지 않는다.
+
+### 13-6. 이관 완료 후 진행사항으로 이동 (백로그 기록)
+
+- **2번(톱니바퀴/세부입력 토글 메인·서브 분리)**: 보리 결정(2026-09-09) —
+  "미연동 서브차량 일지 원본대조" 작업 때 함께 진행. 그때까지 UI(기능 포함)
+  백로그로 보관.
+
+### 13-7. 작업자 검증·인계
+
+- `rg`로 지시한 4개(자산 2 + 코드 2) 외 변경이 없는지 확인.
+- `npm test`, `npm run typecheck`, `npm run build` 통과 후 커밋만(푸시 금지).
+- 감시관은 `static-preview`(`ubiquitous-parakeet`, 포트 8791)와
+  `react-app-dev`를 나란히 띄워: (1) 사이드메뉴 섹션 순서가 경영→관리→서류→
+  설정으로 원본과 일치하는지 (2) 라이트 모드에서 밝은 배너, 다크 모드에서
+  어두운 배너 이미지가 정확히 토글되는지(텍스트 span 없이 이미지 자체에
+  글자가 보이는지) (3) 배너 위치·크기가 원본과 육안으로 크게 다르지 않은지
+  (완전 픽셀일치까지는 요구 안 함, 크게 어긋나면 `top`/`left` 값 조정)
+  실측 확인. §5 7항목 판정 후 보리 승인 전엔 `[x]`로 닫지 않는다.
