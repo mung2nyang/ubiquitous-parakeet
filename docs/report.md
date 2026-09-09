@@ -1257,12 +1257,108 @@ diff/사용처로 재확인했다.
 7. 요구사항 완전성: 통과 — 지시한 4구간 전부 이동, 공유 bare 3종·공통 규칙은
    손대지 않음 확인, 라이트·다크 전 필드 실측 완전 일치.
 
-### 23-4. 남은 절차
+### 23-4. 승인 완료
 
-- CI green + 감시관 §5 7항목 통과 + 브라우저 실측 완전 일치까지 확인했다. **최종
-  `[x]` 확정은 보리의 명시 승인**이 필요 — 아직 승인 전이라 `[~]` 유지.
-- 승인 시 §3 설계표의 컴포넌트별 슬라이스가 전부 끝난다. 남는 건 `main-calendar.css`에
+- 보리 명시 승인: **"승인/다음 진행해"**(2026-09-09). 9차 콜상세 폼(call-detail-form)
+  CSS 분리 슬라이스를 `[x]`로 닫는다.
+- §3 설계표의 컴포넌트별 슬라이스가 전부 끝났다. 남는 건 `main-calendar.css`에
   남은 공통/공유 규칙(테마 변수·body·container·date-navigator·summary-card·
   settings-header·icon-btn·`.toggle-btn`/`.modal-section-title`/`.input-box` 기본형,
   230줄)을 `app-shell-base.css`/`shared-controls.css`로 재배치하는 마지막 "해체"
-  슬라이스뿐 — 다음 세션에서 재조사·착수지시.
+  슬라이스뿐 — 재조사·착수지시서는 §24.
+
+## 24. 10차(해체) 착수지시 — `main-calendar.css` 남은 공통/공유 규칙 재배치 `[~]`
+
+### 24-1. 기준과 목적
+
+- 작업 기준: react-app `8a9366888205634d9b7d60e2113a1a80806d489b`, `HEAD`=`origin/main`,
+  작업트리 클린. 현재 `main-calendar.css` 230줄 — 이제 전부 여러 화면이 공동으로
+  쓰는 공통 규칙뿐이다(컴포넌트 전용 몫은 1~9차에서 전부 이동 완료).
+- §3 설계표의 마지막 두 칸 `app-shell-base.css`·`shared-controls.css` 신설이 목표.
+  이 슬라이스가 끝나면 `main-calendar.css` 책임 분리 전체가 종료된다.
+- **재조사에서 예외 발견 — `.modal-title-stack`·`.autosave-status`**: 이 두 선택자는
+  `main-calendar.css`에 스코프 없는 bare 규칙으로 남아 있어 "공통" 구간처럼
+  보이지만, 실제 소비처를 `grep`으로 재확인하니 각각 `DayLogHeader.jsx`·
+  `AutoSaveStatus.jsx` **하나씩뿐**이다 — 일지 전용이다. 원 설계(§3 표)도 애초
+  이 둘을 `day-log-shell.css` 몫으로 지정했었는데(구 라인 305~320), 6차 슬라이스
+  때 실제 재조사(§15-2)가 다른 3블록(총 98줄)만 확정하면서 이 둘이 누락된 채
+  남아 있던 것으로 보인다. 이번에 `shared-controls.css`가 아니라 기존
+  `day-log-shell.css`로 보내 바로잡는다.
+- 반대로 나머지 전부(`.date-navigator`~`.input-box` 계열)는 `grep`으로 각각 재확인해
+  실제로 캘린더·일지·리포트·매출·세금계산서·정비·거래처·기사관리·미수금·온보딩 등
+  **6개 이상 서로 무관한 화면**이 공동 소비함을 확인했다 — 진짜 공유가 맞다.
+- **테스트 파일 의존성 발견**: `src/components/day-log/inlineSheetCss.test.js`가
+  `main-calendar.css`를 직접 `readFileSync`해서 특정 나쁜 패턴(`max-height: 0`
+  인라인 트릭)이 없는지 회귀 검사한다. 파일을 완전히 지우면 이 테스트가
+  "파일 없음" 에러로 깨진다 — **`main-calendar.css`는 삭제하지 않고, 모든 규칙을
+  뺀 뒤 이유를 설명하는 주석 1줄만 남긴 빈 파일로 보존**한다(테스트 코드 자체는
+  건드리지 않음).
+
+### 24-2. 현재 정확한 범위(4블록)
+
+- **블록 A**: `main-calendar.css` **1~27**(`:root:not([data-theme="dark"])` 변수 +
+  `body:not(.account-flow-active)` + `.container.main-app-container`, 27줄,
+  완전 연속) → `app-shell-base.css`.
+- **블록 B1**: `main-calendar.css` **29~154**(`.date-navigator`부터
+  `.settings-title`까지 — 날짜 이동기·요약 카드·설정 헤더, 126줄) → `shared-controls.css`.
+- **블록 C(예외)**: `main-calendar.css` **156~171**(`.modal-title-stack`,
+  `.autosave-status`(+`.visible`), 16줄) → `day-log-shell.css`(24-1 사유).
+- **블록 B2**: `main-calendar.css` **173~230**(`.icon-btn`(+svg)부터 `.input-box`까지
+  — 아이콘 버튼·토글·설정제목·입력 기본형, 58줄) → `shared-controls.css`(블록 B1
+  다음에 이어 붙임).
+- 이걸로 `main-calendar.css`의 실질 내용은 전부 소진된다(24-1 사유로 빈 파일 +
+  주석 1줄만 남김).
+
+### 24-3. 작업자 수정 범위 — 정확히 8파일(기존 5 + 신규 2 + 스텁 유지 1)
+
+1. `src/app-shell-base.css` **신규**
+   - 블록 A를 그대로 옮긴다. 파일 책임 설명 주석 1줄만 허용.
+2. `src/shared-controls.css` **신규**
+   - 블록 B1 → B2 순서 그대로 옮긴다(블록 C는 제외). 주석 1줄만 허용.
+   - 예상 약 187줄, §6 200줄 이내라 예외 사유 불필요.
+3. `src/components/day-log/day-log-shell.css`
+   - 기존 내용 끝에 블록 C(156~171)를 그대로 추가한다.
+4. `src/main-calendar.css`
+   - 블록 A·B1·C·B2를 전부 제거한다. 파일을 지우지 않고, "이 파일은 의도적으로
+     비어 있다 — `day-log/inlineSheetCss.test.js` 회귀 검사가 여전히 이 경로를
+     읽는다" 취지의 주석 1줄만 남긴다.
+5. `src/app/App.jsx`
+   - 기존 `import '../side-menu.css'` 바로 다음 줄에 `import '../app-shell-base.css'`,
+     그다음 줄에 `import '../shared-controls.css'` 두 줄을 추가한다. 그 외 로직·
+     컴포넌트 변경 없음.
+6. `src/components/calendar/CalendarPage.jsx`
+   - `import '../../main-calendar.css'` 한 줄만 제거한다(대체 로직 불필요 —
+     이제 `App.jsx`가 전역으로 공급).
+7. `src/components/RevenuePage.jsx`
+   - `import '../main-calendar.css'` 한 줄만 제거한다.
+8. `src/components/drivers/LinkedDriverManagementPage.jsx`
+   - `import '../../main-calendar.css'` 한 줄만 제거한다(현재 201줄 → 200줄,
+     기존 §6 초과분이 부수적으로 해소되지만 이번 슬라이스 목적은 아니다 — 참고
+     기록만).
+
+### 24-4. 이번 슬라이스 금지 범위
+
+- 위 8파일 외 어떤 파일도 건드리지 않는다. 특히 `day-log/inlineSheetCss.test.js`
+  자체는 수정하지 않는다(24-1 사유로 회피).
+- `calendar.css`, `day-log.css`, `account-flow.css`, `side-menu.css`, 그 외
+  모든 컴포넌트 CSS(`call-detail-*`, `bottom-nav.css`, `fixed-route.css`,
+  `day-log-expenses.css`, `message-template.css`)를 수정하지 않는다.
+- 선택자·선언·값·순서를 바꾸지 않는다. 색상·크기·간격·동작 변경 금지.
+- Store, DB, Supabase, 동기화, 화면 기능, 테스트 데이터 구조를 변경하지 않는다.
+- `main-calendar.css`를 완전히 삭제(파일 자체 제거)하지 않는다.
+
+### 24-5. 작업자 검증·인계
+
+- `rg`로 `main-calendar.css`에 CSS 규칙이 하나도 안 남았는지, 옮긴 선택자가
+  신규/대상 파일에만 존재하는지 확인한다.
+- `npm test`(특히 `inlineSheetCss.test.js`가 여전히 통과하는지 직접 확인),
+  `npm run typecheck`, `npm run build`를 통과시키고 React 저장소에 코드만
+  커밋한다. **커밋까지만 하고 push는 하지 않는다.**
+- 변경 파일·커밋 SHA·검증 결과를 감시관에게 전달한다.
+- 감시관은 push/CI 뒤 분리 전후 Pages 산출물을 390×844, 게스트로 **캘린더(홈)·
+  매출·기사연동관리 세 화면**(공통 규칙을 직접 import하던 3곳) + 일지 화면(날짜
+  이동기·요약 카드 등 공통 규칙을 물려받는 화면) 전부를 라이트·다크로 대조한다.
+  §5 7항목도 다시 판정하며, 보리 최종 승인 전에는 `[x]`로 닫지 않는다.
+- 이 슬라이스가 승인되면 `main-calendar.css` 책임 분리(§3 설계표) **전체가
+  완료**된다 — 다음은 STATUS.md "다음 할 일"의 ⑪(원본↔React UI 비교 재개)로
+  넘어간다.
