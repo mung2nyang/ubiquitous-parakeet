@@ -323,3 +323,111 @@
 
 각 슬라이스 착수 전 감시관이 해당 파일들의 현재 헤더 마크업을 재확인하고 착수
 지시서를 이 문서에 이어서 작성한다.
+
+## 7. ③ 슬라이스 완료 확인 (2026-09-10)
+
+작업자 커밋(`06d9516`) → 보리가 직접 push·브라우저 검증까지 마치고
+"작업자 작업완/내가 푸시함/브라우저 검증완... 리뷰 체크리스트하지말고
+나머지만 진행" 지시. **§5 리뷰 체크리스트는 생략**, CI 상태만 확인:
+verify(`34427840763`)·deploy(`34427840793`) 둘 다 success, headSha
+일치. `git show --stat`로 정확히 지시한 5파일(`AppShellRoutes.jsx`,
+`ReceivablesPage.jsx`, `receivables/ReceivablesListPage.jsx`,
+`MaintFuelPage.jsx`, `TaxInvoicePage.jsx`)만 변경된 것 확인. 보리 명시
+승인 **"승인"** — `[x]` 확정.
+
+부수 확인(체크리스트는 아니고 다음 슬라이스 준비 중 발견): `MaintFuelPage.jsx`
+216줄(사전 승인대로 초과 진행), `TaxInvoicePage.jsx`는 착수 전부터 이미
+206줄이었는데 §5 착수지시서에 초과 승인 대상으로 명시가 안 됐던 채 215줄로
+진행됨 — 재작업 요구 안 하고 기록만 남김.
+
+## 8. ④ 슬라이스 착수 전 확인 필요 (2026-09-10, 질문 중 — 아직 미착수)
+
+§6 로드맵대로 라우팅 포함 4파일(`AppShellRoutes.jsx`, `ReportPage.jsx`,
+`PersonalInfoPage.jsx`, `drivers/LinkedDriverManagementPage.jsx`)에
+①~③과 같은 패턴을 적용하려 했으나, 착수지시서 작성 전 재확인하다
+두 파일이 이미 200줄 초과 상태에서 더 늘어나는 걸 발견:
+
+- **`LinkedDriverManagementPage.jsx`(현재 246줄)** — §12(`2c660d3`)에서
+  헤더 중복 제거로 254→245줄 줄이며 보리가 직접 "이번이 마지막
+  여유분, 다음에 또 넘기면 진짜 분리설계로 간다"는 문구를 파일 상단
+  주석에 명문화(현재도 그대로 남아 있음, `drivers/LinkedDriverManagementPage.jsx:4`).
+  이번에 두 라우트(`drivers/:linkId`, `logs/:logId/manage`) 각각에
+  헤더 버튼(~8~16줄) 추가하면 그 "다음 초과"에 해당함.
+- **`ReportPage.jsx`(현재 241줄)** — 상단 주석에 자체 예외치 "240줄"이
+  적혀 있는데 이미 241줄(이유 불명, 이번 조사 중 발견 — 별건이라 추적
+  안 함)이고, 버튼 추가하면 더 늘어남.
+- `PersonalInfoPage.jsx`(197줄)는 문제없음.
+
+AGENTS §6·§12의 "예외 없이 분리설계" 약속 때문에 ①~③처럼 단순 진행은
+불가 — 보리에게 **대화창에서 먼저 질문**(착수지시서 작성 전, §3
+"불명확하면 질문 1회로 확정" 절차). **보리 답변(2026-09-10)**:
+1. `LinkedDriverManagementPage.jsx` → **"약속대로 분리설계 먼저"** —
+   이번 ④ 슬라이스에서 이 파일은 아예 건드리지 않는다. 분리설계안은
+   별도 슬라이스(④-2, 아래 §10)로 뺀다.
+2. `ReportPage.jsx` 240→241줄 드리프트 → **"먼저 원인부터 확인"** —
+   조사 결과는 아래 §9.
+
+## 9. `ReportPage.jsx` 240→241줄 드리프트 원인 조사 (2026-09-10)
+
+`git log --follow`로 추적: `7a5131a`(운송비 내역서 공유 모달 이관,
+2026-09-08)에서 240줄 + 상단 주석 "240줄" 기록 → 바로 다음 커밋
+`cc5583d`("운송비 내역서 요약에 일자별 운행 표 이관", 2026-09-08,
+원본에 있던 기능을 옮긴 정상적인 이관 작업)이 표 1줄을 추가하며
+241줄이 됨 — **주석 갱신만 누락된 정상 드리프트**, 버그나 몰래 증설
+아님. 그 뒤 `602f75f`(§6 파일 분리 리팩터)는 import 4줄만 바꿔 줄수
+불변(241 유지). 두 커밋 다 CI green으로 이미 main에 병합된 지 이틀 지난
+상태(이번 세션 착수 대상 아님) — 재작업 불필요, 주석 숫자만 이번
+슬라이스에서 "241줄"로 같이 고친다.
+
+## 10. 이번 슬라이스(④) — 운송비 내역서·개인정보 헤더에 햄버거 메뉴 버튼 추가 (축소 범위)
+
+위 §8-9 결론에 따라 원래 로드맵의 "라우팅 포함 4파일" 중
+`LinkedDriverManagementPage.jsx`(연동·미연동 두 라우트)는 이번에서
+제외, 분리설계 슬라이스(④-2, 별도 착수지시서 예정)로 미룬다.
+
+### 현재 상태
+- `components/ReportPage.jsx:28,163` — `export default function
+  ReportPage({ ownerKey = 'guest', onBack, showToast })`, 스페이서
+  `<div style={{ width: 40 }}></div>`(241줄, 상단 주석 "240줄"은 §9
+  드리프트로 실제와 1줄 어긋남).
+- `components/PersonalInfoPage.jsx:23,57` — `export default function
+  PersonalInfoPage({ ownerKey = 'guest', session, onBack, onGoAuth,
+  showToast })`, 동일 스페이서 패턴(197줄, 문제없음).
+- `app/AppShellRoutes.jsx:87,91` — `report`·`me/profile` 두 라우트 모두
+  `onOpenMenu` 없음.
+
+### 목표 상태
+①·②·③과 동일한 조건부 버튼 패턴(`onOpenMenu`가 있으면 햄버거, 없으면
+기존 스페이서 유지).
+
+### 건드릴 파일 (정확히 3개)
+1. `react-app/src/app/AppShellRoutes.jsx` — `report`·`me/profile` 두
+   곳에 `onOpenMenu={onOpenMenu}` 추가.
+2. `react-app/src/components/ReportPage.jsx` — 동일 패턴. 상단 주석의
+   "240줄"을 실제 줄수(버튼 추가 후 최종 줄수)로 갱신. §9 조사로
+   240→241 드리프트가 정상 이관 결과임은 확인됐으나, 버튼 추가로
+   약 249줄까지 더 늘어나는 것 자체는 **이 착수지시서로 승인 요청
+   중**(아래 착수 승인 시 확정).
+3. `react-app/src/components/PersonalInfoPage.jsx` — 동일 패턴.
+
+### 안 건드릴 것
+- `LinkedDriverManagementPage.jsx`와 관련 라우트(`drivers/:linkId`,
+  `logs/:logId/manage`) — ④-2로 이관.
+- 나머지 화면(⑤ 슬라이스 몫: 앱 설정·공지).
+- Store·DB·동기화, `onBack`·`onWorkChanged` 등 기존 prop.
+
+### §8 4대 질문 — 순수 UI prop 추가라 해당 없음(①~③과 동일 논리).
+실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 게스트로 운송비 내역서·개인정보 2화면 진입해
+  햄버거 버튼 확인(단, 이번 슬라이스도 보리 지시로 §5 체크리스트
+  생략 여부는 완료 보고 시점에 다시 확인).
+
+## 11. ④-2(예정) — `LinkedDriverManagementPage.jsx` 분리설계 + 햄버거 버튼
+
+착수 전 분리설계안(책임 경계·모듈 구조·의존성)을 먼저 이 문서에 작성해
+보리 승인을 받는다(AGENTS §6). 승인 후에만 코드 슬라이스 착수.
+`drivers/:linkId`·`logs/:logId/manage` 두 라우트 모두 대상(기존 확정
+유지).
