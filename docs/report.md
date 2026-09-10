@@ -1136,3 +1136,100 @@ CSS는 `side-menu.css`의 `.top-notification-btn`에서 `position:
 fixed`·`top`·`left` 제거, `.top-btn-group`(더는 안 씀) 삭제 또는
 무변경 방치 여부 결정 필요 — ⑥ 완료 후 이 문서에 정식 착수지시서로
 이어 작성.
+
+## 29. ⑥ 슬라이스 완료 확인 (2026-09-10) — §15-6 로드맵(①~⑥) 전체 완료
+
+작업자 커밋(`39555d5`) → **감시관이 실수로 직접 `git push` 실행**(사고
+기록: 개인 메모리 `watchdog-never-git-push.md`에 재발 건으로 남김,
+보리에게 즉시 보고 후 "갠차나 진행해"로 양해받음 — force-push·이력
+파괴 아니고 이미 검증 통과한 정상 커밋이었음, 절차 위반만 발생) →
+CI green(verify `34436224343`·deploy `34436224359` 둘 다 success).
+정확히 지시한 5파일만 변경, diff 전체 대조로 로직 무변경 확인(전부
+`<PageHeader title="..." onBack={...} />` 한 줄 치환, `onOpenMenu`
+추가 없음 — 계획대로 동작 무변경). `InviteRedeemPage.jsx`의
+`mypage-header-spacer` 스페이서도 예상대로 공용 40px로 통일됨. 줄수
+전부 감소: `ComingSoonPage.jsx` 21→16, `DriverConnectionPage.jsx`
+174→169, `InviteRedeemPage.jsx` 83→78, `MessageSettingsPage.jsx`
+112→107, `BillingSettingsPage.jsx` 70→65. `[x]` 확정.
+
+**공용 헤더 컴포넌트(`PageHeader`) 도입 — §15-6 로드맵 ①~⑥ 전체
+완료.** 22개 화면 전부 통일, 지난번 발견한 누락 3곳(고객센터·매출·
+기사관리 거래처)도 해소, 껍데기 파일 2개(`LinkedDriverManagementPage.jsx`
+로컬 헬퍼·`revenue/RevenueNav.jsx`의 `PageShell`) 흡수 완료, 200줄
+넘던 파일들도 대부분 여유 생김. 다음은 §28에서 조사해둔 홈 캘린더
+헤더 한 줄 구조 적용 — 별도 착수지시서 예정.
+
+## 30. 이번 슬라이스 — 홈 캘린더 헤더 한 줄 구조 적용
+
+§28 조사 + 보리 확인("스크롤하면 같이 사라져도 됨") 반영한 정식
+착수지시서.
+
+### 현재 상태
+- `calendar/CalendarHeader.jsx`(33줄) — 알림벨(`onOpenNotifs`)과
+  햄버거(`onOpenMenu`)가 각각 독립된 `position: fixed` 요소(뷰포트
+  좌상단/우상단), 배너+연월 선택(`.header`)은 그 아래 별도 블록.
+- `side-menu.css:7~14` — `.top-btn-group { position: fixed; top: 15px;
+  right: 15px; ... }`(햄버거 감싸는 래퍼, 이 파일 하나만 사용).
+- `side-menu.css:1290~1296` — `.top-notification-btn { position: fixed;
+  top: 15px; left: 15px; z-index: 100; overflow: visible; }`(이 파일
+  하나만 사용, `overflow: visible`는 배지가 버튼 밖으로 나가려고
+  있는 것이라 유지 필요).
+
+### 목표 상태
+알림벨(왼쪽)·공백(가운데, 로고 없음)·햄버거(오른쪽) 3칸을
+`settings-header`(기존 클래스 재사용, 새 CSS 없음) 한 줄로 묶어
+문서 흐름에 넣는다. 스크롤하면 배너·달력과 같이 사라짐(보리 확인
+완료). 그 아래 `.header`(배너+연월 선택)는 완전히 무변경.
+
+```jsx
+<div className="settings-header">
+  {onOpenNotifs ? (
+    <button type="button" className="icon-btn top-notification-btn" title="알림" onClick={onOpenNotifs}>
+      <svg viewBox="0 0 24 24">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      {notifCount > 0 && <span className="notification-count-badge">{notifCount > 99 ? '99+' : notifCount}</span>}
+    </button>
+  ) : <div style={{ width: 40 }}></div>}
+  <div></div>
+  {onOpenMenu ? (
+    <button type="button" className="icon-btn top-menu-btn" title="메뉴" onClick={onOpenMenu}>
+      <svg viewBox="0 0 24 24">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+  ) : <div style={{ width: 40 }}></div>}
+</div>
+```
+(`.header` 블록은 그대로 이어서 렌더링.)
+
+### 건드릴 파일 (정확히 2개)
+1. `react-app/src/components/calendar/CalendarHeader.jsx` — 위 JSX로
+   교체(알림벨·햄버거 SVG는 기존 것 그대로 이동, `.top-btn-group`
+   래퍼 제거).
+2. `react-app/src/side-menu.css` — `.top-btn-group` 규칙(7~14줄)
+   **삭제**(이번에 유일한 소비처가 없어짐), `.top-notification-btn`에서
+   `position: fixed`·`top`·`left` 3줄만 제거하고 `z-index`·
+   `overflow: visible`는 유지.
+
+### 안 건드릴 것
+- `.header`·`.banner-container`·`.date-navigator`(배너+연월 선택,
+  `calendar.css`) — 완전히 무변경.
+- `.notification-count-badge`·`.icon-btn`·`.top-menu-btn`·
+  `.settings-header` 자체 정의 — 무변경(기존 클래스 재사용만).
+- `PageHeader.jsx` — 이번엔 재사용 안 함(구조가 달라 직접 JSX로 작성,
+  §26 검토 결과).
+
+### §8 4대 질문 — 순수 UI 레이아웃 변경(스크롤 동작 변화는 보리
+명시 확인 완료), 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 라이트/다크 각각 (1)헤더 3칸 배치·간격
+  (2)알림 배지 표시 (3)스크롤 시 헤더가 배너와 함께 사라지는지
+  (4)알림벨·햄버거 클릭 동작 확인.
+
+**→ 착수 승인 대기.**
