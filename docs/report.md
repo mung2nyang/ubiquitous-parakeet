@@ -219,15 +219,102 @@
   계정으로 직접 재현 어려우면 코드 대조(같은 패턴 적용됐는지)로 대체하고 보리
   확인 요청.
 
-## 4. 다음 슬라이스 로드맵(③~⑤, 착수지시서는 각 착수 시점에 별도 작성)
+### 3-1. 구현 결과와 감시관 검토 (2026-09-10)
+
+- 작업자 커밋 react-app `3fb533a`(`feat: 마이페이지·차량·거래처 헤더에
+  햄버거 메뉴 버튼 추가`), 보리 push. `git show --stat` 확인 결과 정확히
+  지시한 5파일(`AppShellRoutes.jsx`+화면 4개)만, diff가 착수지시서 마크업과
+  라인 단위로 완전 일치(폴백까지 그대로).
+- GitHub Actions: `CI`(verify) success, `Deploy` success, 둘 다 headSha
+  `3fb533a` 일치.
+- **감시관 §5 7항목**: 범위 준수(1~7 전부)·몰래 증설 없음·타입 꼼수 0건
+  (`any`/`@ts-ignore`/`as unknown as` 검색 결과 없음)·200줄(`MyPage.jsx`
+  198줄로 근접, 나머지 3개는 여유 있음, 이번 diff로 새로 초과한 파일 없음)·
+  테스트 파일 변경 없음(순수 prop 추가라 착수지시서 단계부터 신규 테스트
+  불필요로 합의, DayLogHeader 선례와 동일)·문서(`.md`) 변경 없음·요구사항
+  4개 화면 전부 diff와 정확히 일치 — **전부 통과**.
+- 브라우저 실검증은 **보리가 직접** 진행(2026-09-10) — 마이페이지·차량관리·
+  거래처 3화면에서 햄버거 버튼 확인. 보리 명시 승인 **"승인/다음 진행해"**
+  (2026-09-10). `3fb533a` `[x]`로 닫는다.
+
+## 4. 다음 슬라이스(③) 착수 전 확인 (2026-09-10)
+
+로드맵 초안(§2 참고) 재조사 중 두 가지 불명확한 점을 발견해 질문, 보리 확정:
+
+1. **`MaintFuelPage.jsx`가 이미 207줄**(§11-6 때 사전 승인받은 ~205~210
+   범위). 햄버거 버튼(~8줄) 추가하면 약 215줄로 그 범위마저 넘음 →
+   **보리 확정: "이번에도 그냥 초과해서 진행(여유분 한 번 더)"** —
+   `LinkedDriverManagementPage.jsx` §12 선례와 동일하게, 다음에 또 늘면
+   그때 분리설계.
+2. **서브차량 전용 경로(`logs/:logId/expenses`)에도 햄버거를 넘길지** →
+   **보리 확정: "메인+서브차량 둘 다(기사연동관리와 동일 규칙)"**.
+3. **`receivables/*` 라우트의 실제 구조 재확인**: `AppShellRoutes.jsx`의
+   `receivables/*`는 `ReceivablesPage.jsx`(중첩 라우터 셸, 8-C)를 거쳐
+   `index` 라우트에서 `ReceivablesListPage.jsx`를 렌더링 — 즉 로드맵
+   초안의 "4파일" 추정이 하나 빠졌음. 정확한 목록은 아래 참고.
+
+## 5. 이번 슬라이스(③) — 미수금/정산·정비주유기타·세금계산서 햄버거 버튼 추가
+
+### 현재 상태
+- `components/receivables/ReceivablesListPage.jsx:21,34~40` — `export
+  default function ReceivablesListPage({ ownerKey = 'guest', onBack,
+  showToast, onWorkChanged })`, 스페이서 `<div style={{width:40}}></div>`
+  (91줄).
+- `components/ReceivablesPage.jsx`(8-C 중첩 라우터 셸, 22줄) —
+  `export default function ReceivablesPage({ ownerKey = 'guest', onBack,
+  showToast, onWorkChanged })`가 `<Routes>`로 `index`(→`ReceivablesListPage`)·
+  `:client/:month`(→`ReceivablesDetailPage`) 둘로 나눔. `onOpenMenu`는
+  index 쪽에만 전달해야 함(상세 화면은 이번 대상 아님).
+- `components/MaintFuelPage.jsx:27,102~108` — `export default function
+  MaintFuelPage({ ownerKey = 'guest', logId: logIdProp, onBack, showToast })`,
+  스페이서 동일 패턴(**이미 207줄** — 위 §4-1 보리 확정대로 이번엔 그대로
+  초과 진행).
+- `components/TaxInvoicePage.jsx:32,139~145` — `export default function
+  TaxInvoicePage({ ownerKey = 'guest', onBack, showToast })`, 스페이서 동일
+  패턴(206줄).
+- `app/AppShellRoutes.jsx:72,89~92` — `logs/:logId/expenses`·`expenses`
+  (둘 다 `MaintFuelPage`)·`receivables/*`(`ReceivablesPage`)·`tax`
+  (`TaxInvoicePage`) 라우트 전부 `onOpenMenu` 없음.
+
+### 목표 상태
+①·②와 동일한 조건부 버튼 패턴(`onOpenMenu`가 있으면 햄버거, 없으면 기존
+`<div style={{width:40}}></div>` 유지). `MaintFuelPage`는 `expenses`·
+`logs/:logId/expenses` **두 라우트 모두** `onOpenMenu` 연결(보리 확정).
+`ReceivablesPage`는 받은 `onOpenMenu`를 `index` 라우트의
+`ReceivablesListPage`에만 전달, `:client/:month`(상세)는 그대로 둠.
+
+### 건드릴 파일 (정확히 5개)
+1. `react-app/src/app/AppShellRoutes.jsx` — 4곳(`logs/:logId/expenses`,
+   `expenses`, `receivables/*`, `tax`)에 `onOpenMenu={onOpenMenu}` 추가.
+2. `react-app/src/components/ReceivablesPage.jsx` — JSDoc·시그니처에
+   `onOpenMenu` 추가, `index` 라우트의 `<ReceivablesListPage .../>`에만
+   `onOpenMenu={onOpenMenu}` 전달(`shared` 객체에 넣지 말 것 — 상세 화면엔
+   안 감).
+3. `react-app/src/components/receivables/ReceivablesListPage.jsx` — ①·②와
+   동일 조건부 버튼 패턴.
+4. `react-app/src/components/MaintFuelPage.jsx` — 동일 패턴. **200줄 초과
+   진행 승인됨(보리 확정, §4-1) — 별도 분리설계 없이 그대로.**
+5. `react-app/src/components/TaxInvoicePage.jsx` — 동일 패턴.
+
+### 안 건드릴 것
+- `ReceivablesDetailPage.jsx`(상세 화면, 이번 대상 아님).
+- 나머지 6개 화면(④~⑤ 슬라이스 몫).
+- Store·DB·동기화, `onBack`·`onWorkChanged` 등 기존 prop.
+
+### §8 4대 질문 — 순수 UI prop 추가라 해당 없음(①·②와 동일 논리).
+실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 게스트로 미수금/정산·정비주유기타(메인 경로)·
+  세금계산서 3화면 진입해 햄버거 버튼 확인. 서브차량 전용
+  `logs/:logId/expenses`는 게스트 계정에 서브차량이 없으면 코드 대조로
+  대체하고 보리 확인 요청.
+
+## 6. 다음 슬라이스 로드맵(④~⑤, 착수지시서는 각 착수 시점에 별도 작성)
 
 전부 같은 패턴 반복(화면당 로직 분기 없음).
 
-- **③** 미수금/정산(`receivables/ReceivablesListPage.jsx`) · 정비/주유/기타
-  (`MaintFuelPage.jsx`, `expenses` 라우트) · 세금계산서(`TaxInvoicePage.jsx`) —
-  라우팅 포함 4파일. (※`MaintFuelPage`가 쓰이는 `logs/:logId/expenses`(미연동
-  서브차량 전용)에도 넣을지는 이 슬라이스 착수 전 보리 확인 필요 — 기사연동관리처럼
-  "둘 다"인지 별도 질문.)
 - **④** 운송비 내역서(`ReportPage.jsx`) · 개인정보(`PersonalInfoPage.jsx`) ·
   기사 연동 관리(`drivers/LinkedDriverManagementPage.jsx`, `drivers/:linkId`·
   `logs/:logId/manage` 두 라우트 모두 — 보리 확정) — 라우팅 포함 4파일.
