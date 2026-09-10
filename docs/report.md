@@ -1440,3 +1440,81 @@ dev 서버(`npm run dev`)로 직접 브라우저 실측**(게스트 세션,
 
 **§32(form-group/input-box 공용화) 전체 `[x]` 확정.** `STATUS.md` 갱신
 완료.
+
+## 36. 이번 슬라이스 — `.car-modal`/`.client-modal` shell 규칙 통합
+
+조사(대화창) 결과: `.car-modal`(side-menu.css:265)·`.client-modal`(:480)이
+`width`/`max-height`/`overflow-y`/`text-align` 4개 선언 **byte 단위로
+완전히 동일**. 실사용 5곳(`CarFormModal`·`ClientFormModal`·
+`DriverFormModal`·`ExpenseFormModal`(비인라인)·`TaxInvoiceDraftModal`) —
+Rule of Three 충족. 다른 모달(`call-detail-modal-content`·
+`maint-fuel-select-inline`·`report-share-content`)은 폭·패딩이 달라
+이번 대상 아님(대화창에서 확인 완료).
+
+### 목표 상태
+`shared-controls.css`(§32에서 이미 이 두 클래스를 나란히 다루는 곳)에
+조합 셀렉터로 옮기고 `side-menu.css`의 중복 2블록 삭제. **JSX 변경
+없음**(`car-modal`/`client-modal` 클래스명 그대로 유지, CSS 정의
+위치만 통합) — 시각적 변화 0.
+
+```css
+/* shared-controls.css에 추가 */
+.car-modal,
+.client-modal {
+  width: min(92vw, 360px);
+  max-height: min(82vh, 640px);
+  overflow-y: auto;
+  text-align: left;
+}
+```
+
+### 건드릴 파일 (정확히 2개)
+1. `react-app/src/shared-controls.css` — 위 조합 규칙 추가.
+2. `react-app/src/side-menu.css` — 265~270줄(`.car-modal`)·480~485줄
+   (`.client-modal`) 두 블록 삭제.
+
+### 안 건드릴 것
+- 5개 소비처 JSX 전부 — 클래스명 무변경.
+- `.client-modal-header`(별도 규칙, 이번 대상 아님).
+- §32에서 추가한 `.form-group`/`.input-box` 조합 규칙 — 무변경.
+
+### §8 4대 질문 — 순수 CSS 위치 통합, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 차량관리 수정 모달·거래처 등록 모달 2곳
+  컴퓨티드 스타일(`width`·`max-height`·`text-align`) 분리 전/후 일치
+  확인.
+
+---
+
+## 37. 이번 슬라이스 — 죽은 클래스 `dark-pill-group` 제거
+
+조사(대화창) 결과: `dark-pill-group`은 `CallDetailForm.jsx` 3곳에만
+클래스로 붙어 있고 **CSS 정의가 전체 코드베이스에 하나도 없음**(전체
+`*.css` grep 0건) — 실제 레이아웃은 같이 붙은 `call-platform-quick-list`/
+`call-client-shortcuts`/`call-receipt-group`이 전담. 지워도 렌더링
+무변화(죽은 클래스명 제거일 뿐).
+
+### 건드릴 파일 (정확히 1개)
+`react-app/src/components/day-log/CallDetailForm.jsx` — 아래 3곳에서
+`dark-pill-group ` 문자열만 제거(나머지 클래스·로직 무변경):
+- `className="dark-pill-group call-platform-quick-list"` →
+  `className="call-platform-quick-list"`
+- `className="dark-pill-group call-client-shortcuts"` →
+  `className="call-client-shortcuts"`
+- `className="dark-pill-group call-receipt-group"` →
+  `className="call-receipt-group"`
+
+### 안 건드릴 것
+- `dark-pill-btn`(버튼 클래스 자체, CSS 정의 있음, 이번 대상 아님) — 무변경.
+- 그 외 모든 파일.
+
+### §8 4대 질문 — 순수 죽은 클래스 제거, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 콜상세 폼 플랫폼/거래처빠른선택/계산서여부
+  3구역 분리 전/후 컴퓨티드 스타일·레이아웃 완전 일치 확인.
+
+**→ §36·§37 둘 다 착수 승인됨(순서대로 진행). 작업자 전달.**
