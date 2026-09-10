@@ -415,3 +415,7 @@ A~D는 중간 상태다. E가 끝나야 로그인 업무 미러가 LS에서 빠�
 - 기사 SoT 테스트: `src/components/DriverConnectionPage.driversSoT.test.js`
 - 홈 정산 수수료 SoT: `getOwnerMonthlyFinanceDetail` → `CalendarPage` / `OwnerRevenueView`
 - 홈 정산 수수료 테스트: `src/components/calendar/CalendarPage.test.js`
+
+## 11. UI/CSS 정리 (감시관 기록)
+
+- [2026-09-10] [UI/CSS] 공용 헤더(PageHeader) 도입 및 15개+ 화면 통일 완료 (회귀 이상 없음)
