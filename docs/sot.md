@@ -420,3 +420,4 @@ A~D는 중간 상태다. E가 끝나야 로그인 업무 미러가 LS에서 빠�
 
 - [2026-09-10] [UI/CSS] 공용 헤더(PageHeader) 도입 및 15개+ 화면 통일 완료 (회귀 이상 없음)
 - [2026-09-10] [UI/CSS] side-menu.css form-group/input-box 공용 클래스 추출(shared-controls.css) 완료 (회귀 이상 없음)
+- [2026-09-10] [UI/CSS] car-modal/client-modal shell 통합 + 죽은 클래스 제거 + modal-form.css 분리 완료 (회귀 이상 없음)
