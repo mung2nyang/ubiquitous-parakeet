@@ -3,7 +3,21 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > 상세 이력은 `docs/archive/audit.md`(동결, 필요할 때만 찾아봄).
 > 갱신 규칙: 슬라이스 착수·완료 때마다 이 파일을 **덮어쓴다**(append 아님).
-> 최종 갱신: 2026-09-10 (**`docs/ui-comparison-report.md` §2 마이페이지
+> 최종 갱신: 2026-09-10 (**`docs/ui-comparison-report.md` §3 매출("운임
+> 수수료" -0원 표시 정정 + 전용 CSS 분리) — `[x]` 완료.** `won()` 함수의
+> `Number(amount) || 0`이 음수 0(`-0`)을 삼켜 원본 "-0원" 대신 "0원"으로
+> 나오던 걸 `Number.isNaN`일 때만 0으로 치환하도록 정정 + `side-menu.css`의
+> `revenue-*` 265줄을 신규 `components/revenue/revenue.css`로 분리(필수
+> 원칙대로 UI 대조+CSS 분리 한 슬라이스, 265줄은 §6 예외로 보리 사전 승인)
+> — react-app `1a5d702`(작업자 커밋, 보리 push). CI green(verify·deploy 둘 다
+> success, headSha 일치) + 감시관 §5 7항목 통과(정확히 지시한 4파일만 변경,
+> `won()` 로직 6케이스 격리 테스트로 재확인, CSS 265줄 내용 변형 없이 순수
+> 이동) + 감시관 브라우저 실측(게스트 실화면에서 "운임 수수료" 행이 실제로
+> "-0원"으로 표시되는 것 직접 확인, 같은 화면 "운송료"·"유가보조금"은 "0원"
+> 정상 대비) + **보리 명시 승인 "승인"**(2026-09-10) — `[x]` 확정. 상세
+> `docs/report.md` §2~§2-2.
+>
+> 이전 최종 갱신: 2026-09-10 (**`docs/ui-comparison-report.md` §2 마이페이지
 > (아이콘 오타 수정 + 전용 CSS 분리) — `[x]` 완료.** 톱니바퀴(앱 설정)
 > 아이콘이 "찌그러져 보인다"는 기록을 감시관이 CSS/레이아웃으로 먼저
 > 조사했으나 재현 못 함 → 보리가 실제 화면 스크린샷(빨간 밑줄)으로 다시
@@ -21,17 +35,19 @@
 > `side-menu.css` 1,870줄(2,089−219, 감시관 재확인) 축소 확인, 죽은
 > CSS 2개(`mypage-header-spacer`·`mypage-role-pill`) 보존은 "일단
 > 오케이"로 확정(2026-09-10) — 상세 `docs/report.md` §1~§1-2.
-> ⚠️ **`docs/report.md` 정리(감시관 판단, 보리 확인 요청 후 진행)**:
-> 완료된 두 작업(§1~§31 PageHeader 통일, §32~§41 side-menu.css 다이어트)의
-> 상세 원본이 report.md에 그대로 누적돼 1,725줄까지 커진 걸 보리가 지적
-> — `sub-vehicle-management-and-side-menu.md` 선례(작업 완료 시 archive로
+> **`docs/report.md` 정리 — 보리 승인 완료(2026-09-10).** 완료된 두 작업
+> (§1~§31 PageHeader 통일, §32~§41 side-menu.css 다이어트)의 상세 원본이
+> report.md에 그대로 누적돼 1,725줄까지 커진 걸 보리가 지적 —
+> `sub-vehicle-management-and-side-menu.md` 선례(작업 완료 시 archive로
 > 전체 이관 후 report.md는 새로 시작)와 같은 방식으로 정리: §1~§31 전문은
 > `docs/archive/pageheader-unification.md`에, §32~§41 전문은 신규
 > `docs/archive/side-menu-css-diet.md`에 각각 그대로 옮기고, `docs/report.md`는
-> 마이페이지 착수지시서(§1)만 남기고 새로 시작(102줄). **이 정리 규칙은
-> `AGENTS.md`엔 명문화돼 있지 않음(grep으로 확인) — 문서 편집권이 사용자
-> 전용이라 감시관이 `AGENTS.md`에 직접 추가하지 않음, 필요하면 보리가
-> 직접 §0에 문구를 추가하는 걸 권장.**
+> 마이페이지 착수지시서(§1)만 남기고 새로 시작(102줄). 감시관이 이관 커밋
+> (`795b35f`)을 원본(부모 커밋)과 줄 단위로 재대조해 **내용 유실 없음
+> 확인**(제거된 1,615줄 중 archive에서 못 찾은 건 report.md 자체의 예전
+> 파일 제목·이전 경로 안내 4줄뿐 — 실질 내용 전부 보존). 이 정리 규칙은
+> `AGENTS.md`엔 명문화돼 있지 않음(grep 확인) — 필요하면 보리가 직접 §0에
+> 추가 검토.
 >
 > 이전 최종 갱신: 2026-09-10 (**`side-menu.css` 공용화 1차(form-group/
 > input-box) — `[x]` 완료.** 보리 지시로 "화면별 분리보다 공용
