@@ -452,3 +452,94 @@ CI green + 감시관 §5 7항목 통과 + 브라우저 실측(핵심 케이스 "
   6. 라이트·다크 각각, 플랫폼/계산서 pill 그룹 레이아웃 무변화 회귀 확인.
 
 **→ 착수 전 보리 확인 필요: 위 목표 상태(4건) 그대로 진행해도 될까요?** `[ ]`.
+
+> **위 §3은 착수 승인 전 초안 스냅샷(STATUS.md 150줄 정리 시점에 같이 떠내려온 것)이다.
+> 실제 진행·승인·완료 기록은 아래 §4(최종, `[x]` 확정본)를 본다.**
+
+## 4. 일일운행 1부: 콜상세 폼 CSS 4건 — 최종 완료본 (`docs/report.md`에서 이관, 2026-09-10)
+
+`ui-comparison-report.md` §1(일일운행) 재정리(2026-09-10, 보리가 원본 localhost:8791을
+직접 띄워 대조해준 목록 + 감시관 재조사) 기준, **A그룹(콜상세 폼 CSS 4건)**만 이번
+슬라이스. 누락 기능 3건(B그룹: 즐겨찾기 칩·거래처 +추가 버튼·산재보험료 필드)은 별도
+슬라이스, 레이아웃 틀어짐(C, 정체는 2중 스크롤·카드 이탈 버그 + B그룹을 뭉뚱그린
+것으로 3차 재조사에서 확인됨)은 그 두 버그 처리로 해소 예정, 시간 입력 커스텀
+위젯은 별도 대형 작업.
+
+### ⚠️ 1차 조사 오류 정정
+
+1차 조사 때 `#callDetailModal`(순수 모달 팝업 버전) CSS만 보고 판단했는데,
+**실제 일일운행 화면에서 쓰이는 건 `#workModal .call-detail-inline-host`(인라인
+아코디언 버전)** 였다. 두 버전 값이 다른 곳이 있어 아래 2곳 정정:
+- ~~`.load-label`/`.unload-label`의 `font-weight:800` 제거~~ → **원본 인라인
+  버전([style.css:5964](ubiquitous-parakeet/style.css:5964))에도 있음 — 그대로 둠.**
+- ~~레이블 전체를 `fs-3`로 통일~~ → **원본은 두 그룹 설계**: `.form-group` 안
+  레이블(상차지·하차지·시간·계기판·입금예정일)=`fs-3`, `.call-detail-panel` 직계
+  레이블(거래처·계산서·비고) 및 `.call-inline-field` 레이블(운송료·톤수·플랫폼)=`fs-2`.
+
+### 조사 결과 (원본 인라인 버전 vs react-app)
+
+**A-1. 헤더 "N일 일지 세부 입력" 날짜 숫자 누락** — 원본은 "5일 일지 세부 입력"처럼
+날짜가 들어감(`.call-detail-modal-title`). react-app은 "운행 일지 세부 입력"(날짜 없음).
+
+**A-2. 입력창 focus 파란 라운드 테두리 전체 누락 (앱 전역 버그)** — 원본
+[style.css:6905](ubiquitous-parakeet/style.css:6905)에 `input:focus { border-color:
+var(--primary-color); outline: 2px solid …; outline-offset: -2px }` 전역 규칙이
+있는데 react-app 전체 CSS에 없음(`.auth-input-box:focus` 하나뿐). **콜상세 폼만이
+아니라 앱 전체 모든 입력창.** 수정 위치 = 전역 `shared-controls.css`.
+
+**A-3. 계기판 "km" 단위가 입력창 안쪽에 있어야 함** — 원본은
+`.input-with-suffix{position:relative}` + `.suffix{position:absolute;right:10px}`
+([style.css:6604](ubiquitous-parakeet/style.css:6604))로 "km"이 입력창 **안쪽**에
+겹침. react-app `call-detail-form.css`는 `display:flex;gap:6px`로 **바깥**에 배치.
+
+**A-4. 글자 크기·입력창 스타일 불일치 — 원인 2가지**
+1. 원본 전역 [style.css:2686](ubiquitous-parakeet/style.css:2686) `.form-group label
+   { font-size: var(--fs-3); font-weight: 600; color: var(--sub-text-color);
+   padding-left: 4px }` 이 react-app에 없음 — **앱 전역**. `shared-controls.css`에 추가.
+2. 원본 인라인 [style.css:6029](ubiquitous-parakeet/style.css:6029)의
+   `.call-client-panel > label, #callDetailReceiptSection > label, .call-remarks-panel
+   > label { font-size: var(--fs-2); font-weight: 800 }` 중 "거래처"·"비고"는
+   react-app에 이미 있고, **"계산서" 레이블만 빠짐**(전용 스코프 없어 기본값 16px).
+   `.call-detail-panel .input-box`(원본 `padding:8px 10px; border-radius:11px;
+   font-size:var(--fs-2)`, [style.css:5969](ubiquitous-parakeet/style.css:5969))도 없음.
+
+### 건드린 파일 (정확히 4개)
+
+1. `react-app/src/shared-controls.css` — 전역 focus + `.form-group label` 규칙 추가.
+2. `react-app/src/components/day-log/CallDetailForm.jsx` — 헤더 날짜 삽입,
+   `call-receipt-panel` 클래스 추가.
+3. `react-app/src/components/day-log/call-detail-form.css` — input-with-suffix·
+   input-box·계산서 레이블 규칙 추가(load/unload-label 무변경).
+4. `react-app/src/side-menu.css` — 811~835줄 삭제.
+
+### 구현 결과와 감시관 검증 (2026-09-10)
+
+작업자 커밋 react-app `c6c831b`(`fix: 콜상세 폼 CSS 4건을 원본 인라인 버전에
+맞춤`), push 완료. GitHub Actions `CI`(run `34463131787`)·`Deploy GitHub Pages`
+(run `34463131794`) 둘 다 `conclusion: success`, headSha `c6c831b` 일치.
+
+**감시관 §5 7항목**
+1. 범위 준수 — `git show --stat` 확인, 정확히 지시한 4파일만 변경.
+2. 몰래 증설 없음 — 새 저장소·상태·레이어 없음, 규칙 추가/이동뿐.
+3. 타입 꼼수 없음 — 4파일 grep 결과 `any`/`@ts-ignore`/`@ts-expect-error`/
+   `as unknown as` 신규 없음.
+4. 200줄 — `call-detail-form.css` 251줄(§6 예외 상한 "~250줄까지"를 1줄 초과,
+   경미), `shared-controls.css` 201줄(예외 범위 내), `CallDetailForm.jsx` 189줄.
+   추후 정리 필요시 참고, 이번엔 보류 가능한 수준으로 판단.
+5. 테스트 진실성 — 테스트 파일 변경 없음, 착수지시서 단계부터 계획대로.
+6. 문서 정합 — diff에 `.md` 없음.
+7. 요구사항 충족 — **브라우저 실측으로 4건 전부 확인**:
+   - 헤더 "10일 일지 세부 입력" 날짜 정상 삽입.
+   - 계기판 "km" — `position:absolute; right:10px`로 입력창 안쪽 겹침 확인.
+   - 레이블 2단계 — 상차지/하차지/출발·도착시간/출발·마감계기판/입금예정일=13.6px
+     (`fs-3`), 거래처/계산서/비고/운송료/플랫폼=12.48px(`fs-2`)로 정확히 갈림
+     (계산서 레이블도 새 스코프로 정상 12.48px 확인).
+   - 입력창 포커스 테두리 — 실측 결과 정상 작동(`outline: solid 2px
+     rgb(49,130,206)` 확인).
+   - `.form-group label` 전역 규칙 추가로 인한 다른 화면 회귀 없음(차량관리 등록
+     모달 재확인, 기존 로컬 규칙 유지).
+   → **7항목 전부 통과.**
+
+CI green + §5 7항목 통과 + 브라우저 실측 완료. 보리 최종 승인 **"승인"**(2026-09-10).
+
+**A그룹(콜상세 폼 CSS 4건) — `[x]` 최종 확정.**
