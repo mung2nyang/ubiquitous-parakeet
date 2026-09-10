@@ -145,16 +145,84 @@
    있는지 확인.
 6. 문제없으면 "승인" — 있으면 어느 화면·어떤 부분이 다른지 알려주면 됨.
 
-## 2. 다음 슬라이스 로드맵(②~⑤, 착수지시서는 각 착수 시점에 별도 작성)
+## 3. 이번 슬라이스(②) — 마이페이지·차량 관리·거래처 햄버거 버튼 추가
 
-전부 "라우팅 1곳(`AppShellRoutes.jsx`)에 `onOpenMenu` 연결 + 헤더의
-`<div style={{width:40}}></div>` 스페이서를 홈/일지와 동일한 햄버거 버튼 마크업
-(`<button className="icon-btn top-menu-btn" onClick={onOpenMenu}>...햄버거 svg...
-</button>`)으로 교체" 패턴 반복(화면당 로직 분기 없음).
+### 현재 상태 (감시관 재확인, 2026-09-10)
 
-- **②** 마이페이지(`MyPage.jsx`) · 차량 관리(`cars/CarListPage.jsx`) · 거래처
-  (`clients/ClientListPage.jsx` + `clients/OwnerScopedClientsView.jsx`, 2모드
-  모두) — 라우팅 포함 5파일.
+4개 화면 전부 같은 모양(`.settings-header`에 뒤로가기+제목+스페이서), 스페이서만
+다름:
+
+- `components/MyPage.jsx:97,107-113` — `export default function MyPage({ session,
+  ownerKey = 'guest', onOpen, onBack })`, 스페이서 `<span className=
+  "mypage-header-spacer" aria-hidden="true"></span>`(189줄).
+- `components/cars/CarListPage.jsx:48,142-148` — `export default function
+  CarListPage({ ownerKey = 'guest', session = null, onBack, showToast })`,
+  스페이서 `<div style={{ width: 40 }}></div>`(180줄).
+- `components/clients/ClientListPage.jsx:30,89-95` — `export default function
+  ClientListPage({ ownerKey = 'guest', onBack, showToast })`, 스페이서 동일
+  (121줄).
+- `components/clients/OwnerScopedClientsView.jsx:32,98-104` — `export default
+  function OwnerScopedClientsView({ ownerKey = 'guest', onBack, showToast })`,
+  스페이서 동일(156줄).
+- `app/AppShellRoutes.jsx:75-86` — `cars`·`clients`(두 분기)·`me` 라우트가 각각
+  `<CarManagementPage .../>`·`<OwnerScopedClientsView .../>`·
+  `<ClientManagementPage .../>`·`<MyPage .../>`를 렌더링하는데 `onOpenMenu` 전달
+  안 함(함수 파라미터엔 이미 있음, 홈/일지 라우트에만 씀).
+- 참고: `CarManagementPage.jsx`·`ClientManagementPage.jsx`는 각각
+  `CarListPage.jsx`·`ClientListPage.jsx`를 재수출만 하는 배럴이라 별도 파일 아님.
+
+### 목표 상태
+
+4개 화면 전부 `DayLogHeader.jsx`(기존 코드)와 같은 패턴 — `onOpenMenu`가 있으면
+햄버거 버튼, 없으면 기존 스페이서 그대로 유지(하위 호환):
+
+```jsx
+{onOpenMenu ? (
+  <button type="button" className="icon-btn top-menu-btn" title="메뉴" onClick={onOpenMenu}>
+    <svg viewBox="0 0 24 24">
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </button>
+) : <div style={{ width: 40 }}></div> /* MyPage.jsx만 기존 mypage-header-spacer 유지 */}
+```
+
+`AppShellRoutes.jsx`의 `cars`·`clients`(두 분기 모두)·`me` 라우트 엘리먼트에
+`onOpenMenu={onOpenMenu}` prop 1개씩 추가.
+
+### 건드릴 파일 (정확히 5개)
+1. `react-app/src/app/AppShellRoutes.jsx` — 4곳(`cars`, `clients` 두 분기,
+   `me`)에 `onOpenMenu={onOpenMenu}` 추가.
+2. `react-app/src/components/MyPage.jsx` — JSDoc에 `@param {(() => void)}
+   [props.onOpenMenu]` 추가, 함수 시그니처에 `onOpenMenu` 추가, 스페이서를 위
+   조건부 버튼으로 교체(폴백은 기존 `mypage-header-spacer` 유지).
+3. `react-app/src/components/cars/CarListPage.jsx` — 동일 패턴(폴백은
+   `<div style={{width:40}}></div>` 유지).
+4. `react-app/src/components/clients/ClientListPage.jsx` — 동일 패턴.
+5. `react-app/src/components/clients/OwnerScopedClientsView.jsx` — 동일 패턴.
+
+### 안 건드릴 것
+- 나머지 8개 화면(③~⑤ 슬라이스 몫).
+- `side-menu.css`(①에서 이미 완료).
+- 뒤로가기 버튼 로직, `onBack`·`onOpen` 등 기존 prop, Store/DB/동기화.
+
+### §8 4대 질문 — 순수 UI prop 추가라 해당 없음(①과 동일 논리).
+실패 시 처리: **신규 레이어 없음.** 기존 `SideMenu`/`onOpenMenu` 메커니즘(이미
+`AppShell.jsx`에 있음) 재사용만, 새 상태·새 컨텍스트 없음.
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 게스트로 마이페이지·차량관리·거래처(차주 모드)
+  3화면 진입해 햄버거 버튼이 보이고 클릭 시 사이드메뉴가 열리는지 확인,
+  라이트/다크 모두. 거래처의 소속기사(`OwnerScopedClientsView`) 모드는 게스트
+  계정으로 직접 재현 어려우면 코드 대조(같은 패턴 적용됐는지)로 대체하고 보리
+  확인 요청.
+
+## 4. 다음 슬라이스 로드맵(③~⑤, 착수지시서는 각 착수 시점에 별도 작성)
+
+전부 같은 패턴 반복(화면당 로직 분기 없음).
+
 - **③** 미수금/정산(`receivables/ReceivablesListPage.jsx`) · 정비/주유/기타
   (`MaintFuelPage.jsx`, `expenses` 라우트) · 세금계산서(`TaxInvoicePage.jsx`) —
   라우팅 포함 4파일. (※`MaintFuelPage`가 쓰이는 `logs/:logId/expenses`(미연동
