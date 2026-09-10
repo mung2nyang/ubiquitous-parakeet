@@ -1256,3 +1256,109 @@ dev 서버(`npm run dev`)로 직접 브라우저 실측**(게스트 세션,
 
 `[x]` 확정. **§1-2(공용 헤더 스타일 통일) + PageHeader 통합 작업 —
 전체 최종 완료.**
+
+## 32. 이번 슬라이스 — form-group/input-box 공용 클래스 도입 (side-menu.css 다이어트 1차)
+
+보리 지시(2026-09-10) "side-menu.css 화면별 분리보다 공용 컴포넌트화·전용
+스타일 정립을 최우선으로" 반영 — 감시관이 side-menu.css 2,155줄 전수
+조사 후 Rule of Three(3회 이상 반복) 확실한 첫 패턴부터 착수.
+
+### 조사 결과
+- `.car-modal .form-group`(side-menu.css:265)·`.client-modal .form-group`(:503)·
+  `.personal-info-page .form-group, .app-settings-page .form-group`(:597) —
+  3개 스코프에 `margin-bottom:14px; text-align:left` **완전히 동일한 선언**이
+  반복. `.form-group label`(:270,:508,:603)·`.input-box`의 `text-align:left`
+  오버라이드(:277,:515,:611)도 각각 동일 패턴 반복.
+- 전체 코드베이스에서 `.form-group`을 쓰는 파일은 14개(day-log 폼, 각종
+  모달, 리포트 모달 등) — 그중 `CarFormModal`·`DriverFormModal`·
+  `TaxInvoiceDraftModal`·`ClientFormModal`·`ExpenseFormModal`(비인라인)은
+  이미 `car-modal`/`client-modal` 래퍼 클래스를 쓰고 있어 위 3스코프로
+  이미 커버됨(확인 완료, 영향 없음).
+- **`ReportDetailView.jsx`의 `ReportClientPickerModal`**(거래처 선택
+  모달, 리포트 "세부 내역서 조회")만 스코프 클래스가 없어 지금은
+  `.form-group`/`.input-box`에 위 규칙이 하나도 안 걸림(여백 없음,
+  select 기본 가운데정렬) — **보리 확인·승인 완료**: 이 모달도 같은
+  패턴으로 통일해 여백·왼쪽정렬이 새로 생기는 것(작은 시각적 변화)까지
+  포함해서 진행.
+- `CallDetailForm.jsx`·`PalletSection.jsx`·`ClientTradeFields.jsx`
+  등 나머지 소비처는 **이번에 건드리는 스코프 목록에 안 들어가므로
+  무영향**(아래 "안 건드릴 것" 참고) — 전역 `.form-group`/`.input-box`를
+  스코프 없이 통째로 바꾸는 게 아니라, **명시적 스코프 목록에 추가하는
+  방식**이라 다른 화면 blast radius 없음.
+
+### 목표 상태
+`shared-controls.css`(기존 "여러 화면 공유 CSS" 파일, 10차 해체 슬라이스
+때 신설)에 아래 조합 셀렉터 규칙 1벌만 추가하고, `side-menu.css`의 중복
+9블록을 삭제한다. `ReportDetailView.jsx`의 모달 래퍼에 새 스코프
+클래스 1개만 추가(그 외 JSX/로직 무변경).
+
+```css
+/* shared-controls.css에 추가 */
+.car-modal .form-group,
+.client-modal .form-group,
+.personal-info-page .form-group,
+.app-settings-page .form-group,
+.report-picker-modal .form-group {
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.car-modal .form-group label,
+.client-modal .form-group label,
+.personal-info-page .form-group label,
+.app-settings-page .form-group label,
+.report-picker-modal .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--fs-2);
+  font-weight: 750;
+}
+
+.car-modal .input-box,
+.client-modal .input-box,
+.personal-info-page .input-box,
+.app-settings-page .input-box,
+.report-picker-modal .input-box {
+  text-align: left;
+}
+```
+
+### 건드릴 파일 (정확히 3개)
+1. `react-app/src/shared-controls.css` — 위 조합 규칙 3블록 추가(파일 끝).
+2. `react-app/src/side-menu.css` — 아래 9블록(3스코프×3규칙) **삭제**:
+   - 265~279줄(`.car-modal .form-group`/`label`/`.input-box`)
+   - 503~517줄(`.client-modal .form-group`/`label`/`.input-box`)
+   - 597~614줄(`.personal-info-page`+`.app-settings-page .form-group`/
+     `label`/`.input-box`)
+   (`.car-modal`·`.client-modal` 모달 shell 크기 규칙 자체는 무변경, 그
+   앞뒤 다른 규칙도 무변경.)
+3. `react-app/src/components/ReportDetailView.jsx` — `ReportClientPickerModal`의
+   `<div className="modal-content">`를
+   `<div className="modal-content report-picker-modal">`로 클래스 1개
+   추가(다른 로직·마크업 무변경).
+
+### 안 건드릴 것
+- `CallDetailForm.jsx`·`PalletSection.jsx`·`ClientTradeFields.jsx`·
+  `CarDriverConnectPanel.jsx`·`call-detail-form.css`·`fixed-route.css` 등
+  나머지 `.form-group`/`.input-box` 소비처 — 스코프 목록에 없으므로
+  현재 동작 그대로.
+- `.car-modal`/`.client-modal`(모달 shell 너비·높이 규칙) 자체 — 무변경.
+- `shared-controls.css`의 기존 `.input-box` 기본 정의(175번대,
+  `text-align:center`) — 그대로 둠. 이번 추가 규칙은 `.form-group`/
+  `.car-modal`/`.client-modal`/`.report-picker-modal` 등 **조상 스코프가
+  있을 때만** 걸리는 하위 선택자라 전역 기본값에 영향 없음.
+
+### §8 4대 질문 — 순수 UI 스타일 통합(회귀 없는 3곳 + 승인된 시각적
+변화 1곳), 새 저장소·레이어 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동(test·typecheck·build).
+- 감시관 브라우저 실측: 라이트/다크 각각
+  1. 차량관리·거래처관리·개인정보·앱설정 모달 폼 — 분리 전/후 컴퓨티드
+     스타일(margin-bottom·text-align) 완전 일치 확인
+  2. 리포트 "세부 내역서 조회" 거래처 선택 모달 — 새로 여백·왼쪽정렬이
+     적용됐는지 스크린샷 확인(승인된 의도된 변화)
+  3. `CallDetailForm`(콜상세 폼) 최소 1개 필드 — 분리 전/후 무변화 확인
+     (스코프 밖 소비처 무영향 재확인)
+
+**→ 착수 승인 대기.**
