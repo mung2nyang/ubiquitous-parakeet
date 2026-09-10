@@ -1030,3 +1030,23 @@ green(verify `34434671869`·deploy `34434671871` 둘 다 success).
   ④-2 때와 동일한 제약).
 
 **→ 착수 승인 대기.**
+
+## 25. ⑤ 슬라이스 완료 확인 (2026-09-10)
+
+작업자 커밋(`33dda45`) → 보리 push 확인(바로 반영) → CI green(verify
+`34435041914`·deploy `34435041907` 둘 다 success). 정확히 지시한
+5파일만 변경, diff 전체 대조: `AppShellRoutes.jsx` 4개 라우트
+(`revenue`·`support`·`logs/:logId/clients`·`drivers/:linkId/clients`)
+전부 `onOpenMenu` 정확히 추가, `RevenuePage.jsx`가 `PageShell` 없이
+직접 렌더링(주석도 흡수 사실을 반영해 갱신됨), `RevenueNav.jsx`는
+`DateNav`만 남음, `CustomerCenterPage.jsx`·`LinkedDriverClientsPage.jsx`
+(헤더 2곳 다) 정확히 치환 + `onOpenMenu` prop 추가. 줄수: `RevenuePage.jsx`
+30→26, `RevenueNav.jsx` 59→38, `CustomerCenterPage.jsx` 230→226,
+`LinkedDriverClientsPage.jsx` 207→197(**200줄 아래로 복귀**). `[x]`
+확정.
+
+**§1-2 원 계획 + 이번 PageHeader 통일 작업 — 누락분(고객센터·매출·
+연동/미연동 기사관리 거래처) 전부 해소 완료.** 남은 건 §15-6 로드맵의
+⑥(§2~14 범위 5개, 동작 무변경 마크업 통일)뿐. **보리가 "추가작업
+있다"며 대기 지시 — ⑥ 착수지시서는 다음 지시 전까지 작성하지 않고
+대기.**
