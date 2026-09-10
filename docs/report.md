@@ -528,3 +528,32 @@ AGENTS §6·§12의 "예외 없이 분리설계" 약속 때문에 ①~③처럼 
 - 감시관/보리 브라우저 실측: 앱 설정·공지 2화면 진입해 햄버거 버튼 확인.
 
 **→ 착수 승인 대기.**
+
+## 13. ⑤ 푸시 확인 + 누락분 발견 (2026-09-10)
+
+**⑤(`56a6f76`, 앱 설정·공지)는 작업자 커밋까지는 됐지만 아직 GitHub에
+푸시가 안 된 상태 확인.** `git fetch` 후 `origin/main`이 여전히
+`ff322d6`(④-2)에 머물러 있고, 로컬 `main`이 `[origin/main: ahead 1]`.
+보리가 "푸시함"이라 하셨는데 실제로는 로컬에만 있어 **CI가 아직 한 번도
+안 돌았음**(`gh run list`에 `56a6f76` 관련 run 없음) — 착수 승인/완료
+확정 전에 먼저 실제 push 확인 필요.
+
+**보리가 브라우저 확인 중 발견한 누락 화면 4곳**(고객센터·매출·연동
+기사관리 거래처·미연동 기사관리 거래처 — 전부 §1-2 원 계획 밖, §2~14
+쪽 화면):
+- `components/CustomerCenterPage.jsx`(176~181줄, 헤더 1곳) — **이미
+  230줄, 200줄 초과.**
+- `components/RevenuePage.jsx`(30줄, 문제없음)는 실제 헤더가 아니라
+  `components/revenue/RevenueNav.jsx`의 `PageShell`(17~22줄, 59줄 전체,
+  문제없음)을 그대로 씀 — `RevenuePage.jsx`→`PageShell`로 `onOpenMenu`
+  전달만 추가하면 됨.
+- `components/drivers/LinkedDriverClientsPage.jsx`(연동
+  `drivers/:linkId/clients`·미연동 `logs/:logId/clients` 두 라우트 모두
+  이 컴포넌트 공유) — **이미 207줄, 200줄 초과.** 헤더가 2곳(129·147줄,
+  `notFound` 분기 + 정상 분기)이라 버튼도 2곳 다 추가해야 함.
+- `app/AppShellRoutes.jsx`의 `revenue`·`logs/:logId/clients`·
+  `drivers/:linkId/clients` 세 라우트 전부 `onOpenMenu` 없음.
+
+두 파일(`CustomerCenterPage.jsx`·`LinkedDriverClientsPage.jsx`)이 이미
+200줄 초과라 ①~⑤처럼 단순 진행 불가 — 착수지시서 작성 전 대화창에서
+먼저 확인 필요(§6·§7).
