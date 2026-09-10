@@ -857,3 +857,50 @@ onOpenMenu={onOpenMenu} />` 한 줄로 교체(①과 동일 패턴). `ReportPage
 - 감시관 커밋 전/후 대조(①과 동일 방식).
 
 **→ 착수 승인 대기.**
+
+## 19. ② 슬라이스 완료 확인 (2026-09-10)
+
+작업자 커밋(`7283a33`) → 보리 push 확인 → "진행해". CI green(verify
+`34433839580`·deploy `34433839544` 둘 다 success) + 정확히 지시한
+4파일만 변경 + diff 전체를 직접 대조(4곳 다 `<PageHeader .../>` 한
+줄 치환, `ReportPage.jsx`는 `handleHeaderBack` 그대로 전달 — 로직
+무변경, 이번엔 스페이서 예외도 없음). 줄수 전부 감소:
+`MaintFuelPage.jsx` 216→203, `ReportPage.jsx` 250→237,
+`TaxInvoicePage.jsx` 215→202, `ReceivablesListPage.jsx` 100→87.
+**200줄 넘던 4개 다 줄었고, 남은 초과분(203·237)도 리팩터 덕에 이전보다
+여유 커짐(추가 조치 불필요).** `[x]` 확정.
+
+## 20. 이번 슬라이스(③) — CarListPage·ClientListPage·OwnerScopedClientsView·LinkedDriverManagementPage
+
+§15-6 로드맵 그대로. 앞의 세 화면은 표준 마크업(스페이서 포함 예외
+없음, 재확인 완료). `LinkedDriverManagementPage.jsx`는 로컬 `pageHeader()`
+헬퍼 함수(30~49줄, JSDoc 포함 약 20줄)가 있고 호출부가 2곳(129·144줄,
+함수 호출 문법 `pageHeader(onBack, t, onOpenMenu)`) — §15-5에서 결정한
+대로 이번에 **삭제**.
+
+### 건드릴 파일 (정확히 4개, 전부 수정)
+1. `react-app/src/components/cars/CarListPage.jsx` — `<PageHeader
+   title="차량 관리" onBack={onBack} onOpenMenu={onOpenMenu} />`.
+2. `react-app/src/components/clients/ClientListPage.jsx` — 동일
+   패턴(`title="거래처"`).
+3. `react-app/src/components/clients/OwnerScopedClientsView.jsx` —
+   동일 패턴(`title="거래처"`).
+4. `react-app/src/components/drivers/LinkedDriverManagementPage.jsx` —
+   로컬 `pageHeader()` 함수 삭제, 두 호출부(129·144줄)를
+   `<PageHeader title={...} onBack={onBack} onOpenMenu={onOpenMenu} />`
+   JSX로 직접 교체(함수 호출 문법 → JSX 문법 전환, 인자 순서·값 그대로).
+
+### 안 건드릴 것
+- `PageHeader.jsx`(무변경). 나머지 14개 화면(④~⑥ 몫).
+- `LinkedDriverManagementPage.jsx`의 다른 로직(정산 계산, `SettlementSummaryCard`/
+  `ClientInvoiceGroups` 등 ④-2 결과물) — 헤더 부분만.
+
+### §8 4대 질문 — 순수 리팩터, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 커밋 전/후 대조 + `LinkedDriverManagementPage.jsx`는 연동·
+  미연동 두 모드 헤더(제목이 `unlinked ? title : '기사 관리'` /
+  `title`로 서로 다름) 둘 다 확인.
+
+**→ 착수 승인 대기.**

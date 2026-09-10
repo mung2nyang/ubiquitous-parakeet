@@ -53,9 +53,14 @@
 > 분기가 렌더링된 적이 없어 시각적 영향 없음, 재작업 요구 없이 기록만
 > (§15-3에서 `InviteRedeemPage.jsx`만 예외로 적었던 게 부정확했음,
 > 뒤늦게 발견). **② 슬라이스(TaxInvoicePage·MaintFuelPage·ReportPage·
-> ReceivablesListPage, 4파일) 착수지시서 작성 완료(`docs/report.md`
-> §18), 착수 승인 대기.** 이전 작업(미연동 서브차량+사이드메뉴,
-> §1~§16 전체 `[x]`)은
+> ReceivablesListPage, react-app `7283a33`) `[x]` 완료** — 정확히
+> 4파일만 변경, CI green, diff 전체 대조로 로직 무변경 확인. 줄수 전부
+> 감소(216→203·250→237·215→202·100→87) — **200줄 넘던 4개 다 줄고
+> 여유도 커짐, 추가 조치 불필요.** **③ 슬라이스(CarListPage·
+> ClientListPage·OwnerScopedClientsView·LinkedDriverManagementPage,
+> 마지막 파일은 로컬 `pageHeader()` 헬퍼 삭제 포함) 착수지시서 작성
+> 완료(`docs/report.md` §20), 착수 승인 대기.** 이전 작업(미연동
+> 서브차량+사이드메뉴, §1~§16 전체 `[x]`)은
 > `docs/archive/sub-vehicle-management-and-side-menu.md`로 이관.)
 >
 > 이전 최종 갱신: 2026-09-09 (**`main-calendar.css` 책임 분리 1~10차 전부 `[x]` 완료**
