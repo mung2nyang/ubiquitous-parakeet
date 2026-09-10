@@ -1,305 +1,207 @@
-# docs/report.md — 마이페이지 (`ui-comparison-report.md` §2~)
+# docs/report.md — 일일운행 콜상세 폼 CSS 4건 (`ui-comparison-report.md` §1-A)
 
-> 이전 작업(공용 헤더 `PageHeader` 통일, §1~§31 전체 `[x]` 완료) 이력은
-> `docs/archive/pageheader-unification.md`로 옮김(동결). `side-menu.css`
-> 다이어트(§32~§41 전체 `[x]` 완료) 이력은 `docs/archive/side-menu-css-diet.md`로
-> 옮김(동결). 이 문서는 새 작업(`docs/ui-comparison-report.md` §2 "마이페이지")
-> 부터 시작한다.
+> 슬라이스마다 리셋되는 착수지시서·실사 통합 파일(AGENTS §12).
+> 직전 완료 슬라이스(§2 마이페이지 `8c1ccc7`, §3 매출 `1a5d702`) 상세는
+> `docs/archive/report-snapshot-2026-09-10.md` §1·§2로 옮김(동결).
 
-## 1. 이번 슬라이스 — 마이페이지(`ui-comparison-report.md` §2): 톱니바퀴 아이콘 경로 오타 수정 + 전용 CSS 분리
+---
 
-`docs/ui-comparison-report.md` 최상단 필수 원칙(보리 지시, 2026-09-10)에 따라
-"화면 대조 + 그 화면 전용 CSS를 side-menu.css에서 분리"를 한 슬라이스로 진행.
-대상은 §2 마이페이지, 발견 항목은 1건: "앱 설정 좌측의 톱니바퀴 아이콘 아래가
-찌그러져 있음(스타일 충돌인 듯)".
+## 1. 이번 슬라이스 — 일일운행 1부: 콜상세 폼 CSS 4건
 
-### 조사 결과 (1차: 재현 안 됨 → 보리 스크린샷으로 재조사 → 원인 확정)
+`ui-comparison-report.md` §1(일일운행) 재정리(2026-09-10, 보리가 원본
+localhost:8791을 직접 띄워 대조해준 목록 + 감시관 재조사) 기준, **A그룹(콜상세 폼
+CSS 4건)**만 이번 슬라이스. 누락 기능 3건(B그룹: 즐겨찾기 칩·거래처 +추가
+버튼·산재보험료 필드)은 별도 슬라이스, 레이아웃 틀어짐(C)은 재현 못 해 보류,
+시간 입력 커스텀 위젯은 별도 대형 작업.
 
-1차 조사(컴퓨티드 스타일·CSS 충돌 grep)로는 못 찾았는데, 보리가 실제
-화면 스크린샷에 빨간 밑줄로 정확히 짚어줘서 재조사 — **CSS 문제가
-아니라 아이콘 SVG `d`(도형 경로) 데이터 자체의 오타였다.**
+### ⚠️ 1차 조사 오류 정정
 
-- `MyPage.jsx`의 "앱 설정" 톱니바퀴 아이콘과 원본 `index.html:156`의
-  같은 아이콘(둘 다 Feather "settings" 아이콘, 24×24 viewBox)의 `d` 속성
-  문자열을 한 글자씩 대조(diff)한 결과, **정확히 2곳이 다름**:
-  1. 원본 `...0 0 0-1 1.51V21...` → react-app `...0 0 0 1 1.51V21...`
-     (마이너스 부호 누락, 곡선 제어점 좌표가 `dx=-1`→`dx=+1`로 반대
-     방향, 24 기준 좌표계에서 약 2 유닛 차이).
-  2. 원본 `...l-.06.06a...` → react-app `...l-.06-.06a...`
-     (부호 1개 추가, 영향은 미미).
-  - 1번이 실제 원인. 감시관이 두 경로를 실제로 SVG로 각각 렌더링해
-    나란히 비교(150×150 확대) — **원본은 8개 톱니가 대칭·균일한데
-    react-app은 왼쪽 아래 톱니 1개가 눌린 것처럼 찌그러져 보임**,
-    보리가 스크린샷에 표시한 위치·모양과 정확히 일치 확인.
-  - **결론: 마이그레이션 당시 SVG path 문자열을 옮겨적으며 생긴
-    단순 오타(부호 누락).** 원본 값 그대로 복사하면 해결 — 새 로직·
-    디자인 변경 없음.
+1차 조사 때 `#callDetailModal`(순수 모달 팝업 버전) CSS만 보고 판단했는데,
+**실제 일일운행 화면에서 쓰이는 건 `#workModal .call-detail-inline-host`(인라인
+아코디언 버전)** 였다. 두 버전 값이 다른 곳이 있어 아래 2곳 정정:
+- ~~`.load-label`/`.unload-label`의 `font-weight:800` 제거~~ → **원본 인라인
+  버전([style.css:5964](ubiquitous-parakeet/style.css:5964))에도 있음 — 그대로 둠.**
+- ~~레이블 전체를 `fs-3`로 통일~~ → **원본은 두 그룹 설계**: `.form-group` 안
+  레이블(상차지·하차지·시간·계기판·입금예정일)=`fs-3`, `.call-detail-panel` 직계
+  레이블(거래처·계산서·비고) 및 `.call-inline-field` 레이블(운송료·톤수·플랫폼)=`fs-2`.
 
-**CSS 분리 대상 (기존 조사 유효, 그대로 진행)**
-- `side-menu.css` 1387~1605줄(219줄, 연속 블록) = `.mypage-header-spacer`~
-  `.mypage-notice-entry` 전부 — grep 전수 확인 결과 **`MyPage.jsx` 외
-  소비처 0개**, 다른 화면과 공유되는 규칙 없음.
-- 같은 파일 145줄의 `.my-page`는 별개 — `.car-management-page` 등 9개
-  다른 화면 셀렉터와 묶인 **공유 규칙**(`min-height`/`padding-bottom`
-  공통값)이라 이번 대상에서 제외(건드리면 다른 9화면까지 blast radius).
-- 죽은 CSS 2개 발견, 기존 관례(삭제 안 하고 보존 이동)대로 그대로
-  옮김: `.mypage-header-spacer`(JSX 소비처 0, grep 확인) ·
-  `.mypage-role-pill`(JSX엔 없고 `accountPermissionUi.test.js`가 "안
-  보여야 정상"으로 검사하는 대상이라 CSS 자체는 죽어 있어도 정상).
+### 조사 결과 (원본 인라인 버전 vs react-app)
 
-### 목표 상태
+**A-1. 헤더 "N일 일지 세부 입력" 날짜 숫자 누락** — 원본은 "5일 일지 세부 입력"처럼
+날짜가 들어감(`.call-detail-modal-title`). react-app은 "운행 일지 세부 입력"(날짜 없음).
 
-1. **`MyPage.jsx`의 "앱 설정" 아이콘 `<path d="...">` 값을 원본과 완전히
-   동일하게 정정.** 아래 두 지점만 고친다(그 외 좌표 전부 동일, 새로
-   만들지 말고 원본 문자열 그대로 붙여넣기):
-   - `...1.65 1.65 0 0 0 1 1.51V21...` → `...1.65 1.65 0 0 0-1 1.51V21...`
-   - `...l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9...` → `...l-.06.06a1.65 1.65 0 0 0-.33 1.82V9...`
-   (SVG 좌표 문자열 수정이라 `git diff`엔 `d="..."` 한 줄 변경으로 보임 —
-   §5 리뷰 때 문자 단위로 원본과 대조할 것.)
-2. `side-menu.css`의 `mypage-*` 219줄(1387~1605)을 신규
-   `react-app/src/components/mypage.css`로 그대로 이동(내용 변경 없음,
-   죽은 규칙 2개 포함 보존). 파일 상단에 기존 관례 주석 1줄 추가:
-   `/* 마이페이지 전용 스타일 — side-menu.css에서 옮김. MyPage.jsx가 직접
-   import한다. */`
-3. `MyPage.jsx` 최상단에 `import './mypage.css'` 1줄 추가(다른 import 뒤,
-   JSX 로직 무변경).
-4. 219줄은 200줄 초과지만 **기존 §6 예외 관례와 동일 패턴**(한 화면 전용
-   스타일을 한 파일에 모으는 응집도 우선 — `calendar.css` 246줄,
-   `call-detail-card.css` 217줄과 같은 성격) — 별도 분리설계 없이 진행.
+**A-2. 입력창 focus 파란 라운드 테두리 전체 누락 (앱 전역 버그)** — 원본
+[style.css:6905](ubiquitous-parakeet/style.css:6905)에 `input:focus { border-color:
+var(--primary-color); outline: 2px solid …; outline-offset: -2px }` 전역 규칙이
+있는데 react-app 전체 CSS에 없음(`.auth-input-box:focus` 하나뿐). **콜상세 폼만이
+아니라 앱 전체 모든 입력창.** 수정 위치 = 전역 `shared-controls.css`.
 
-### 건드릴 파일 (정확히 3개)
+**A-3. 계기판 "km" 단위가 입력창 안쪽에 있어야 함** — 원본은
+`.input-with-suffix{position:relative}` + `.suffix{position:absolute;right:10px}`
+([style.css:6604](ubiquitous-parakeet/style.css:6604))로 "km"이 입력창 **안쪽**에
+겹침. react-app `call-detail-form.css`는 `display:flex;gap:6px`로 **바깥**에 배치.
 
-1. `react-app/src/components/MyPage.jsx` — (a) 톱니바퀴 아이콘 `d` 속성
-   2곳 정정(위 목표 상태 1번), (b) `import './mypage.css'` 1줄 추가.
-2. `react-app/src/side-menu.css` — 1387~1605줄(mypage-* 전부) 삭제.
-3. `react-app/src/components/mypage.css`(신규) — 옮긴 219줄 + 헤더 주석
-   1줄.
+**A-4. 글자 크기·입력창 스타일 불일치 — 원인 2가지**
+1. 원본 전역 [style.css:2686](ubiquitous-parakeet/style.css:2686) `.form-group label
+   { font-size: var(--fs-3); font-weight: 600; color: var(--sub-text-color);
+   padding-left: 4px }` 이 react-app에 없음 — **앱 전역**. `shared-controls.css`에 추가.
+2. 원본 인라인 [style.css:6029](ubiquitous-parakeet/style.css:6029)의
+   `.call-client-panel > label, #callDetailReceiptSection > label, .call-remarks-panel
+   > label { font-size: var(--fs-2); font-weight: 800 }` 중 "거래처"·"비고"는
+   react-app에 이미 있고, **"계산서" 레이블만 빠짐**(전용 스코프 없어 기본값 16px).
+   `.call-detail-panel .input-box`(원본 `padding:8px 10px; border-radius:11px;
+   font-size:var(--fs-2)`, [style.css:5969](ubiquitous-parakeet/style.css:5969))도 없음.
 
-### 안 건드릴 것
-
-- `side-menu.css:145`의 `.my-page`(9개 화면 공유 규칙) — 무변경.
-- `MyPage.jsx`의 JSX 구조·로직·클래스명·다른 아이콘 5개(차량 관리·거래처·
-  미수금/정산·정비/주유/기타·운송비 내역서·세금계산서·문자 문구 설정·
-  공지사항 아이콘) — 전부 무변경, "앱 설정" 아이콘 `d` 값 2곳만.
-- 다른 화면 CSS·Store·도메인 로직 — 전부 무관.
-
-### §8 4대 질문
-
-- SVG 아이콘 오타 수정: 순수 표시값 정정, 구독/스냅샷·Store·DB 전부 무관.
-- CSS 파일 이동: 선택자·선언·값 변경 없음, import 경로만 바뀜.
-- 새 저장소·레이어 없음. 실패 시 처리: **신규 레이어 없음.**
-
-### 검증 방법
-
-- CI 자동(test·typecheck·build).
-- 감시관 브라우저 실측:
-  1. 수정 전/후 "앱 설정" 아이콘을 6배 확대해 8개 톱니가 대칭인지 육안
-     확인 + 원본 아이콘과 나란히 렌더링해 픽셀 형태 일치 확인.
-  2. CSS 분리 전/후 라이트·다크 각각 마이페이지 전체(프로필 카드·업무
-     바로가기 6칸·앱 설정/문자 문구 설정/공지사항 3줄) 컴퓨티드 스타일
-     비교 + 스크린샷 대조.
-
-**→ 착수 승인 완료(보리, 2026-09-10) — 작업자 진행 대상. `[~]`.**
-
-## 1-1. 구현 결과와 감시관 검토 (2026-09-10)
-
-작업자 커밋 react-app `8c1ccc7`(`fix: 마이페이지 톱니바퀴 SVG 경로 오타
-수정 및 전용 CSS 분리`), 보리 push. GitHub Actions `CI`(verify)·`Deploy
-GitHub Pages` 둘 다 `conclusion: success`, headSha `8c1ccc7` 일치.
-
-**감시관 §5 7항목**
-1. 범위 준수 — `git show --stat` 확인 결과 정확히 지시한 3파일
-   (`MyPage.jsx`, 신규 `mypage.css`, `side-menu.css`)만 변경, 안 건드릴
-   것으로 지정한 `.my-page`(145줄) 등은 무영향.
-2. 몰래 증설 없음 — 새 저장소·상태·레이어 없음. `mypage.css` 신설은
-   착수지시서에 명시된 이동이라 "증설"이 아님.
-3. 타입 꼼수 없음 — JS 로직 변경 없음(`@ts-check` 파일에 `any`/
-   `@ts-ignore` 등 신규 없음), SVG `d` 속성 값 정정 + CSS 이동뿐.
-4. 200줄 — `mypage.css` 221줄(19줄 이동분+헤더 주석 1+빈 줄 1),
-   착수지시서 단계에서 이미 `calendar.css`(246)·`call-detail-card.css`
-   (217) 선례와 같은 성격으로 사전 논의됨 — 문제없음. `MyPage.jsx`는
-   import 1줄만 추가.
-5. 테스트 진실성 — 테스트 파일 변경 없음(순수 표시값 정정 + CSS 이동이라
-   착수지시서 단계부터 신규 테스트 불필요로 판단, 기존 테스트 안 건드림).
-6. 문서 정합 — diff에 `.md` 없음, 작업자가 문서 안 건드림.
-7. 요구사항 충족 — 착수지시서의 목표 상태 1(아이콘 경로 정정)·2(CSS
-   분리) 둘 다 diff와 정확히 일치.
-   → **7항목 전부 통과.**
-
-**감시관 자체 검증(코드 단위, §5 외 추가 확인)**
-- 아이콘 경로: 정정된 `d` 속성 문자열을 원본 `index.html`의 경로
-  문자열과 **문자 단위(node로 프로그램 대조)로 비교 — 완전히 동일
-  (byte-identical, 734자)** 확인. 원본 그대로 복사돼 임의 변형 없음.
-- CSS 이동: `side-menu.css`에서 삭제된 219줄과 `mypage.css`에 추가된
-  219줄을 줄 단위로 diff — **완전히 동일**(내용 변형 없음, 순수 이동).
-  삭제도 한 곳(1384~1607 부근) 연속 hunk 1개뿐, 다른 곳 안 건드림.
-  `mypage-header-spacer`·`mypage-role-pill`(죽은 CSS 2개)도 삭제 없이
-  그대로 이동됨 확인.
-
-**감시관 브라우저 실측(로컬 dev 서버, 게스트, 라이트, 모바일 375px)**
-- 톱니바퀴 아이콘을 6배 확대해 육안 확인 — 수정 전엔 왼쪽 아래 톱니
-  1개가 눌린 모양이었는데, 수정 후엔 **8개 톱니 전부 대칭·균일**(1차
-  조사 때 만든 원본 아이콘 렌더링과 같은 모양). 스크린샷으로 확인 완료.
-- `.mypage-profile-card`(마이페이지 프로필 카드) 컴퓨티드 스타일
-  (`border-radius:20px`·`padding:15px 16px`·`min-height:94px`·
-  `box-shadow`) — CSS 이동 전 값과 정확히 일치, 새 `mypage.css`가
-  정상 로드됨 확인.
-- 페이지 전체 스크린샷(프로필 카드·업무 바로가기 6칸·앱 설정/문자
-  문구 설정/공지사항 3줄) — 레이아웃 깨짐 없음.
-
-CI green + 감시관 §5 7항목 통과 + 브라우저 실측까지 완료.
-
-### 1-2. 보리 최종 확인 + `[x]` 확정 (2026-09-10)
-
-보리가 직접 브라우저로 확인 — **"티 엄청많이나 확인완료 승인"**
-(수정 전/후 차이가 육안으로도 뚜렷하게 보였다고 확인). `side-menu.css`
-1,870줄(분리 전 2,089줄 − 219줄, 감시관이 재실측해 정확히 일치 확인)로
-줄어든 것도 같이 확인 요청 → 확인해서 답변, 죽은 CSS 2개
-(`mypage-header-spacer`·`mypage-role-pill`) 보존은 "일단 오케이".
-
-**§1(마이페이지 아이콘 오타 수정 + 전용 CSS 분리) — `[x]` 최종 확정.**
-
-## 2. 이번 슬라이스 — 매출(`ui-comparison-report.md` §3): "운임 수수료" -0원 표시 정정 + 전용 CSS 분리
-
-`docs/ui-comparison-report.md` 필수 원칙(보리 지시, 2026-09-10)에 따라 "화면 대조 +
-그 화면 전용 CSS를 side-menu.css에서 분리"를 한 슬라이스로 진행. 대상은 §3 매출(전체
-손익 탭), 발견 항목 1건: "운임 수수료" 값이 0일 때 원본은 "-0원"(마이너스 부호
-표시), react-app은 "0원"(부호 없음).
-
-### 조사 결과
-
-- 원본 [finance.js:1104](ubiquitous-parakeet/finance.js:1104)의 `revenueDetailRowHtml`은
-  `amount.toLocaleString()`을 그대로 쓴다. `commission.total`이 0이면 `-d.income.commission.total`
-  계산 결과가 JS의 **음수 0(`-0`)**이 되는데, `(-0).toLocaleString('ko-KR')`은 `"-0"`을
-  반환해 화면에 "-0원"으로 나온다(원본이 의도한 표시가 아니라 JS 부동소수점 특성이
-  그대로 노출된 것이지만, 원본 화면 그대로 재현하는 게 이번 이관 원칙).
-- react-app [revenueFormat.js:14-16](react-app/src/components/revenue/revenueFormat.js:14)의
-  `won()` 함수는 `(Number(amount) || 0).toLocaleString('ko-KR')`을 쓰는데, `Number(-0)`은
-  자바스크립트에서 falsy라 `|| 0`에 걸려 **양수 0**으로 바뀌어 "-0원"이 아니라 "0원"이
-  나온다. `won()`은 `OwnerMonthlyCards.jsx`·`OwnerRevenueView.jsx`·`DriverRevenueView.jsx`
-  전체가 공유하는 함수라, 이 하나만 고치면 "운임 수수료" 외에 같은 조건(값이 정확히
-  0에서 부호가 뒤집히는 모든 금액 행)에도 동일하게 적용된다.
-- `|| 0` 가드는 `NaN`/`undefined` 방어용으로 보인다(원본은 그런 가드가 없음) — 이
-  방어까지 없애면 회귀 위험이라, **`NaN`일 때만 0으로 치환하고 `-0`은 그대로 보존**하는
-  최소 수정으로 원본과 정확히 같은 표시를 만든다.
-
-**CSS 분리 대상**
-- `side-menu.css` 1388~1652줄(265줄, 연속 블록) = `.revenue-summary-card`~
-  `.revenue-detail-empty` 전부 — grep 전수 확인 결과 `components/revenue/` 하위
-  3개 JSX(`OwnerRevenueView.jsx`·`DriverRevenueView.jsx`·`OwnerMonthlyCards.jsx`) 외
-  소비처 0개, 다른 화면과 공유되는 규칙 없음.
-- 같은 파일 144줄의 `.revenue-page`는 별개 — `.my-page` 등 9개 화면 셀렉터와 묶인
-  **공유 규칙**(마이페이지 §1 때와 동일 패턴)이라 이번 대상에서 제외.
-- 291~395줄의 `.car-commission-*`(차량관리 모달의 수수료 설정 UI)는 이름이 비슷하지만
-  매출 화면과 무관 — 제외.
+**참고** — §32~41 다이어트 중 지운 `dark-pill-group`은 무해 확인(플랫폼 퀵리스트·
+계산서 그룹은 `call-detail-form.css`에 자체 grid/flex 있음), 롤백 불필요.
 
 ### 목표 상태
 
-1. **`revenueFormat.js`의 `won()` 함수를 `NaN`만 0으로 치환하고 `-0`은 보존하도록 수정**:
-   `${(Number(amount) || 0).toLocaleString('ko-KR')}원` →
-   `${(Number.isNaN(Number(amount)) ? 0 : Number(amount)).toLocaleString('ko-KR')}원`
-   (그 외 로직·다른 함수 무변경).
-2. `side-menu.css`의 `revenue-*` 265줄(1388~1652)을 신규
-   `react-app/src/components/revenue/revenue.css`로 그대로 이동(내용 변경 없음).
-   파일 상단에 기존 관례 주석 1줄: `/* 매출 화면 전용 스타일 — side-menu.css에서 옮김.
-   RevenuePage.jsx가 직접 import한다. */`
-3. `RevenuePage.jsx` 최상단에 `import '../components/revenue/revenue.css'` 1줄 추가
-   (다른 import 뒤, JSX 로직 무변경) — 마이페이지 §1 때 `MyPage.jsx`가 `mypage.css`를
-   직접 import한 것과 같은 패턴.
-
-**265줄 — 기존 관례 상한(§6 "~250줄까지") 15줄 초과 확인 완료.** 보리 결정
-(2026-09-10): **분리설계 없이 그대로 진행** — 화면 하나 전용 스타일이라
-쪼개면 오히려 같이 읽어야 할 코드가 갈라짐(§6 응집도 우선 원칙). `revenue.css`
-상단에 "265줄, 매출 화면 전용 스타일 응집도 우선(§6 예외)" 이유 주석 1줄 추가.
+1. `shared-controls.css`에 원본과 동일한 전역 규칙 2개 추가:
+   ```css
+   :where(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea, select):focus {
+     border-color: var(--primary-color);
+     outline: 2px solid var(--primary-color);
+     outline-offset: -2px;
+     box-shadow: none;
+   }
+   .form-group label {
+     font-size: var(--fs-3);
+     font-weight: 600;
+     color: var(--sub-text-color);
+     padding-left: 4px;
+   }
+   ```
+   (다른 화면이 더 구체적인 선택자로 이미 오버라이드하면 그 화면엔 영향 없음 —
+   §5 리뷰에서 다른 화면 회귀 확인.)
+2. `CallDetailForm.jsx`: 헤더 타이틀에 날짜 삽입 —
+   `{value ? '운행 일지 세부 입력 수정' : '운행 일지 세부 입력'}` →
+   `` `${Number(dateKey.slice(8,10))}일 일지 세부 입력${value ? ' 수정' : ''}` ``;
+   "계산서" 섹션 `<div className="call-detail-panel">`에 `call-receipt-panel` 클래스
+   추가(스코프 확보용, JSX 로직 무변경).
+3. `call-detail-form.css`:
+   - `.input-with-suffix`를 절대위치 겹침 방식으로(`position:relative` +
+     `.suffix{position:absolute;right:10px}`), 입력창 `padding-right`로 공간 확보.
+   - `.work-log-page .call-detail-panel .input-box { padding: 8px 10px;
+     border-radius: 11px; font-size: var(--fs-2) }` 추가(원본 인라인 값).
+   - `.work-log-page .call-receipt-panel > label { font-size: var(--fs-2);
+     font-weight: 800; margin: 0 0 7px 1px; color: var(--text-color) }` 추가.
+   - `.load-label`/`.unload-label`의 `font-weight:800`은 **그대로 유지**(원본에도 있음).
+4. CSS 분리: `side-menu.css` 811~835줄(`.call-client-shortcuts`·`.dark-pill-btn`·
+   `.dark-pill-btn.active`, 25줄)을 `call-detail-form.css`로 그대로 이동(내용 무변경).
 
 ### 건드릴 파일 (정확히 4개)
 
-1. `react-app/src/components/revenue/revenueFormat.js` — `won()` 함수 1곳만 수정.
-2. `react-app/src/side-menu.css` — 1388~1652줄(`revenue-*` 전부) 삭제.
-3. `react-app/src/components/revenue/revenue.css`(신규) — 옮긴 265줄 + 헤더 주석 1줄.
-4. `react-app/src/components/RevenuePage.jsx` — `import` 1줄 추가.
+1. `react-app/src/shared-controls.css` — 전역 focus + `.form-group label` 규칙 추가.
+2. `react-app/src/components/day-log/CallDetailForm.jsx` — 헤더 날짜 삽입,
+   `call-receipt-panel` 클래스 추가.
+3. `react-app/src/components/day-log/call-detail-form.css` — input-with-suffix·
+   input-box·계산서 레이블 규칙 추가(load/unload-label 무변경).
+4. `react-app/src/side-menu.css` — 811~835줄 삭제.
 
 ### 안 건드릴 것
 
-- `side-menu.css:144`의 `.revenue-page`(9개 화면 공유 규칙) — 무변경.
-- `side-menu.css:291~395`의 `.car-commission-*`(차량관리 모달, 매출과 무관) — 무변경.
-- `revenueFormat.js`의 `monthKeyOf`·`dateLabel`·`driverSelfNetProfitLabel` — 무변경.
-- 매출 화면의 계산 로직(`domain/finance.js` 등)·다른 화면 CSS·Store·DB — 전부 무관.
+- `.load-label`/`.unload-label`의 `font-weight:800` — 원본에도 있음, 무변경.
+- 구 항목4(시간입력 커스텀 위젯)·B그룹(누락 기능 3건)·C(레이아웃 틀어짐) — 전부 제외.
+- `.call-platform-quick-list`·`.call-receipt-group`(자체 grid/flex 정상) — 무변경.
+- `dark-pill-group` 관련 롤백 — 불필요 확인됨.
+- 다른 화면 CSS·Store·DB — 무관(단 `.form-group label` 전역 추가라 §5에서 회귀 확인).
 
 ### §8 4대 질문
 
-- `won()` 수정: 순수 표시값 정정(음수 0 보존), 구독/스냅샷·Store·DB 전부 무관.
-- CSS 파일 이동: 선택자·선언·값 변경 없음, import 경로만 바뀜.
-- 새 저장소·레이어 없음. 실패 시 처리: **신규 레이어 없음.**
+- CSS 정정 3건 + JSX 표시값 2곳(날짜 텍스트, 스코프용 className) + 파일 이동 1건.
+  전부 순수 표시값/스타일. 구독/스냅샷·Store·DB 무관. 신규 레이어 없음.
 
 ### 검증 방법
 
 - CI 자동(test·typecheck·build).
 - 감시관 브라우저 실측:
-  1. 거래처 수수료 0%(또는 설정 없음)인 게스트/테스트 데이터로 "운임 수수료" 행이
-     "-0원"으로 뜨는지 확인(수정 전 "0원"과 비교), 라이트·다크 각각.
-  2. 수수료가 실제 있는 데이터(양수 케이스)에서 기존처럼 정상 표시되는지 회귀 확인.
-  3. CSS 분리 전/후 라이트·다크 각각 매출 화면 전체(오너/드라이버 두 뷰 모두 — 요약
-     카드·연간 목록·수입/지출 카드·펼침 상세 행) 컴퓨티드 스타일 비교 + 스크린샷 대조.
+  1. 콜상세 폼 헤더에 날짜(예: "10일 일지 세부 입력").
+  2. 입력창 클릭 시 파란 테두리 — 콜상세 폼 + 다른 화면 입력창 1곳 샘플(전역 규칙).
+  3. 계기판 "km"이 입력창 안쪽 우측에 겹쳐 보이는지.
+  4. 레이블 크기 재실측 — 상차지/하차지/시간/계기판/입금예정일=fs-3,
+     거래처/계산서/비고/운송료/플랫폼=fs-2로 두 그룹 정확히 갈리는지.
+  5. `.form-group label` 전역 추가 후 다른 화면(차량관리 모달 등) 레이블 회귀 없는지.
+  6. 라이트·다크 각각, 플랫폼/계산서 pill 그룹 레이아웃 무변화 회귀.
 
-**→ 착수 승인 완료(보리, 2026-09-10, 265줄 "그대로 진행" 확정) — 작업자 진행 대상.** `[~]`.
+**→ 착수 승인 완료(보리) — 작업자 진행, 커밋 완료.** `[~]`.
 
-## 2-1. 구현 결과와 감시관 검토 (2026-09-10)
+## 1-1. 구현 결과와 감시관 검증 (2026-09-10)
 
-작업자 커밋 react-app `1a5d702`(`fix: 매출 won()이 -0원을 보존하고 revenue CSS를
-분리`), 보리 push. GitHub Actions `CI`(verify, run `34456271364`)·`Deploy GitHub
-Pages`(run `34456271453`) 둘 다 `conclusion: success`, headSha `1a5d702` 일치.
+작업자 커밋 react-app `c6c831b`(`fix: 콜상세 폼 CSS 4건을 원본 인라인 버전에
+맞춤`), push 완료. GitHub Actions `CI`(run `34463131787`)·`Deploy GitHub Pages`
+(run `34463131794`) 둘 다 `conclusion: success`, headSha `c6c831b` 일치.
 
 **감시관 §5 7항목**
-1. 범위 준수 — `git show --stat` 확인 결과 정확히 지시한 4파일
-   (`revenueFormat.js`, 신규 `revenue.css`, `side-menu.css`, `RevenuePage.jsx`)만
-   변경, 안 건드릴 것으로 지정한 `.revenue-page`(144줄)·`.car-commission-*`
-   (291~395줄)은 무영향.
-2. 몰래 증설 없음 — 새 저장소·상태·레이어 없음. `revenue.css` 신설은 착수지시서에
-   명시된 이동이라 "증설"이 아님.
-3. 타입 꼼수 없음 — 변경 파일 3개(`revenueFormat.js`·`RevenuePage.jsx`·
-   `revenue.css`) grep 결과 `any`/`@ts-ignore`/`@ts-expect-error`/`as unknown as`
-   신규 없음.
-4. 200줄 — `revenue.css` 268줄(265줄 CSS + 헤더 주석 2줄+빈 줄, 착수지시서
-   단계에서 이미 "265줄, §6 예외"로 보리 사전 승인됨), `revenueFormat.js` 31줄·
-   `RevenuePage.jsx` 27줄은 원래도 200줄 이내. `side-menu.css`는 1,605줄로 축소
-   (기존부터 초과해 있던 파일의 축소 작업 자체라 문제 아님).
-5. 테스트 진실성 — 테스트 파일 변경 없음, 착수지시서 단계부터 신규 테스트
-   불필요로 판단(표시값 정정 + CSS 이동), 기존 테스트 안 건드림.
-6. 문서 정합 — diff에 `.md` 없음, 작업자가 문서 안 건드림.
-7. 요구사항 충족 — 착수지시서의 목표 상태 1(`won()` NaN 방어로 정정)·2(CSS
-   분리)·3(import 추가) 전부 diff와 정확히 일치.
+1. 범위 준수 — `git show --stat` 확인, 정확히 지시한 4파일(`shared-controls.css`·
+   `CallDetailForm.jsx`·`call-detail-form.css`·`side-menu.css`)만 변경.
+2. 몰래 증설 없음 — 새 저장소·상태·레이어 없음, 규칙 추가/이동뿐.
+3. 타입 꼼수 없음 — 4파일 grep 결과 `any`/`@ts-ignore`/`@ts-expect-error`/
+   `as unknown as` 신규 없음.
+4. 200줄 — `call-detail-form.css` 251줄(§6 예외 상한 "~250줄까지"를 1줄 초과,
+   경미), `shared-controls.css` 201줄(예외 범위 내), `CallDetailForm.jsx` 189줄.
+   추후 정리 필요시 참고, 이번엔 보류 가능한 수준으로 판단.
+5. 테스트 진실성 — 테스트 파일 변경 없음, 착수지시서 단계부터 계획대로.
+6. 문서 정합 — diff에 `.md` 없음.
+7. 요구사항 충족 — **브라우저 실측으로 4건 전부 확인**:
+   - 헤더 "10일 일지 세부 입력" 날짜 정상 삽입.
+   - 계기판 "km" — `position:absolute; right:10px`로 입력창 안쪽 겹침 확인.
+   - 레이블 2단계 — 상차지/하차지/출발·도착시간/출발·마감계기판/입금예정일=13.6px
+     (`fs-3`), 거래처/계산서/비고/운송료/플랫폼=12.48px(`fs-2`)로 정확히 갈림
+     (계산서 레이블도 새 스코프로 정상 12.48px 확인).
+   - **입력창 포커스 테두리 — 실측 결과 정상 작동**(`outline: solid 2px
+     rgb(49,130,206)` 확인). 1차 점검 때 감시관이 CSS 명시도를 잘못 계산해
+     "안 먹힌다"고 오판했던 것 — `:where(...):focus`와 `.input-box`가 실제로는
+     동일 명시도(0,1,0)라 나중에 선언된 focus 규칙이 정상적으로 이김. 클릭
+     테스트가 실제 포커스를 못 준 상태(`document.activeElement`가 계속
+     `BODY`)에서 "안 보인다"고 잘못 판단했던 것도 원인 — 보리가 실제 화면
+     스크린샷으로 정정해줌.
+   - `.form-group label` 전역 규칙 추가로 인한 다른 화면 회귀 — 차량관리 등록
+     모달에서 재확인, 기존 로컬 규칙(fs-2, weight 750)이 그대로 유지돼 회귀 없음.
    → **7항목 전부 통과.**
 
-**감시관 자체 검증(코드 단위, §5 외 추가 확인)**
-- `won()` 로직을 브라우저 콘솔에서 격리 실행해 6가지 케이스 확인:
-  `won(-0)` → `"-0원"`(원본과 동일 재현), `won(0)` → `"0원"`, `won(NaN)`·
-  `won(undefined)` → `"0원"`(방어 유지), `won(15000)`·`won(-15000)` → 정상 금액
-  표시(회귀 없음) — 전부 기대값과 일치.
-- CSS 이동: `side-menu.css`에서 삭제된 265줄과 `revenue.css`에 추가된 265줄
-  내용이 diff상 완전히 동일(순수 이동, 셀렉터·선언·값 변형 없음), 삭제도
-  연속 hunk 1개뿐.
+CI green + §5 7항목 통과 + 브라우저 실측 완료. 보리 최종 승인 **"승인"**(2026-09-10).
 
-**감시관 브라우저 실측(로컬 dev 서버, 게스트, 라이트, 모바일 375px)**
-- `/app/revenue` 화면(전체 손익 탭) 실제 렌더링에서 **"운임 수수료" 행이
-  "-0원"으로 표시됨을 직접 확인**(같은 화면의 "운송료"·"당월 유가보조금 환급"은
-  부호 없는 "0원"으로 정상 대비). 신규 게스트라 실데이터가 0건이라 자연히
-  수수료 0 케이스가 재현됨 — 별도 시드 데이터 조작 없이 실제 화면에서 확인.
-- 페이지 전체 스크린샷(요약 카드·년/월 매출 탭·전체손익/차주 탭·운송 수입/지출
-  카드·펼침 상세) — 레이아웃 깨짐 없음, 콘솔 에러 없음.
-- 다크모드는 앱이 OS `prefers-color-scheme`가 아니라 자체 토글로 테마를
-  관리해 뷰포트 에뮬레이션만으로는 전환 안 됨(마이페이지 §1 때와 다른 확인
-  경로 필요) — CSS diff 자체가 선택자·선언·값 변경 없는 순수 이동임을 이미
-  확인했고 라이트 모드 실측도 정상이라 추가 조작 없이 이 정도로 충분하다고
-  판단. 보리가 실제 다크모드까지 직접 보고 싶다면 최종 승인 전 확인 요청.
-- 양수 케이스(실제 수수료 있는 데이터) 회귀 확인은 게스트 신규 계정이라 실
-  데이터가 없어 못 함 — 위 격리 로직 테스트(`won(15000)`)로 대체 확인.
+**A그룹(콜상세 폼 CSS 4건) — `[x]` 최종 확정.**
 
-CI green + 감시관 §5 7항목 통과 + 브라우저 실측(핵심 케이스 "-0원" 실화면 확인)
-까지 완료. **보리 최종 브라우저 확인 및 승인 대기 — `[~]`.**
+## 2. 앞으로 해야할 일 (이번 슬라이스 조사 중 발견, 착수 전)
 
-### 2-2. 보리 최종 확인 + `[x]` 확정 (2026-09-10)
+### 2-1. 일일운행 화면 2중 스크롤 (원인 확정)
 
-보리 명시 승인 **"승인"**(2026-09-10).
+`app-shell-base.css`의 `.container.main-app-container`가 모든 화면 공통으로
+`padding: 20px 16px 108px`(위+아래 128px)를 주는데, `day-log.css`의
+`.work-log-page`는 `height: 100dvh`(뷰포트 전체 높이)로 고정돼 있어 실제
+페이지 높이가 "뷰포트 높이 + 128px"가 되어 버려 바깥(body)에도 스크롤이 하나
+더 생김(실측: 뷰포트 412px, 컨테이너 540px = 412+128, 정확히 일치). 콜상세 폼
+CSS 4건(`c6c831b`)과는 무관한 `day-log.css`의 기존 구조 문제 — 보리가 스크린샷
+으로 직접 짚어줌(2026-09-10). 다음 슬라이스(B그룹 또는 별도)에서 착수지시서
+작성 필요.
 
-**§2(매출 "운임 수수료" -0원 표시 정정 + 전용 CSS 분리) — `[x]` 최종 확정.**
+### 2-2. "N일 일지 세부 입력" 섹션이 카드 밖으로 나감 (원인 확정, 1차 오판 정정)
+
+**1차 판단 오류**: 감시관이 CSS만 보고 "원본도 카드 아닌 플랫 구조"라고
+잘못 결론냈었음 — 보리가 원본·react-app 스크린샷을 나란히 짚어줘서 재조사,
+**실제로는 구조적 버그가 맞음.**
+
+- 원본 [index.html:1570-1581](ubiquitous-parakeet/index.html:1570): "운행 일지
+  세부 입력" 제목+추가버튼과 펼쳐지는 폼(`callDetailInlineHost`)이 **같은 카드
+  `<div id="modalCallDetailSection" class="modal-section">` 안에** 함께 있음
+  (제목행 → 목록 → 인라인 폼 순서로 한 카드 안에서 이어짐).
+- react-app: `CallDetailList.jsx`가 자기 카드(`<div className="modal-section
+  call-detail-section">`)를 열고 [72번째 줄](react-app/src/components/day-log/CallDetailList.jsx:72)에서
+  **닫아버린 뒤**, `DayLogPage.jsx` [151-165번째 줄](react-app/src/components/day-log/DayLogPage.jsx:151)에서
+  콜상세 폼(`InlineSheet`)이 그 카드의 **형제 요소로 따로** 렌더링됨 — 그래서
+  폼이 열리면 카드 경계 밖으로 나가 보임. CSS 값 문제가 아니라 **JSX 컴포넌트
+  구조 문제** — 별도 수정지시서 필요(`CallDetailList`가 `children`을 받아 카드
+  안에서 폼을 렌더링하도록 구조 변경, 또는 동일 효과의 대안).
+
+### 2-3. "부가세 해제" 레이블도 16px로 남아있음 (범위 밖 발견)
+
+원본 `.call-vat-row > label:first-child`에 `font-size:var(--fs-2)` 지정이
+있는데(이번 착수지시서 조사에서 이 셀렉터를 놓침) react-app엔 없어 16px로
+나옴. 이번 A그룹 4건 범위 밖이라 손 안 댐 — 다음 관련 슬라이스에서 같이 처리.
+
+### 2-4. B그룹(누락 기능 3건) — 다음 슬라이스 예정
+
+상차지/하차지 즐겨찾기 칩(`#callLocShortcuts`)·거래처 "+추가" 버튼·산재보험료
+입력 필드 — `ui-comparison-report.md` §1-B 참고, 보리 결정으로 별도 슬라이스.
