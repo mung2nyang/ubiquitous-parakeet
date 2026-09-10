@@ -14,6 +14,12 @@ React 구현은 `react-app` 저장소. 보고·원칙은 이 저장소(`ubiquito
 
 1. 루트 **`STATUS.md`** 를 읽는다 — 현재 어디까지 왔나. 진행상태 정본.
 2. 지금 슬라이스 상세가 필요하면 **`docs/report.md`** (착수지시서 + 리뷰).
+   **하나의 작업 묶음(여러 슬라이스로 이어진 한 주제)이 전부 `[x]`
+   완료되면, 그 원본 전체를 `docs/archive/<주제>.md`로 옮기고
+   `docs/report.md`는 다음 작업의 착수지시서만 남기고 새로 시작한다.**
+   (요약만 archive에 남기고 원본을 report.md에 계속 쌓아두지 않는다 —
+   archive가 동결된 진실의 원본, report.md는 항상 "지금 이 슬라이스"
+   전용으로 가볍게 유지.)
 3. 도메인 규칙 `docs/sot.md`, 목표 구조 `docs/plan.md` (필요할 때만).
 4. 저장·동기화 경로를 건드리면 `docs/testing-playbook.md` (§4 트리거 참고).
 5. `docs/archive/` 는 동결 이력 — 특정 옛 결정을 찾을 때만 연다.
