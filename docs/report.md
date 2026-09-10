@@ -1518,3 +1518,69 @@ Rule of Three 충족. 다른 모달(`call-detail-modal-content`·
   3구역 분리 전/후 컴퓨티드 스타일·레이아웃 완전 일치 확인.
 
 **→ §36·§37 둘 다 착수 승인됨(순서대로 진행). 작업자 전달.**
+
+## 38. §36·§37 완료 확인 (2026-09-10)
+
+작업자 커밋(`10a78cb`·`803a1ac`) → 보리 push 확인 → CI green(verify
+`34443433275`·deploy `34443433294` 둘 다 success, headSha 일치).
+
+- **§36(모달 shell 통합)**: diff가 지시서와 라인 단위 일치(2파일만).
+  감시관 브라우저 실측(게스트, 로컬 dev): 차량관리 수정 모달(`.car-modal`)·
+  거래처 등록 모달(`.client-modal`) 둘 다 `getComputedStyle`로
+  `width`(323.049px, `min(92vw,360px)` 그대로)·`max-height`·
+  `overflow-y`(auto)·`text-align`(left) **완전히 일치** 확인.
+- **§37(`dark-pill-group` 제거)**: diff가 지시서와 라인 단위 일치(1파일).
+  "운행 일지 세부 입력"+"플랫폼 입력"+"결제 및 수금 입력" 설정을 켜고
+  실제 콜상세 폼 진입해 확인: `.call-platform-quick-list`(display:grid,
+  3열, gap:6px)·`.call-receipt-group`(display:flex, gap:5px) 컨테이너
+  레이아웃 그대로, 내부 `.dark-pill-btn`도 컨텍스트 오버라이드값
+  (min-height 44px·border-radius 10px·padding 6px 4px) 그대로 확인 —
+  죽은 클래스 제거가 실제로 무영향임을 런타임으로도 재확인.
+- **§5 7항목**: 범위 준수·몰래 증설 없음·타입 꼼수 없음(grep 0건)·200줄
+  (아래 §39 참고)·테스트 변경 없음·문서 변경 없음·요구사항 충족 — 전부 통과.
+
+**§36·§37 `[x]` 확정.**
+
+## 39. `shared-controls.css` 분할 제안 (보리 관찰, 2026-09-10)
+
+보리가 "분할 해야할거같아"로 제기 — 감시관 검토 결과:
+
+**지금 당장 위험 수준은 아님**: 224줄로 기존 §6 "~250줄 응집 예외"
+선례(`linked-driver.css` 220·`calendar.css` 246) 범위 안. 다만 내용이
+**두 성격으로 이미 갈라져 있음**:
+1. 진짜 범용 원자 컨트롤(4~188줄, ~185줄) — `date-navigator`·
+   `summary-card`·`icon-btn`·`toggle-btn`·`input-box` 등, 화면 무관하게
+   그냥 쓰는 것들.
+2. **모달 폼 전용 패턴**(190~224줄, ~35줄) — `.car-modal`/`.client-modal`
+   shell + 그 안의 `form-group`/`label`/`.input-box` 조합 규칙. §32·§36에서
+   이번 세션에 추가한 것들.
+
+**제안**: 지금 224줄이라 급하진 않지만, 앞으로 이런 "모달 폼 중복
+정리" 작업이 더 나올 가능성이 있어 그때마다 `shared-controls.css`가
+계속 늘어나는 것보다 **지금 한 번에 분리**하는 게 안전 — 신규 파일
+`src/modal-form.css`(35줄)로 190~224줄을 그대로 옮기고
+`shared-controls.css`는 188줄로 되돌아감(상단 "200줄 초과" 주석도
+불필요해져 제거).
+
+### 건드릴 파일 (정확히 3개)
+1. `react-app/src/modal-form.css`(신규) — `shared-controls.css`
+   190~224줄(`.car-modal,.client-modal` shell + form-group/label/
+   input-box 조합 3블록) 그대로 이동.
+2. `react-app/src/shared-controls.css` — 위 35줄 삭제, 1번째 줄 주석에서
+   "여러 화면 공유로 200줄 초과 — 다음에 늘면 분할." 문구 삭제(더는
+   해당 없음).
+3. `react-app/src/app/App.jsx` — `import '../shared-controls.css'`
+   다음 줄에 `import '../modal-form.css'` 추가.
+
+### 안 건드릴 것
+- CSS 선언 내용 자체 — 파일 위치만 이동, 값 변경 0.
+- 그 외 모든 파일.
+
+### §8 4대 질문 — 순수 파일 분할, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관: `.car-modal`/`.client-modal` 모달 1곳 컴퓨티드 스타일 분리
+  전/후 일치 재확인(§36과 동일 방법).
+
+**→ 착수 승인 대기.**
