@@ -42,10 +42,20 @@
 > 13개는 이미 햄버거 정상 작동 중이라 마크업만 교체(동작 무변경),
 > 지난번 발견한 누락 3개(고객센터·매출·연동/미연동 기사관리 거래처)만
 > 이번에 `onOpenMenu` 신규 추가, 나머지 6개(§2~14 범위 미착수 화면)는
-> 마크업만 통일하고 기능 확장 안 함. **① 슬라이스(컴포넌트 신규+
-> AppSettingsPage·MyPage·NoticePage·PersonalInfoPage 4파일) 착수지시서
-> 작성 완료(`docs/report.md` §16), 착수 승인 대기.** 이전 작업(미연동
-> 서브차량+사이드메뉴, §1~§16 전체 `[x]`)은
+> 마크업만 통일하고 기능 확장 안 함. **① 슬라이스(`PageHeader.jsx`
+> 신규+AppSettingsPage·MyPage·NoticePage·PersonalInfoPage, react-app
+> `1f63ae1`) `[x]` 완료** — 정확히 5파일만 변경, CI green, 각 파일
+> diff를 코드로 직접 대조(로직 무변경, `<PageHeader .../>` 한 줄
+> 치환 정확), 줄수 전부 예상대로 감소(198→185·198→185·74→61·
+> 206→193). 부수 발견: `MyPage.jsx`의 원래 스페이서(`.mypage-header-spacer`,
+> 44×44px)가 공용 스페이서(40px, `.icon-btn`과 동일 폭이라 오히려
+> 더 정확)로 통일됨 — 실제 라우팅에선 `onOpenMenu`가 항상 있어 그
+> 분기가 렌더링된 적이 없어 시각적 영향 없음, 재작업 요구 없이 기록만
+> (§15-3에서 `InviteRedeemPage.jsx`만 예외로 적었던 게 부정확했음,
+> 뒤늦게 발견). **② 슬라이스(TaxInvoicePage·MaintFuelPage·ReportPage·
+> ReceivablesListPage, 4파일) 착수지시서 작성 완료(`docs/report.md`
+> §18), 착수 승인 대기.** 이전 작업(미연동 서브차량+사이드메뉴,
+> §1~§16 전체 `[x]`)은
 > `docs/archive/sub-vehicle-management-and-side-menu.md`로 이관.)
 >
 > 이전 최종 갱신: 2026-09-09 (**`main-calendar.css` 책임 분리 1~10차 전부 `[x]` 완료**

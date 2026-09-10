@@ -807,3 +807,53 @@ onOpenMenu={onOpenMenu} />` 한 줄로 교체. **화면에 보이는 결과·동
   버튼 클릭 동작 확인.
 
 **→ 착수 승인 대기.**
+
+## 17. ① 슬라이스 완료 확인 (2026-09-10)
+
+작업자 커밋(`1f63ae1`) → 보리 push(`origin/main` 일치 확인) →
+"진행해" 지시. CI green(verify `34433286140` success, deploy
+`34433286008` success) + `git show --stat`로 정확히 지시한 5파일(신규
+`PageHeader.jsx` 37줄 + 수정 4)만 변경 확인 + 각 파일 diff를 코드로
+직접 대조(4파일 다 `<PageHeader title=... onBack={onBack}
+onOpenMenu={onOpenMenu} />` 한 줄로 정확히 치환, 로직·prop 계약
+무변경). 줄수도 예상대로 감소: `AppSettingsPage.jsx` 198→185,
+`MyPage.jsx` 198→185, `NoticePage.jsx` 74→61, `PersonalInfoPage.jsx`
+206→193.
+
+**발견(재작업 요구 안 함, 기록만)**: `MyPage.jsx`의 원래 스페이서가
+다른 3개와 달리 `<span className="mypage-header-spacer"
+aria-hidden="true">`(CSS: 44×44px)였는데, `PageHeader.jsx`의 공용
+스페이서는 21개 파일 기준의 `<div style={{ width: 40 }}></div>`라
+이번에 40px로 통일됨. `.icon-btn` 자체가 40×40px라 오히려 대칭이 더
+정확해진 변경이고, 실제 라우팅에서 `MyPage`는 `onOpenMenu`가 항상
+전달돼 스페이서 분기 자체가 렌더링된 적이 없어(햄버거 버튼만 항상
+보임) **현재 화면엔 시각적 영향 없음** — 다만 §15-3 조사 때
+`InviteRedeemPage.jsx`만 예외로 적었던 게 부정확했음(이 파일도 같은
+예외였는데 감시관이 놓침, 이번에 뒤늦게 발견). `[x]` 확정.
+
+## 18. 이번 슬라이스(②) — TaxInvoicePage·MaintFuelPage·ReportPage·ReceivablesListPage
+
+§15-6 로드맵 그대로. 4개 전부 §15-3에서 확인한 표준 마크업(스페이서도
+전부 `<div style={{ width: 40 }}></div>`, ①에서 발견한 것 같은 예외
+없음 — 이번엔 재확인 완료) + `onOpenMenu` 이미 정상 작동 중.
+
+### 건드릴 파일 (정확히 4개, 전부 수정)
+1. `react-app/src/components/TaxInvoicePage.jsx`
+2. `react-app/src/components/MaintFuelPage.jsx`
+3. `react-app/src/components/ReportPage.jsx`
+4. `react-app/src/components/receivables/ReceivablesListPage.jsx`
+
+각 파일의 `settings-header` 블록을 `<PageHeader title="..." onBack={...}
+onOpenMenu={onOpenMenu} />` 한 줄로 교체(①과 동일 패턴). `ReportPage.jsx`는
+`onBack` 대신 `handleHeaderBack`을 그대로 전달.
+
+### 안 건드릴 것
+- `PageHeader.jsx`(이미 완성, 무변경). 나머지 16개 화면(③~⑥ 몫).
+
+### §8 4대 질문 — 순수 리팩터, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 커밋 전/후 대조(①과 동일 방식).
+
+**→ 착수 승인 대기.**
