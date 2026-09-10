@@ -67,7 +67,14 @@
 > `day-log/DayLogHeader.jsx`(33줄, 소비처 `DayLogPage.jsx` 하나뿐)가
 > 흡수하면 순수 껍데기가 될 걸 새로 발견 — 보리 지시대로
 > `DayLogPage.jsx`(178→약 188줄, 250 미만)에 흡수, 파일 자체 삭제.
-> 이전 작업(미연동 서브차량+사이드메뉴, §1~§16 전체 `[x]`)은
+> **④(react-app `4db3940`) `[x]` 완료** — 정확히 2수정+1삭제, CI green,
+> diff 대조로 로직 무변경 확인. 줄수: `DayLogPage.jsx` 178→184(예상과
+> 거의 일치), `ReceivablesDetailPage.jsx` 103→98. **⑤ 슬라이스(누락분
+> 해소 — 매출·고객센터·기사관리 거래처, 동작 변경 포함) 착수지시서
+> 작성 완료(`docs/report.md` §24), 착수 승인 대기.** `revenue/RevenueNav.jsx`의
+> `PageShell`도 §15-5 결정대로 `RevenuePage.jsx`(30→약 20줄)로 흡수.
+> 이 슬라이스가 끝나면 6개 로드맵 중 ⑥(§2~14 범위 5개, 동작 무변경)만
+> 남는다. 이전 작업(미연동 서브차량+사이드메뉴, §1~§16 전체 `[x]`)은
 > `docs/archive/sub-vehicle-management-and-side-menu.md`로 이관.)
 >
 > 이전 최종 갱신: 2026-09-09 (**`main-calendar.css` 책임 분리 1~10차 전부 `[x]` 완료**

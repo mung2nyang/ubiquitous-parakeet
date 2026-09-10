@@ -964,3 +964,69 @@ CI green(verify `34434256007` success, 로그로 typecheck·test·build
   미수금 상세 화면 둘 다 라이트/다크 확인.
 
 **→ 착수 승인 대기.**
+
+## 23. ④ 슬라이스 완료 확인 (2026-09-10)
+
+작업자 커밋(`4db3940`) → 보리 push 확인(바로 반영됨) → CI
+green(verify `34434671869`·deploy `34434671871` 둘 다 success).
+정확히 지시한 2수정+1삭제만 변경, diff 전체 대조: `DayLogPage.jsx`가
+`PageHeader`+`AutoSaveStatus` 직접 import해 `titleExtra`로 정확히
+연결(`handleClose`→`onBack` 매핑 정확), `DayLogHeader.jsx` 삭제,
+`ReceivablesDetailPage.jsx`는 `onOpenMenu` 없이 단순 치환(동작 무변경
+유지 확인). 줄수: `DayLogPage.jsx` 178→184(예상 188과 거의 일치, 250
+미만), `ReceivablesDetailPage.jsx` 103→98. `[x]` 확정.
+
+## 24. 이번 슬라이스(⑤) — 누락분 해소: 매출·고객센터·기사관리 거래처 (동작 변경 포함, 마지막 전 슬라이스)
+
+§15-6 로드맵의 "동작 변경 포함" 슬라이스. 지난번 보리가 브라우저에서
+직접 찾아낸 누락 3곳에 드디어 `onOpenMenu`를 추가한다.
+
+### 현재 상태
+- `revenue/RevenueNav.jsx`의 `PageShell`(17줄) — 유일한 소비처는
+  `RevenuePage.jsx`(30줄). `onBack`만 받고 `onOpenMenu` 없음.
+- `CustomerCenterPage.jsx`(230줄, 헤더 1곳) — `onOpenMenu` 없음.
+- `drivers/LinkedDriverClientsPage.jsx`(207줄, 헤더 2곳 — notFound
+  분기+정상 분기) — `onOpenMenu` 없음.
+- `app/AppShellRoutes.jsx`의 `revenue`·`support`(고객센터)·
+  `logs/:logId/clients`·`drivers/:linkId/clients` 4개 라우트 전부
+  `onOpenMenu` 미전달.
+
+### 목표 상태
+①~④와 동일한 조건부 패턴으로 `onOpenMenu` 신규 연결 + §15-5 결정대로
+`PageShell` 흡수.
+
+### 건드릴 파일 (정확히 5개)
+1. `react-app/src/app/AppShellRoutes.jsx` — 4곳에 `onOpenMenu={onOpenMenu}`
+   추가.
+2. `react-app/src/components/revenue/RevenueNav.jsx` — `PageShell`
+   함수(및 그 JSDoc) **삭제**, `DateNav`만 남김(59→약 42줄).
+3. `react-app/src/components/RevenuePage.jsx` — `PageShell` import
+   제거, `onOpenMenu` prop 추가, 직접 `<div className="page
+   revenue-page"><PageHeader title="매출" onBack={onBack}
+   onOpenMenu={onOpenMenu} />{...}</div>` 렌더링(30→약 20줄).
+4. `react-app/src/components/CustomerCenterPage.jsx` — `<PageHeader
+   title="고객센터" onBack={onBack} onOpenMenu={onOpenMenu} />`로
+   교체 + 함수 시그니처에 `onOpenMenu` prop 추가.
+5. `react-app/src/components/drivers/LinkedDriverClientsPage.jsx` —
+   두 헤더(notFound 분기: `<PageHeader title={unlinked ? title :
+   '기사 거래처'} onBack={handleBack} onOpenMenu={onOpenMenu} />`,
+   정상 분기: `title` 그대로) 다 교체 + 함수 시그니처에 `onOpenMenu`
+   prop 추가.
+
+### 안 건드릴 것
+- `PageHeader.jsx`(무변경). 나머지 5개 화면(⑥ 몫).
+- `revenue/OwnerRevenueView.jsx`·`DriverRevenueView.jsx`·`DateNav`
+  자체(로직 무변경, `PageShell`만 제거).
+
+### §8 4대 질문 — 순수 UI prop 추가(신규 레이어 아님, 기존 §7 원칙과
+동일한 조건부 버튼 패턴 재사용)라 해당 없음. 실패 시 처리: **신규
+레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 매출·고객센터 2화면은 게스트로 직접 진입해
+  햄버거 버튼 확인. 기사관리 거래처(연동·미연동 두 라우트)는 게스트
+  계정에 연동 기사가 없으면 코드 대조로 대체하고 보리 확인 요청(이전
+  ④-2 때와 동일한 제약).
+
+**→ 착수 승인 대기.**
