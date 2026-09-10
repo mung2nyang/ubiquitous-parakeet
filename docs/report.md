@@ -1362,3 +1362,46 @@ dev 서버(`npm run dev`)로 직접 브라우저 실측**(게스트 세션,
      (스코프 밖 소비처 무영향 재확인)
 
 **→ 착수 승인 대기.**
+
+## 33. §32 슬라이스 완료 확인 (2026-09-10)
+
+작업자 커밋(`99c5c6e0`) → 보리 push 확인 → CI green(verify
+`34440701811`·deploy `34440701795` 둘 다 success, headSha 일치).
+
+- **§5 7항목 검토**: ①범위 준수 — 지시한 3파일(`shared-controls.css`·
+  `side-menu.css`·`ReportDetailView.jsx`)만 변경, diff가 지시서와
+  라인 단위 일치 ②몰래 증설 없음 — 새 파일·저장키·durable 레이어 0,
+  순수 CSS 이동 + 클래스명 1개 추가뿐 ③타입 꼼수 없음(`any`/
+  `@ts-ignore`/`@ts-expect-error`/`as unknown as` grep 0건) ④200줄 —
+  `side-menu.css` 2104줄(감소)·`ReportDetailView.jsx` 143줄 문제없음,
+  **`shared-controls.css`만 187→215줄로 이번에 처음 200줄을 넘김**(아래
+  참고, 사용자 확인 필요) ⑤테스트 파일 변경 0 ⑥`.md` 변경 0 ⑦요구사항
+  — 지시서의 3블록 조합 셀렉터 그대로 구현, `ReportClientPickerModal`에
+  `report-picker-modal` 클래스 추가까지 확인.
+- **감시관 브라우저 실측**(로컬 dev 서버, 게스트 세션, 375×812):
+  1. 차량관리 수정 모달 — `getComputedStyle`로 `.form-group`
+     (`margin-bottom:14px`/`text-align:left`)·`label`(`display:block`/
+     `margin-bottom:8px`/`font-weight:750`)·`.input-box`
+     (`text-align:left`) 전부 지시서 값과 완전 일치 확인.
+  2. 리포트 "세부 내역서 조회" 거래처 선택 모달 — 동일 3항목 전부
+     지시서 값과 일치 확인 + 스크린샷으로 여백·왼쪽정렬 적용된 모습
+     시각 확인(승인된 의도된 변화 그대로).
+  3. 콜상세 폼(`CallDetailForm.jsx`/`call-detail-form.css`) — 두 파일
+     모두 diff 0줄, 새로 추가된 조합 셀렉터의 조상 스코프
+     (`.car-modal`/`.client-modal`/`.personal-info-page`/
+     `.app-settings-page`/`.report-picker-modal`) 중 콜상세 폼을 감싸는
+     것이 하나도 없어 **정적으로 매칭 자체가 불가능**함을 셀렉터
+     대조로 확인(런타임 진입은 입력모드 전환이 필요해 스킵, 셀렉터
+     대조로 충분히 갈음).
+  - 변경된 속성(margin-bottom·text-align·display·font-size·font-weight)이
+    전부 비색상 값이라 라이트/다크 테마 차이 없음 — 다크모드 별도
+    재확인 생략.
+
+**⚠️ `shared-controls.css` 187→215줄, 이번 슬라이스에서 처음 200줄
+초과(+15). §6 "응집도 우선, ~250줄까지 이유 1줄 주석" 예외 범위 안에
+있고(기존 `linked-driver.css` 220·`calendar.css` 246·
+`call-detail-card.css` 217·`call-detail-form.css` 207 선례와 같은 폭),
+착수지시서 단계에서 이 임계값 교차를 미리 못 짚어 사전 승인이 없었음
+— 보리 확인 필요(주석 추가 여부 포함).**
+
+`[~]` — 위 200줄 건만 보리 확인되면 `[x]` 확정.
