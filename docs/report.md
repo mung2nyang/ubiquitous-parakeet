@@ -1050,3 +1050,89 @@ green(verify `34434671869`·deploy `34434671871` 둘 다 success).
 ⑥(§2~14 범위 5개, 동작 무변경 마크업 통일)뿐. **보리가 "추가작업
 있다"며 대기 지시 — ⑥ 착수지시서는 다음 지시 전까지 작성하지 않고
 대기.**
+
+## 26. 보리 지시로 재개 (2026-09-10) — ⑥ 착수지시서 + 홈 캘린더 헤더 적용 예고
+
+> "6번 진행한뒤에 홈 캘린더도 적용해 [알림벨] + [메인로고금지/공백유지]
+> + [햄버거] 한줄구조. 아래줄부터 메인로고 나오니까 거기건들지말고
+> 윗줄부터 공통헤더만넣어"
+
+두 작업 순서대로: ⑥ 먼저, 그다음 홈 캘린더(§27에서 별도 조사 후 질문
+예정 — 현재 `position:fixed` 방식이라 단순 마크업 치환이 아니라
+동작 확인이 필요함).
+
+## 27. 이번 슬라이스(⑥, 마지막) — 나머지 5화면 헤더 통일 (동작 무변경)
+
+§15-6 로드맵 그대로. 5개 전부 재확인 완료 — 전부 표준 마크업, `onOpenMenu`
+없음(§2~14 범위라 이번에도 추가 안 함, 순수 마크업 통일만).
+
+### 건드릴 파일 (정확히 5개, 전부 수정)
+1. `react-app/src/components/ComingSoonPage.jsx` — `<PageHeader
+   title={title} onBack={onBack} />`.
+2. `react-app/src/components/DriverConnectionPage.jsx` — `<PageHeader
+   title="기사 연동 관리" onBack={onBack} />`.
+3. `react-app/src/components/drivers/BillingSettingsPage.jsx` —
+   `<PageHeader title="정산·계산서 설정" onBack={handleBack} />`.
+4. `react-app/src/components/InviteRedeemPage.jsx` — `<PageHeader
+   title="차주 연동" onBack={onBack} />`(원래 스페이서가
+   `mypage-header-spacer`(44px)였는데 공용 40px로 통일됨 — ①에서
+   확인한 것과 동일한 성격의 부수 변경, 문제없음).
+5. `react-app/src/components/MessageSettingsPage.jsx` — `<PageHeader
+   title="문자 문구 설정" onBack={onBack} />`.
+
+### 안 건드릴 것
+- `PageHeader.jsx`(무변경). `AppShellRoutes.jsx`(이 5개 라우트엔
+  `onOpenMenu` 추가 안 함 — §2~14 범위 유지).
+
+### §8 4대 질문 — 순수 리팩터, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 커밋 전/후 대조(①~⑤와 동일 방식).
+
+**→ 착수 승인 대기. 이게 끝나면 §15-6 로드맵(①~⑥) 전체 완료.**
+
+## 28. (⑥ 다음 슬라이스, 착수지시서는 ⑥ 완료 후 별도 작성) 홈 캘린더 헤더 한 줄 구조 조사
+
+`calendar/CalendarHeader.jsx` 현재 구조:
+- 알림벨(`.top-notification-btn`, `onOpenNotifs` 있을 때만)과 햄버거
+  (`.top-btn-group` 안의 `.top-menu-btn`, `onOpenMenu` 있을 때만)가
+  **서로 별개의 `position: fixed` 요소**(`side-menu.css:7`·`:1290`) —
+  뷰포트 좌상단·우상단에 각각 떠 있고, 문서 흐름과 무관. 아래
+  `.header`(배너+연월 선택, `calendar.css:4` `margin-top: 40px`)는
+  그 아래 별도로 존재.
+- `top-menu-btn` 클래스 자체는 `PageHeader.jsx`와 공유(아이콘 동일)하나
+  `top-btn-group`·`top-notification-btn`은 **이 파일 하나만 사용**
+  (`grep -rl` 확인) — 바꿔도 다른 화면 영향 없음.
+
+**보리 확인(2026-09-10)**: 한 줄 구조로 바꾸면 지금처럼 스크롤해도
+계속 떠 있는 게 아니라 **다른 22개 화면처럼 스크롤하면 같이
+사라지는 것으로 확정**("스크롤하면 같이 사라져도 됨").
+
+### 설계 방향(다음 착수지시서 초안, 아직 미승인)
+`settings-header` 클래스를 그대로 재사용(새 CSS 없음)해 3칸 구조로
+교체 — `PageHeader.jsx`와 같은 모양이지만 내용이 달라 별도 컴포넌트로
+(뒤로가기 자리에 알림벨, 타이틀 자리는 완전히 비움):
+
+```jsx
+<div className="settings-header">
+  {onOpenNotifs ? (
+    <button type="button" className="icon-btn top-notification-btn" title="알림" onClick={onOpenNotifs}>
+      {/* 기존 벨 SVG */}
+      {notifCount > 0 && <span className="notification-count-badge">...</span>}
+    </button>
+  ) : <div style={{ width: 40 }}></div>}
+  <div></div>
+  {onOpenMenu ? (
+    <button type="button" className="icon-btn top-menu-btn" title="메뉴" onClick={onOpenMenu}>
+      {/* 기존 햄버거 SVG */}
+    </button>
+  ) : <div style={{ width: 40 }}></div>}
+</div>
+<div className="header">{/* 배너+연월 선택, 무변경 */}</div>
+```
+
+CSS는 `side-menu.css`의 `.top-notification-btn`에서 `position:
+fixed`·`top`·`left` 제거, `.top-btn-group`(더는 안 씀) 삭제 또는
+무변경 방치 여부 결정 필요 — ⑥ 완료 후 이 문서에 정식 착수지시서로
+이어 작성.
