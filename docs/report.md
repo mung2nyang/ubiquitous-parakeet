@@ -486,3 +486,45 @@ AGENTS §6·§12의 "예외 없이 분리설계" 약속 때문에 ①~③처럼 
   대조 + 보리 확인 요청).
 
 **→ 이 분리설계안 승인 후 착수.**
+
+## 12. ④-2 완료 확인 + 이번 슬라이스(⑤, 마지막) — 앱 설정·공지 헤더 햄버거 버튼 (2026-09-10)
+
+④-2(`ff322d6`) 설계안대로 정확히 4파일만 변경, CI green, 보리 직접
+커밋·push·브라우저 검증(연동·미연동 두 모드) 완료 확인 — `[x]`.
+
+§1-2(공용 헤더 스타일 통일) 5슬라이스 계획의 마지막, ⑤ 착수지시서.
+
+### 현재 상태
+- `components/AppSettingsPage.jsx:18,96` — `export default function
+  AppSettingsPage({ ownerKey = 'guest', onBack, showToast })`, 스페이서
+  `<div style={{ width: 40 }}></div>`(189줄, 문제없음).
+- `components/NoticePage.jsx:26,41` — `export default function
+  NoticePage({ onBack })`(다른 화면과 달리 `ownerKey`·`showToast` 없음
+  — 기존 시그니처 그대로 둠), 스페이서 동일 패턴(65줄, 문제없음).
+- `app/AppShellRoutes.jsx:88,100` — `me/settings`(→`AppSettingsPage`)·
+  `notice`(→`NoticePage`) 두 라우트 모두 `onOpenMenu` 없음.
+
+### 목표 상태
+①~④-2와 동일한 조건부 버튼 패턴(`onOpenMenu` 있으면 햄버거, 없으면
+기존 스페이서 유지).
+
+### 건드릴 파일 (정확히 3개)
+1. `react-app/src/app/AppShellRoutes.jsx` — `me/settings`·`notice` 두
+   곳에 `onOpenMenu={onOpenMenu}` 추가.
+2. `react-app/src/components/AppSettingsPage.jsx` — 동일 패턴.
+3. `react-app/src/components/NoticePage.jsx` — 동일 패턴(`onOpenMenu`
+   prop 신규 추가, 기존 `onBack`만 있던 시그니처에 추가).
+
+### 안 건드릴 것
+- Store·DB·동기화, 기존 prop 전부.
+- 이걸로 §1-2 원안 5슬라이스(①~⑤) 전체 종료 — 후속 화면(§2~14)은
+  보리가 직접 작성해둔 기록이 있으나 아직 착수지시서 없음(다음 세션
+  범위).
+
+### §8 4대 질문 — 순수 UI prop 추가라 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관/보리 브라우저 실측: 앱 설정·공지 2화면 진입해 햄버거 버튼 확인.
+
+**→ 착수 승인 대기.**

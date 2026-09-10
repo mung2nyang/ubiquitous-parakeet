@@ -17,9 +17,16 @@
 > 이번에도 생략). `ReportPage.jsx` 250줄(사전 확정대로 초과 진행),
 > `PersonalInfoPage.jsx`는 197→206줄로 착수지시서에서 "문제없음"이라
 > 적었던 것과 달리 200줄을 넘김(감시관이 못 미리 잡은 부분, 재작업
-> 요구 없이 기록만 남김). **다음은 ④-2 — 기사 연동 관리
-> (`LinkedDriverManagementPage.jsx`) 분리설계안, 착수 전 승인 필요
-> (`docs/report.md` §11).** 이전 작업(미연동 서브차량+사이드메뉴,
+> 요구 없이 기록만 남김). **④-2(기사 연동 관리 분리설계+햄버거,
+> `ff322d6`) `[x]` 완료** — 정확히 설계안대로 4파일(신규
+> `SettlementSummaryCard.jsx` 50줄+`ClientInvoiceGroups.jsx` 73줄,
+> 수정 `LinkedDriverManagementPage.jsx` 246→197줄+`AppShellRoutes.jsx`)만
+> 변경, CI green(verify `34429390069`·deploy `34429390070` 둘 다
+> success) + 보리가 직접 커밋·push·브라우저 검증(연동·미연동 두 모드
+> 정산/세금계산서 표시+햄버거)까지 마치고 확인(2026-09-10, §5 체크리스트
+> 생략). **§1-2(공용 헤더) 5슬라이스 중 ①~④+④-2 전부 `[x]`, 남은 건
+> ⑤(앱 설정·공지) 하나 — 착수지시서 작성 완료(`docs/report.md` §12),
+> 착수 승인 대기.** 이전 작업(미연동 서브차량+사이드메뉴,
 > §1~§16 전체 `[x]`)은
 > `docs/archive/sub-vehicle-management-and-side-menu.md`로 이관.)
 >
@@ -418,9 +425,18 @@ success + deploy `34427840793` success, headSha 일치) + 보리가 직접
   "197줄, 문제없음"이라 적었으나 실제로는 206줄로 200줄을 넘김 —
   감시관이 착수지시서 작성 시 못 잡았던 부분, 재작업 요구 없이 기록만
   남김.
-- **다음 — ④-2: `LinkedDriverManagementPage.jsx`(현재 246줄, "다음
-  초과 시 예외 없이 분리설계" 약속) 분리설계안, 착수 전 승인 필요
-  (`docs/report.md` §11).**
+- **④-2(기사 연동 관리 분리설계+햄버거) `[x]` 완료(react-app `ff322d6`,
+  2026-09-10).** 설계안대로 정확히 4파일(신규 `SettlementSummaryCard.jsx`
+  50줄·`ClientInvoiceGroups.jsx` 73줄, 수정
+  `LinkedDriverManagementPage.jsx` 246→197줄·`AppShellRoutes.jsx`)만
+  변경, CI green(verify `34429390069`·deploy `34429390070` 둘 다
+  success) + 보리가 직접 커밋·push·브라우저 검증(연동 기사·미연동
+  서브차량 두 모드 정산/세금계산서 표시 + 햄버거 버튼)까지 마치고
+  확인(§5 체크리스트 생략). "다음 초과 시 예외 없이 분리설계" 약속대로
+  분리 진행해 197줄로 200줄 아래 복귀.
+- **다음 — ⑤(마지막): 앱 설정·공지 헤더 햄버거 버튼, 착수지시서 작성
+  완료(`docs/report.md` §12), 착수 승인 대기.** 이걸로 §1-2(공용 헤더
+  스타일 통일) 5슬라이스 전체 계획 완료.
 
 ### 감시관 관찰 (미확인 — 실행 지시 아님)
 - **홈 화면 하단 "{이름}님 · 달력에 횟수 기록" 문구 고정 표시 의심**(구 ③
