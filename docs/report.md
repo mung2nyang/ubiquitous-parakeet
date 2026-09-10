@@ -904,3 +904,63 @@ onOpenMenu={onOpenMenu} />` 한 줄로 교체(①과 동일 패턴). `ReportPage
   `title`로 서로 다름) 둘 다 확인.
 
 **→ 착수 승인 대기.**
+
+## 21. ③ 슬라이스 완료 확인 (2026-09-10)
+
+작업자 커밋(`e2ec81e`) → 보리 첫 push 시도 때 실제로는 반영 안 됨
+확인(`git fetch` 후 `origin/main` 그대로) → 보리 재push 확인 →
+CI green(verify `34434256007` success, 로그로 typecheck·test·build
+3게이트 확인). 정확히 지시한 4파일 + diff 전체 대조: 앞 3개는
+`<PageHeader .../>` 한 줄 치환, `LinkedDriverManagementPage.jsx`는
+로컬 `pageHeader()` 함수 삭제 + 호출부 2곳 JSX 직접 교체(인자·순서
+그대로, 로직 무변경). 줄수 전부 감소: `CarListPage.jsx` 189→176,
+`ClientListPage.jsx` 130→117, `OwnerScopedClientsView.jsx` 165→152,
+`LinkedDriverManagementPage.jsx` 197→176. `[x]` 확정.
+
+## 22. 이번 슬라이스(④) — day-log 헤더 흡수 + ReceivablesDetailPage
+
+§15-6 로드맵의 "특수 케이스" 슬라이스. 착수 전 재확인하다 §15-5에서
+예상 못 했던 흡수 대상 하나를 추가로 발견:
+
+- **`day-log/DayLogHeader.jsx`(현재 33줄)** — `titleExtra`로
+  `AutoSaveStatus`를 넘기게 바꾸면 이 파일 자체가 `<PageHeader
+  title={...} titleExtra={<AutoSaveStatus .../>} onBack={onClose}
+  onOpenMenu={onOpenMenu} />` 한 줄짜리 순수 pass-through로 줄어듦
+  (약 15줄). **유일한 소비처가 `DayLogPage.jsx`(현재 178줄) 하나뿐**
+  이라 보리 지시("껍데기 파일은 부모로 흡수, 250줄 넘으면 그냥 둬")
+  대로 흡수 대상 — 흡수해도 `DayLogPage.jsx`는 약 188줄 예상(250 미만,
+  조건 충족). **`DayLogHeader.jsx` 파일 자체를 삭제**하고
+  `DayLogPage.jsx`가 `PageHeader`·`AutoSaveStatus`를 직접 import해
+  렌더링.
+- **`receivables/ReceivablesDetailPage.jsx`(103줄)** — 특수 구조
+  없음, 단순 `<PageHeader .../>` 치환. `onOpenMenu` 없음(원래
+  의도적 제외, 동작 무변경 유지 — 이번에도 추가 안 함).
+
+### 건드릴 파일 (정확히 2개 수정 + 1개 삭제)
+1. `react-app/src/components/day-log/DayLogPage.jsx`(수정) —
+   `DayLogHeader` import 제거, `PageHeader`·`AutoSaveStatus` 직접
+   import, 117번째 줄 렌더링부를 `<PageHeader title={\`${month}월
+   ${day}일 운행 일지\`} titleExtra={<AutoSaveStatus
+   status={autoSaveStatus} />} onBack={handleClose} onOpenMenu={onOpenMenu}
+   />`로 교체(현재 `onClose` prop이 실제로는 `handleClose`를 받으므로
+   변수명 그대로 대응).
+2. `react-app/src/components/day-log/DayLogHeader.jsx`(**삭제**) —
+   다른 소비처 0곳 확인됨(`grep -rl DayLogHeader src/` 결과 자기
+   자신+`DayLogPage.jsx` 둘뿐).
+3. `react-app/src/components/receivables/ReceivablesDetailPage.jsx`
+   (수정) — `<PageHeader title="미수금 상세" onBack={() =>
+   navigate('/app/receivables')} />` 한 줄로 교체(`onOpenMenu` 없음
+   유지).
+
+### 안 건드릴 것
+- `PageHeader.jsx`(무변경). 나머지 12개 화면(⑤~⑥ 몫).
+- `AutoSaveStatus.jsx` 자체(내용 무변경, import 위치만 이동).
+
+### §8 4대 질문 — 순수 리팩터, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 커밋 전/후 대조: 일지 화면 헤더(자동저장 상태 표시 포함)·
+  미수금 상세 화면 둘 다 라이트/다크 확인.
+
+**→ 착수 승인 대기.**

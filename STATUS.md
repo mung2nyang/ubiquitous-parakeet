@@ -58,9 +58,16 @@
 > 감소(216→203·250→237·215→202·100→87) — **200줄 넘던 4개 다 줄고
 > 여유도 커짐, 추가 조치 불필요.** **③ 슬라이스(CarListPage·
 > ClientListPage·OwnerScopedClientsView·LinkedDriverManagementPage,
-> 마지막 파일은 로컬 `pageHeader()` 헬퍼 삭제 포함) 착수지시서 작성
-> 완료(`docs/report.md` §20), 착수 승인 대기.** 이전 작업(미연동
-> 서브차량+사이드메뉴, §1~§16 전체 `[x]`)은
+> react-app `e2ec81e`) `[x]` 완료** — 정확히 4파일만 변경(로컬
+> `pageHeader()` 헬퍼 삭제 포함), CI green(첫 push 시도는 실제로는
+> 반영 안 됐던 것 확인 후 보리 재push), diff 전체 대조로 로직 무변경
+> 확인. 줄수 전부 감소(189→176·130→117·165→152·197→176). **④
+> 슬라이스(day-log 헤더 흡수+ReceivablesDetailPage) 착수지시서 작성
+> 완료(`docs/report.md` §22), 착수 승인 대기.** 착수 전 재조사하다
+> `day-log/DayLogHeader.jsx`(33줄, 소비처 `DayLogPage.jsx` 하나뿐)가
+> 흡수하면 순수 껍데기가 될 걸 새로 발견 — 보리 지시대로
+> `DayLogPage.jsx`(178→약 188줄, 250 미만)에 흡수, 파일 자체 삭제.
+> 이전 작업(미연동 서브차량+사이드메뉴, §1~§16 전체 `[x]`)은
 > `docs/archive/sub-vehicle-management-and-side-menu.md`로 이관.)
 >
 > 이전 최종 갱신: 2026-09-09 (**`main-calendar.css` 책임 분리 1~10차 전부 `[x]` 완료**
