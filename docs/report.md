@@ -583,3 +583,227 @@ AGENTS §6·§12의 "예외 없이 분리설계" 약속 때문에 ①~③처럼 
   통일. 구체 설계(파일 위치, prop 인터페이스, 기존 22개 파일 중 몇 개를
   이번에 옮길지 등)는 보리가 착수지시서 작성을 지시하는 시점에 다시
   조사해 확정한다 — 지금 미리 설계하지 않음(지시 위반 방지).
+
+## 15. 보리 지시로 재개 (2026-09-10) — 공용 헤더 컴포넌트 `PageHeader` 설계 + 전체 로드맵
+
+> "22개 심각하네 공용 헤더 컴포넌트 만들어서 settings-header 패턴 쓰는
+> 파일 22개 전부 기존 중복 헤더 코드를 공용 컴포넌트 호출로 대체해.
+> 리팩토링 후 기존 화면 디자인/기능 깨짐 없는지 검증도 해야하고 22개가
+> 전부인지 확인해. 코드가 몇 줄 남지 않는 불필요한 하위/껍데기 컴포넌트
+> 파일이 생기면 독립 파일로 남겨두지 말고 부모 컴포넌트에 다시
+> 흡수시켜. 그렇다고 흡수할 때 250 이상 줄이면 그냥 둬"
+
+§14의 대기 지시가 이 메시지로 풀림 — 착수지시서 재작성 시작.
+
+### 15-1. "22개가 전부인가" 검증
+
+세 가지 독립 검색으로 교차 확인:
+- `grep -rl "settings-header" src/components src/app` → **22개**.
+- `grep -rl "settings-title" src/components src/app` → **22개, 파일
+  목록 완전히 동일**(클래스 페어라 당연히 일치, 교차검증용).
+- `grep -rl "뒤로가기" src/components src/app` → 32개(22개 포함, 나머지
+  10개는 개별 확인):
+  - `auth/AuthLoginView.jsx`·`auth/AuthSignupView.jsx` — 로그인 전
+    화면, `auth-topbar`/`auth-back-icon-btn`이라는 **완전히 다른
+    헤더**(햄버거 메뉴 자체가 없는 화면, 사이드메뉴 개념 없음) — 대상
+    아님.
+  - `day-log/DayLogPage.jsx`·`app/AppShell.jsx`·`app/MainPageRoute.jsx`·
+    `app/workLogNavigation.js` — "뒤로가기"라는 **단어가 주석에만**
+    등장(실제 헤더 마크업 없음) — 대상 아님.
+  - `*.test.js` 4개 — 테스트 파일, 대상 아님.
+- 추가로 홈 캘린더(`calendar/CalendarHeader.jsx`)도 확인 — 뒤로가기
+  버튼이 없고(홈이라 없음) 월 이동·알람벨·햄버거로 구성된 **별도
+  헤더**(다만 햄버거 버튼 마크업 자체는 22개와 byte 단위로 동일 —
+  향후 참고사항, 이번 22개 범위엔 포함 안 함).
+
+**→ 22개가 맞다. 빠진 화면 없음.**
+
+### 15-2. 22개 파일 현황 (2026-09-10 조사)
+
+| 파일 | 줄수 | onOpenMenu | 비고 |
+|---|---|---|---|
+| AppSettingsPage.jsx | 198 | ✅ | |
+| cars/CarListPage.jsx | 189 | ✅ | |
+| clients/ClientListPage.jsx | 130 | ✅ | |
+| clients/OwnerScopedClientsView.jsx | 165 | ✅ | |
+| ComingSoonPage.jsx | 21 | ❌ | §2~14 범위, 이번엔 마크업만 |
+| CustomerCenterPage.jsx | 230 | ❌ | **누락분 — 이번에 추가** |
+| day-log/DayLogHeader.jsx | 33 | ✅ | 타이틀 옆 `AutoSaveStatus` 특수 케이스 |
+| DriverConnectionPage.jsx | 174 | ❌ | §2~14 범위, 이번엔 마크업만 |
+| drivers/BillingSettingsPage.jsx | 70 | ❌ | §2~14 범위, 이번엔 마크업만 |
+| drivers/LinkedDriverClientsPage.jsx | 207 | ❌ | **누락분 — 이번에 추가**, 헤더 2곳(notFound+정상) |
+| drivers/LinkedDriverManagementPage.jsx | 197 | ✅ | 로컬 `pageHeader()` 헬퍼 있음 — 흡수 대상 |
+| InviteRedeemPage.jsx | 83 | ❌ | §2~14 범위, 이번엔 마크업만(스페이서가 `<span className="mypage-header-spacer">`로 미세하게 다름 — 통일) |
+| MaintFuelPage.jsx | 216 | ✅ | |
+| MessageSettingsPage.jsx | 112 | ❌ | §2~14 범위, 이번엔 마크업만 |
+| MyPage.jsx | 198 | ✅ | |
+| NoticePage.jsx | 74 | ✅ | |
+| PersonalInfoPage.jsx | 206 | ✅ | |
+| receivables/ReceivablesDetailPage.jsx | 103 | ❌ | 원래 의도적 제외(§5) — 이번에도 마크업만, 동작 유지 |
+| receivables/ReceivablesListPage.jsx | 100 | ✅ | |
+| ReportPage.jsx | 250 | ✅ | |
+| revenue/RevenueNav.jsx | 59 | ❌ | **누락분 — 이번에 추가**. `PageShell` 함수가 흡수 대상 |
+| TaxInvoicePage.jsx | 215 | ✅ | |
+
+13곳은 이미 `onOpenMenu` 정상 작동 중(마크업만 교체, 동작 무변경).
+`ComingSoonPage.jsx`·`DriverConnectionPage.jsx`·
+`drivers/BillingSettingsPage.jsx`·`InviteRedeemPage.jsx`·
+`MessageSettingsPage.jsx`·`receivables/ReceivablesDetailPage.jsx`(6개)는
+§2~14 범위라 **이번엔 마크업만 통일, `onOpenMenu` 추가 안 함**(동작
+무변경 원칙 — 별도 지시 없이 기능 확장 안 함). `CustomerCenterPage.jsx`·
+`revenue/RevenueNav.jsx`·`drivers/LinkedDriverClientsPage.jsx`(3개)는
+지난번 보리가 브라우저에서 직접 찾아낸 누락분이라 **이번에 `onOpenMenu`
+같이 추가**(원래 목적이었던 것 그대로 수행).
+
+### 15-3. 22개 헤더 마크업 실제 대조
+
+세 가지 독립 grep(`icon-btn.*뒤로가기`, `top-menu-btn`, 각 파일의
+`settings-header` 블록 전체)으로 22개를 서로 비교 — **뒤로가기
+버튼·햄버거 버튼 마크업은 22개 전부 byte 단위로 완전히 동일**(온클릭
+핸들러 이름만 다름 — `onBack`/`handleBack`/`handleHeaderBack`/화살표
+함수, 전부 prop으로 흡수 가능). 예외 2건:
+- `InviteRedeemPage.jsx`의 오른쪽 스페이서만 `<span
+  className="mypage-header-spacer" aria-hidden="true"></span>`(다른
+  21개는 `<div style={{ width: 40 }}></div>`) — 시각적으로 동일한
+  40px 스페이서, 공용 컴포넌트로 흡수하며 자연스럽게 통일(부수
+  정리, 회귀 아님 — 계산된 폭이 같은지 감시관이 브라우저에서 재확인).
+- `day-log/DayLogHeader.jsx`만 타이틀 칸이 `<div
+  className="modal-title-stack"><div className="settings-title">…</div>
+  <AutoSaveStatus .../></div>`로, 타이틀 옆에 자동저장 상태를 추가로
+  보여줌 — 유일한 구조적 예외.
+
+### 15-4. `PageHeader` 컴포넌트 설계
+
+**신규 파일**: `react-app/src/components/PageHeader.jsx`(다른
+공용급 컴포넌트처럼 최상위, 새 폴더 안 만듦).
+
+```jsx
+// @ts-check
+/**
+ * @param {Object} props
+ * @param {import('react').ReactNode} props.title
+ * @param {() => void} [props.onBack]
+ * @param {() => void} [props.onOpenMenu]
+ * @param {import('react').ReactNode} [props.titleExtra]
+ */
+export default function PageHeader({ title, onBack, onOpenMenu, titleExtra }) {
+  return (
+    <div className="settings-header">
+      <button type="button" className="icon-btn" title="뒤로가기" onClick={onBack}>
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      {titleExtra ? (
+        <div className="modal-title-stack">
+          <div className="settings-title">{title}</div>
+          {titleExtra}
+        </div>
+      ) : (
+        <div className="settings-title">{title}</div>
+      )}
+      {onOpenMenu ? (
+        <button type="button" className="icon-btn top-menu-btn" title="메뉴" onClick={onOpenMenu}>
+          <svg viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      ) : (
+        <div style={{ width: 40 }}></div>
+      )}
+    </div>
+  )
+}
+```
+약 28줄. `titleExtra`는 `DayLogHeader.jsx` 전용(다른 21개는 안 씀).
+CSS는 무변경(`settings-header`·`settings-title`·`icon-btn`·
+`top-menu-btn`은 이미 `shared-controls.css`에 있음, §1-2 ①·10차
+작업 결과 — 새 CSS 없음).
+
+### 15-5. "껍데기 파일 흡수" 원칙 적용 대상 2건
+
+- **`drivers/LinkedDriverManagementPage.jsx`의 로컬 `pageHeader()`
+  헬퍼(8줄, 별도 파일 아니고 같은 파일 안의 지역 함수)** — `PageHeader`
+  호출로 대체되며 완전히 불필요해짐 → **삭제**(파일이 아니라 함수라
+  "부모에 흡수"할 것도 없이 그냥 제거, 호출부 2곳이 `PageHeader`를
+  직접 씀).
+- **`revenue/RevenueNav.jsx`의 `PageShell` 함수(17줄)** — 헤더 마크업을
+  `PageHeader` 호출로 바꾸면 `<div className="page ...">{header}
+  {children}</div>` 정도의 3~4줄짜리 순수 껍데기로 줄어듦. 이 함수의
+  **유일한 소비처가 `RevenuePage.jsx`(현재 30줄) 하나뿐**이라 지시대로
+  `RevenuePage.jsx`에 흡수: `PageShell`을 지우고 `RevenuePage.jsx`가
+  `PageHeader`+`<div className="page ...">`를 직접 렌더링. 결과
+  예상 줄수 `RevenuePage.jsx` 30→약 40줄(250 미만이라 흡수 조건
+  충족). `RevenueNav.jsx`엔 `DateNav`가 남아 파일 자체는 안 없어짐
+  (42줄 정도로 축소).
+- 나머지 20개는 각 파일 안에서 인라인 JSX만 교체하는 것이라 "껍데기
+  파일"이 새로 생기지 않음 — 해당 없음.
+
+### 15-6. 슬라이스 로드맵 (6개, 착수지시서는 각 슬라이스 시작 시 이 문서에 추가)
+
+전부 **동작 무변경**(behavior-preserving) 리팩터이고, 딱 3개 파일만
+`onOpenMenu` 신규 추가(원래 누락분 해소) — 그 3개는 별도 슬라이스로
+분리해 리스크를 격리한다.
+
+1. **① `PageHeader.jsx` 신규 + 4파일**: `AppSettingsPage.jsx`·
+   `MyPage.jsx`·`NoticePage.jsx`·`PersonalInfoPage.jsx`(전부 이미
+   `onOpenMenu` 있음, 마크업 교체만) — 패턴 검증용 첫 배치.
+2. **② 4파일**: `TaxInvoicePage.jsx`·`MaintFuelPage.jsx`·
+   `ReportPage.jsx`·`receivables/ReceivablesListPage.jsx`.
+3. **③ 4파일**: `cars/CarListPage.jsx`·`clients/ClientListPage.jsx`·
+   `clients/OwnerScopedClientsView.jsx`·
+   `drivers/LinkedDriverManagementPage.jsx`(로컬 `pageHeader()` 삭제
+   포함).
+4. **④ 2파일(특수 케이스)**: `day-log/DayLogHeader.jsx`(`titleExtra`로
+   `AutoSaveStatus` 유지 확인)·`receivables/ReceivablesDetailPage.jsx`
+   (동작 무변경 확인).
+5. **⑤ 누락분 해소(동작 변경 포함) 3파일+라우팅**:
+   `revenue/RevenueNav.jsx`(`PageShell`→`RevenuePage.jsx` 흡수)·
+   `CustomerCenterPage.jsx`·`drivers/LinkedDriverClientsPage.jsx`(헤더
+   2곳) + `app/AppShellRoutes.jsx`(`revenue`·`support`(고객센터)·
+   `logs/:logId/clients`·`drivers/:linkId/clients` 4곳에 `onOpenMenu`
+   추가).
+6. **⑥ 나머지 5파일(동작 무변경)**: `ComingSoonPage.jsx`·
+   `DriverConnectionPage.jsx`·`drivers/BillingSettingsPage.jsx`·
+   `InviteRedeemPage.jsx`·`MessageSettingsPage.jsx`.
+
+각 슬라이스 검증 방법(전 슬라이스 공통): CI 자동 + 감시관이 슬라이스
+전/후 커밋을 각각 로컬 빌드해 대상 화면의 컴퓨티드 스타일·스크린샷을
+문자열/육안 대조(§1-2 CSS 분리 작업 때 쓰던 방식 재사용) — 순수
+마크업 교체이므로 완전 일치가 나와야 정상.
+
+## 16. 이번 슬라이스(①, 공용 헤더 첫 배치) — 착수지시서
+
+### 현재 상태
+- `PageHeader.jsx` 없음(22개 파일이 각자 마크업 중복).
+- `AppSettingsPage.jsx`·`MyPage.jsx`·`NoticePage.jsx`·
+  `PersonalInfoPage.jsx` 4개 전부 §15-3에서 확인한 표준 마크업 그대로,
+  전부 `onOpenMenu` 정상 작동 중.
+
+### 목표 상태
+4개 파일의 `settings-header` 블록을 `<PageHeader title=... onBack={...}
+onOpenMenu={onOpenMenu} />` 한 줄로 교체. **화면에 보이는 결과·동작은
+100% 동일해야 함**(순수 리팩터).
+
+### 건드릴 파일 (정확히 5개 — 신규 1 + 수정 4)
+1. `react-app/src/components/PageHeader.jsx`(신규, §15-4 설계 그대로).
+2. `react-app/src/components/AppSettingsPage.jsx`
+3. `react-app/src/components/MyPage.jsx`
+4. `react-app/src/components/NoticePage.jsx`
+5. `react-app/src/components/PersonalInfoPage.jsx`
+
+### 안 건드릴 것
+- 나머지 17개 화면(②~⑥ 몫), `AppShellRoutes.jsx`, CSS 전부.
+- 각 파일의 기존 `onBack`/`onOpenMenu` prop 시그니처·호출부(그대로
+  받아서 `PageHeader`에 전달만).
+
+### §8 4대 질문 — 순수 리팩터(로직·prop 계약 무변경), 해당 없음.
+실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관이 이번 커밋 전/후 각각 로컬 빌드 → 4화면 모두 라이트/다크
+  컴퓨티드 스타일 + 스크린샷 대조(완전 일치 확인) + 뒤로가기·햄버거
+  버튼 클릭 동작 확인.
+
+**→ 착수 승인 대기.**
