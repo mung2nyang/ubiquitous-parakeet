@@ -425,9 +425,64 @@ AGENTS §6·§12의 "예외 없이 분리설계" 약속 때문에 ①~③처럼 
   햄버거 버튼 확인(단, 이번 슬라이스도 보리 지시로 §5 체크리스트
   생략 여부는 완료 보고 시점에 다시 확인).
 
-## 11. ④-2(예정) — `LinkedDriverManagementPage.jsx` 분리설계 + 햄버거 버튼
+## 11. ④-2 — `LinkedDriverManagementPage.jsx` 분리설계안 (승인 필요, 2026-09-10)
 
-착수 전 분리설계안(책임 경계·모듈 구조·의존성)을 먼저 이 문서에 작성해
-보리 승인을 받는다(AGENTS §6). 승인 후에만 코드 슬라이스 착수.
-`drivers/:linkId`·`logs/:logId/manage` 두 라우트 모두 대상(기존 확정
-유지).
+현재 246줄 1파일. 내용 구성(읽어서 확인):
+1. `pageHeader()` 헬퍼(8줄) — 뒤로가기+타이틀+스페이서.
+2. 데이터/로직(46~126줄, ~80줄) — hooks 구독, `driverManagementContext`
+   판별, `detail`/`invoice` 계산(`useMemo`).
+3. JSX 렌더(128~245줄, ~118줄) — 안에서도 **3개 독립 섹션**으로 이미
+   나뉘어 있음: (a) 프로필 카드+칩 3개(131~170, 40줄), (b) 날짜
+   이동기+정산 요약 카드(172~194, 23줄), (c) 거래처별 세금계산서 목록
+   (196~243, 48줄) — 이 3개는 서로 데이터만 주고받지 로직 공유 없음
+   (각각 `detail`/`invoice`/`ctx` 중 필요한 것만 씀).
+
+### 제안 — (b)·(c)를 같은 폴더(`components/drivers/`)의 독립 컴포넌트로 분리
+기존 관행(day-log 하위 컴포넌트를 `components/day-log/`에 모으는 방식)과
+동일하게, 같은 화면의 하위 조각이니 **새 폴더 만들지 않고 기존
+`components/drivers/`에 파일만 추가**.
+
+1. **`SettlementSummaryCard.jsx`(신규, ~30줄)** — 172~194줄 이동. 책임:
+   월 선택 날짜 이동기 + 정산 요약 카드 표시. Props: `viewDate`,
+   `onPrevMonth`, `onNextMonth`, `onYearChange`, `onMonthChange`,
+   `detail`(정산 상세, null 허용). 내부 상태 없음(순수 표시).
+2. **`ClientInvoiceGroups.jsx`(신규, ~50줄)** — 196~243줄 이동. 책임:
+   거래처별 세금계산서 그룹 목록 표시. Props: `invoice`(groups+
+   unassignedCount). 내부 상태 없음.
+3. **`LinkedDriverManagementPage.jsx`(기존, 246→약 170줄)** — 위 둘을
+   import해 조립 + 프로필 카드/칩 3개는 그대로 유지(이 부분은 로직과
+   얽혀 있어 분리 실익 적음) + 이번에 햄버거 버튼(`onOpenMenu`, 두
+   라우트 모두)도 같이 추가. 최종 약 178줄 예상 — 200줄 아래로 안전하게
+   내려감.
+
+### 안 건드릴 것
+- (a) 프로필 카드+칩 섹션, `pageHeader()` 헬퍼, hooks/로직 부분 — 그대로
+  `LinkedDriverManagementPage.jsx`에 유지.
+- `domain/driverManagementContext.js`, `domain/finance.js` 등 계산 로직
+  — 로직 이동 없음, JSX만 이동(순수 리팩터).
+- 연동·미연동 두 모드 판별 로직(`ctx.mode`) — 변경 없음.
+
+### 의존성
+- `SettlementSummaryCard.jsx`·`ClientInvoiceGroups.jsx` 둘 다 이 화면
+  전용(다른 화면에서 재사용 계획 없음) — `linked-driver.css`는 기존
+  그대로 메인 파일에서 import 유지.
+
+### 건드릴 파일 (정확히 4개 — 신규 2 + 수정 2)
+1. `react-app/src/components/drivers/SettlementSummaryCard.jsx`(신규)
+2. `react-app/src/components/drivers/ClientInvoiceGroups.jsx`(신규)
+3. `react-app/src/components/drivers/LinkedDriverManagementPage.jsx`(수정
+   — JSX 2섹션 추출 + 두 라우트 모두 햄버거 버튼 추가)
+4. `react-app/src/app/AppShellRoutes.jsx`(수정 — `drivers/:linkId`·
+   `logs/:logId/manage` 두 곳에 `onOpenMenu={onOpenMenu}` 추가)
+
+### §8 4대 질문 — 순수 UI 리팩터+prop 추가, 해당 없음. 실패 시 처리: **신규 레이어 없음.**
+
+### 검증 방법
+- CI 자동.
+- 감시관 브라우저 실측: 연동 기사(`drivers/:linkId`)·미연동 서브차량
+  (`logs/:logId/manage`) 두 모드 모두 진입해 정산 요약 카드·거래처
+  세금계산서 목록이 분리 전과 동일하게 보이는지 + 햄버거 버튼 확인.
+  두 라우트 다 게스트 계정으로 접근 가능 여부 확인 필요(안 되면 코드
+  대조 + 보리 확인 요청).
+
+**→ 이 분리설계안 승인 후 착수.**
