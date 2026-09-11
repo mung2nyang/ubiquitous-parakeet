@@ -181,3 +181,117 @@ react-app은 데이터 계층은 이미 다 준비돼 있다 — `domain/callDet
 ---
 
 ## 이번 슬라이스 — ② 즐겨찾기 칩(상차지/하차지)
+
+### 조사 결과 (원본 vs react-app)
+
+원본([index.html:1637](ubiquitous-parakeet/index.html:1637),
+[script.js:2075-2192](ubiquitous-parakeet/script.js:2075))은 상차지/하차지
+입력란 밑에, **이 계정이 지금까지 입력한 모든 날짜**의 상/하차지를 "빈도 많은
+순 → 동률이면 최근 순"으로 최대 12개 칩으로 보여준다. 칩엔 별표(☆/★)가 있어
+최대 10개까지 "고정"할 수 있고(`settings.pinnedLocations`), 고정된 장소는
+랭킹과 무관하게 항상 맨 앞에 나온다. 칩을 누르면 "지금 포커스가 있던(또는
+마지막으로 있었던) 입력란"(상차지/하차지 중 어디)에 그 값을 채운다.
+
+react-app은 이 기능 자체가 없다. 게다가 `DayLogPage`가 지금 구독하는 데이터는
+**그 날 하루치**(`useDayDraft`)뿐이라, 원본처럼 전체 이력 기반 랭킹을 내려면
+새 구독이 필요하다 — 다행히 달력 화면([`CalendarPage.jsx:53-55`](react-app/src/components/calendar/CalendarPage.jsx:53))이
+이미 쓰는 기존 훅 `useOwnerWorkData`/`useOwnerWorkDataByLogId`(`store/ownerDataHooks.js`)를
+그대로 재사용하면 되므로 **새 저장 레이어는 아니다**(§7 무관).
+
+### 목표 상태
+
+원본과 동일하게: 상차지/하차지 입력란 밑에 빈도+최근순 칩(최대 12개, 고정된
+장소 우선) → 클릭 시 마지막으로 포커스했던 입력란에 채움 → 별표로 최대 10개까지
+고정/해제, `settings.pinnedLocations`에 영구 저장.
+
+### 건드릴 파일 (정확히 8개 — 예정 7개에서 1개 늘어남, 아래 8번 사유)
+
+1. **`react-app/src/domain/practiceSettings.js`** — `defaults`에
+   `pinnedLocations: []` 추가, `normalizeSettings`에
+   `pinnedLocations: normalizePinnedLocations(raw.pinnedLocations)` 한 줄
+   추가. (실제 정규화·토글 함수는 4번 신규 파일에 둔다 — 이 파일이 이미
+   203줄로 §6 예외 승인을 받은 상태라 더 안 늘림.)
+2. **`react-app/src/domain/financeTypes.js`** — `FinanceSettings`에
+   `@property {Array<string>} [pinnedLocations]` 한 줄 추가.
+3. **`react-app/src/store/persistDomainSchema.js`** — `SETTINGS_KEYS`에
+   `'pinnedLocations'` 추가 + 검증 한 줄:
+   ```js
+   if ('pinnedLocations' in value && (!Array.isArray(value.pinnedLocations) || !value.pinnedLocations.every((loc) => typeof loc === 'string'))) return false
+   ```
+   (이 파일이 실제 저장 관문 — 여기 안 넣으면 저장할 때 조용히 걸러진다.)
+4. **신규 `react-app/src/domain/locationShortcuts.js`** — 순수 함수 3개:
+   - `normalizePinnedLocations(value)` — trim·중복제거·최대 `PINNED_LOCATION_LIMIT`(10)개.
+   - `togglePinnedLocation(settings, location)` — 원본 script.js:2174-2192와 동일
+     로직(있으면 제거, 없으면 추가, 10개 초과 시 `{ error, settings }` 반환 —
+     `addFixedRoutePreset`과 같은 기존 패턴).
+   - `locationShortcutList(workData, currentCallDetails, pinnedLocations)` —
+     원본 `getFrequentAndRecentLocations`+`renderLocationShortcuts`의 병합
+     로직(빈도→최근순 정렬 후 고정 장소를 앞에 붙이고 12개로 자름)을 그대로
+     순수 함수로 옮김. `getCallDetails`(`day-record.js`)로 각 날짜 레코드를
+     안전하게 읽음.
+5. **`react-app/src/components/day-log/DayLogPage.jsx`** — `useOwnerWorkData`/
+   `useOwnerWorkDataByLogId`(`store/ownerDataHooks.js`)로 이 차량(`logId`)의
+   전체 이력을 구독(CalendarPage.jsx와 동일 패턴), `locationShortcutList`로
+   랭킹 계산(`useMemo`), `savePracticeSettings`(`lib/practiceSettings.js`)로
+   고정 토글 저장하는 `handleTogglePinnedLocation` 추가, 두 값(`locationShortcuts`,
+   `pinnedLocations`)과 핸들러를 `CallDetailForm`에 prop으로 전달.
+6. **`react-app/src/components/day-log/CallDetailForm.jsx`** — 상차지/하차지
+   `<input>`에 `onFocus`로 "마지막 활성 입력란"(`activeLocationTarget` 로컬
+   state, 기본 `'load'`) 추적 추가, `call-route-panel` 안 두 `form-group` 뒤에
+   신규 `LocationShortcuts` 컴포넌트 렌더링. 칩 선택 시 활성 입력란의
+   `loadLoc`/`unloadLoc`만 갱신 — 나머지 필드·로직 무변경.
+7. **신규 `react-app/src/components/day-log/LocationShortcuts.jsx`** — 칩 UI
+   (원본 칩 구조: 선택 버튼 + 별표 고정 버튼). `CallDetailForm.jsx`가 이미
+   194줄이라 여기 넣으면 200줄을 넘어 별도 컴포넌트로 분리(§6).
+8. **신규 `react-app/src/components/day-log/location-shortcuts.css`** —
+   원본 `style.css:3259-3264`의 `.location-shortcuts`/`.location-chip`/
+   `.location-chip-select`/`.location-chip-pin` 4규칙 그대로 포팅(색상은
+   기존 CSS 변수 `--border-color`/`--input-bg`/`--primary-color`/
+   `--sub-text-color` 재사용). **`call-detail-form.css`(이미 251줄, 기존
+   §6 초과 상태)에 추가하면 더 위반이 커져서, `CallDetailList.jsx`가
+   `call-detail-list.css`를 갖는 것과 같은 관례로 새 컴포넌트 전용 CSS
+   파일을 만든다.**
+
+### 안 건드릴 것
+
+- `call-detail-form.css` — 위 사유로 손대지 않음(현상 유지, 더 늘리지 않음).
+- 거래처 관련 로직·`isDriverManagedByOwnerForClients` — ③ 슬라이스.
+- `useDayDraft.js`(그 날 하루치 편집·저장 로직) — 무변경. 이번 구독은 순수
+  읽기 전용 랭킹 계산에만 쓰고 쓰기 경로에 관여하지 않음.
+
+### §8 4대 질문
+
+1. **구독인가 스냅샷인가?** — 이번엔 새 구독 추가: `useOwnerWorkData`/
+   `useOwnerWorkDataByLogId`(전체 이력, 읽기 전용). 기존 `useDayDraft`(그 날
+   하루치 편집)는 무변경.
+2. **화면에 보이는 값 출처?** — 칩 랭킹은 Store의 workData 전체 이력에서
+   파생 계산(순수 함수, 저장 안 함). 고정 여부는 `settings.pinnedLocations`
+   (이미 구독 중인 `useOwnerSettings`).
+3. **쓰기 창구?** — 고정 토글은 기존 배럴 `savePracticeSettings(ownerKey, patch)`
+   그대로 사용(다른 설정 페이지들과 동일 패턴, `BillingSettingsPage.jsx` 참고).
+   새 창구·우회 없음.
+4. **hydrate·디바운스·동시편집 겹치면?** — 랭킹은 읽기 전용 파생값이라 쓰기
+   경합 없음. 고정 토글 저장은 기존 설정 저장 경로 그대로라 별도 경합 시나리오
+   추가 없음.
+→ 신규 상태 저장소·레이어 없음(기존 훅 재사용, 기존 저장 배럴 재사용).
+
+### 검증 방법
+
+- CI 자동(test·typecheck·build).
+- 감시관/보리 브라우저 실측:
+  1. 일일운행 → 콜상세 추가 폼에서 상차지/하차지 밑에 칩 목록이 뜨는지(과거
+     입력 이력이 있는 계정 기준).
+  2. 상차지 입력란에 포커스 후 칩 클릭 → 상차지에 채워지는지. 하차지 포커스
+     후 다른 칩 클릭 → 하차지에 채워지는지(활성 입력란 추적 확인).
+  3. 별표(☆) 클릭 → ★로 바뀌고 그 장소가 맨 앞으로 이동하는지. 다시 클릭 →
+     원래 랭킹 위치로 돌아가는지.
+  4. 화면을 나갔다가 다시 들어와도(또는 새로고침) 고정 상태가 유지되는지
+     (`pinnedLocations` 저장 확인).
+  5. 11번째 장소를 고정하려 하면 "고정 장소는 최대 10개까지..." 안내가
+     뜨는지.
+  6. 과거 입력 이력이 없는 신규 계정은 칩 영역 자체가 안 뜨는지(빈 배열).
+  7. 기존 콜상세 저장·조회 동작 회귀 없는지.
+
+**→ 착수 전 보리 확인 필요: 위 건드릴 파일 8개(예정 7개에서 1개 늘어남 —
+칩 전용 CSS가 이미 200줄 넘은 기존 파일에 안 들어가 새 파일로 분리) + 목표
+동작 그대로 진행해도 될까요?** `[ ]`.
