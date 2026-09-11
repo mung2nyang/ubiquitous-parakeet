@@ -152,6 +152,14 @@
 
 ## 알려진 이슈 (안 고쳐도 되지만 잊으면 안 됨)
 
+- **`react-app/src/components/mypage.css`에 죽은 CSS 규칙 2개 보존돼 있음**
+  (`.mypage-header-spacer`, `.mypage-role-pill` — 둘 다 JSX 소비처 0,
+  `grep` 확인됨). 출처: 2026-09-10 §2 마이페이지 CSS 분리 때
+  `side-menu.css` 1387~1605줄을 그대로 옮기며 "삭제 안 하고 보존 이동"
+  관례에 따라 죽은 채로 같이 옮김(상세
+  `docs/archive/report-snapshot-2026-09-10.md`). 안 급함 — **§1~§14 UI
+  대조·이관이 전부 끝난 뒤 한꺼번에 죽은 CSS 정리할 때 같이 처리** (보리
+  개인 메모로 이미 추적 중, 여기 동기화만).
 - **정비/주유/기타 Supabase 동기화가 항상 "메인" 차량 `vehicle_id`로만 저장**
   (`lib/syncExpenseRecords.js` 51·88·125 / `lib/hydrate.js` 142-144). DB row 정합성만의
   문제라 화면엔 영향 없음 — 서브차량 sync 루프 고칠 때 같이 처리(백로그).
