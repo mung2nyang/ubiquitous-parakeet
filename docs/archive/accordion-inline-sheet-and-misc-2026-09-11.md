@@ -130,7 +130,44 @@ grid-template-rows 0.32s ease` → `0.4s ease-out`.
 계속 true로 유지된다 — 그래서 위 4차가 고친 "열기(0fr→1fr)" 전환이
 재발동되지 않고, 종류 선택 패널→실제 폼 내용 교체가 즉시 점프한다("+
 정비 추가" 같은 직접 버튼은 처음부터 닫힌 상태에서 여는 거라 정상 작동,
-실측 확인). 상세 `docs/report.md` 5차.
+실측 확인).
+
+## "종류 선택 → 폼" 전환 애니메이션 안 됨 — 5차
+
+`grid-template-rows`는 값 자체가 바뀔 때만 전환이 걸린다. 종류를 고르면
+시트는 계속 열려 있는 채(값은 내내 `1fr`) 내용물만 바뀌는데, 이건 CSS만
+으로는 못 고치는 구조적 한계(`docs/sot.md` §4-11에 기록).
+
+### 적용 (react-app `9bb0b53`)
+
+`useExpenseForm.js`의 `openAdd(kind)` — 종류 선택 패널에서 불렸을 때만
+(`kindPick`이 이미 true) 즉시 열지 않고, 먼저 `kindPick`을 꺼서 닫히게
+한 뒤(닫기 애니메이션 재생) 420ms 후 `modalOpen`을 켠다. 이미 검증된
+열기/닫기 사이클 재사용, 트레이드오프로 종류 선택 후 폼이 뜰 때까지
+~0.4~0.5초 지연 추가.
+
+**→ 보리 브라우저 확인 완료(2026-09-11).**
+
+## 정비/주유/기타 "취소/저장" 닫기 슬라이드 안 보임 — 6차 (진짜 버그)
+
+### 원인
+
+`InlineSheet.jsx`는 자기 wrapper(`mounted`)는 전환 끝날 때까지 살려두는데,
+`DayLogExpenses.jsx`가 실제 내용물을 별도로 이중 조건부 렌더링
+(`{expenseForm.kindPick && <ExpenseSelectPanel/>}` /
+`{expenseForm.modalOpen && <ExpenseFormModal/>}`)하고 있어서 "취소"를
+누르면 wrapper는 살아있어도 내용물이 즉시 사라져 `min-content`가 0이
+됨 — 처음부터 끝까지 높이 0으로 렌더(MutationObserver로 확인: wrapper는
+409ms까지 남아있는데 내용물은 4ms만에 이미 사라짐). 콜상세는 이런
+이중 조건부가 없어서 문제 없었음.
+
+### 적용 (react-app `6c5ba8d`)
+
+`InlineSheet.jsx` 1개 파일 — `useRef`로 "열려 있던 동안의 마지막
+children"을 기억해뒀다가, 닫히는 동안엔 부모가 그 사이 비운 children
+대신 그 마지막 내용물을 계속 보여줌.
+
+**→ 보리 브라우저 확인 완료, 완료(2026-09-11).**
 
 ---
 

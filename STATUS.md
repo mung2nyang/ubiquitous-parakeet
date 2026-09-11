@@ -19,13 +19,7 @@
 
 ## 지금 하는 일
 
-**정비/주유/기타 "취소/저장"으로 닫을 때 슬라이드 안 보임 — 6차(진짜
-버그) `[~]`** — 5차(`9bb0b53`, 종류선택→폼 재오픈)는 보리 브라우저 확인
-완료. 새로 발견: `DayLogExpenses.jsx`가 내용물을 이중 조건부 렌더링해서
-"취소" 누르면 `InlineSheet`의 wrapper는 살아있어도 내용물이 즉시
-사라져 높이가 처음부터 0으로 렌더됨(콜상세는 이중 조건부가 없어서
-문제 없었음). `InlineSheet.jsx`가 마지막 children을 기억해두는 걸로
-착수지시서 작성 완료(승인 대기, 파일 1개). 상세 `docs/report.md`.
+(진행 중인 슬라이스 없음 — `docs/report.md`가 다음 착수지시서 대기)
 
 ## 다음 할 일
 
@@ -71,14 +65,13 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 archive)
 
-- **일일운행 인라인 폼 아코디언 슬라이드 애니메이션(콜상세 열기·닫기,
-  정비/주유/기타 종류선택→폼 재오픈) 1~5차** —
+- **일일운행 인라인 폼 아코디언 슬라이드 애니메이션 — 전부 완료 1~6차**
+  (콜상세·정비/주유/기타 열기·닫기·종류선택 전환 전부) —
   react-app `67762ff`(min-content→1fr) → `d575247`(닫기 forceInstant +
-  열기 0.4s) → `a019e68`(닫기 opacity 페이드로 "말림" 제거) →
-  `355b865`(열기도 클립 복원, `settled`/`is-settled`) →
-  `9bb0b53`(정비/주유/기타 종류선택→폼 전환 시 재오픈). 보리 브라우저
-  확인 완료·푸시됨(2026-09-11). 정비/주유/기타 "취소/저장" 닫기만
-  잔여(이중 조건부 렌더링 버그) — 위 "지금 하는 일" 6차. 상세
+  열기 0.4s) → `a019e68`(닫기 opacity 페이드) → `355b865`(열기 클립 복원) →
+  `9bb0b53`(종류선택→폼 재오픈) → `6c5ba8d`(닫기 시 이중 조건부 렌더링
+  버그 수정). 보리 브라우저 확인 완료·푸시됨(2026-09-11). `ui-comparison-report.md`
+  §1-D 정정 완료(원래 "이미 구현됨"으로 오판했던 항목). 상세
   `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
 - **"부가세 해제" 레이블 16px → `var(--fs-2)`** — react-app `3ae7db9`.
   `call-detail-form.css`에 `.call-vat-row > label:first-child` 규칙 추가.
@@ -164,11 +157,12 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `9bb0b53`(정비/주유/기타 종류선택→폼 재오픈, 보리 푸시
-  완료). 클린.
+- **react-app**: `main` = `6c5ba8d`(인라인 시트 닫기 이중 조건부 버그 수정,
+  보리 푸시 완료). 클린.
 - **ubiquitous-parakeet**: `main` = 이 세션의 문서 커밋 예정
-  (`STATUS.md`/`docs/report.md`/`docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`
-  — 아코디언 1~3차·부가세·거래처 스코프 archive 정리 + 열기 4차 착수지시서).
+  (`STATUS.md`/`docs/report.md`/`docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`/
+  `docs/ui-comparison-report.md` — 아코디언 1~6차 전부 완료 기록·archive 정리·
+  §1-D 정정, report.md 리셋).
   **AI는 push 안 함 — 보리가 push.**
 - 확인 2026-09-11(AI 세션, 코드 커밋 확인 + 보리 최종 승인 + 추가
   교차검증 요청 처리). 정확한 HEAD·미커밋 범위는 매 세션 시작 시
