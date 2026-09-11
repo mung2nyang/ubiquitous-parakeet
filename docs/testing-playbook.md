@@ -1,13 +1,7 @@
 # 테스트·데이터 무결성 플레이북 (참고서)
 
-> 원본 `AGENTS.md` §5~§11을 그대로 옮긴 것이다. **매 슬라이스 필수가 아니라**,
-> 아래에 해당하는 작업을 할 때 착수 전에 읽는 참고서다:
-> - localStorage / Store / durable journal / tombstone / 재시도 큐가 걸린 저장 경로
-> - Supabase 원격 mutation(저장·삭제·상태변경)과 그 실패·재시도 처리
-> - hydrate / 세션 전환 / 로그아웃 중 경합
->
-> 순수 UI·표시·계산만 바꾸는 작업은 이 문서 대상이 아니다.
-> "필수"로 승격할지 "참고"로 둘지는 `AGENTS.md` 축약 확정 시 사용자가 정한다.
+> 원본 `AGENTS.md` §5~§11을 그대로 옮긴 것이다. 언제 열어야 하는지는
+> `AGENTS.md` §4 플레이북 트리거를 따른다 (여기서 다시 나열하지 않음).
 
 ---
 
@@ -93,7 +87,7 @@
 
 ## 6. 테스트 품질 및 결함 검출력 증명 (원본 §10)
 
-- 기존 코드/테스트 보존: 유효한 코드/테스트 임의 삭제·축약 금지. 부실한 테스트는 실제 API 응답 형태({ data: null, error } 등)를 반영해 보강.
+- 부실한 테스트 보강: 실제 API 응답 형태({ data: null, error } 등)를 반영해 강화한다 (기존 코드/테스트 임의 삭제·축약 금지는 `AGENTS.md` §5 참고).
 - 테스트 격리: 실행 순서 및 이전 mock/스토리지 의존 금지. 개별 fixture 사용 및 종료 시 timer/listener/mock/storage 완벽 cleanup.
 - UI 및 상태 직접 검출력:
   - 테스트 작성 시 내부 private 변수나 Map을 직접 조작하지 말고 실제 UI 호출 경로를 통해 실행하며, 테스트 이름이 주장하는 Store/localStorage/journal/API/UI 상태를 Assert가 직접 검사해야 한다.
@@ -104,9 +98,11 @@
   - React act(...) 경고 0건, unhandled rejection 0건, 비동기 누출 0건, 미예상 console.error 0건, open timer/listener 0건.
   - 예상 console.error를 spy로 캡처할 때 React act 경고나 다른 예상하지 않은 오류까지 숨기면 안 된다. 예상 메시지만 정확히 Assert하고 나머지는 원래 console.error로 전달하거나 테스트를 실패시켜라 (전역 억제/문자열 필터링 금지).
 
-## 7. 커밋 전 Red-Team 교차검증 (15대 체크리스트, 원본 §11)
+## 7. 커밋 전 Red-Team 교차검증 (12대 체크리스트, 원본 §11)
 
 > 아래 질문에 대해 코드 위치와 테스트 이름을 명시하여 답할 수 있어야 한다.
+> (Out-of-Scope 예외·typecheck 대상 포함·DB 진단쿼리 절차는 `AGENTS.md` §2/§6/§9에
+> 이미 있어 여기서는 뺐다.)
 
 1. 이 액션에서 가장 먼저 변경되는 상태는 무엇인가?
 2. readiness 검사는 그 변경보다 선행하는가?
@@ -119,15 +115,13 @@
 9. 서버에만 남은 삭제 대상이 다음 hydrate 시 부활할 가능성이 있는가?
 10. stale durable 값이 최신 Store 값을 덮어쓸 가능성이 있는가?
 11. pending count가 owner/date 논리 키 기준으로 정확히 계산되는가?
-12. 현재 남아있는 "사용자 승인된 의도적 제외 항목(Explicit Out-of-Scope)" 외에 요구사항을 위반하는 미완료 결함이 없는가?
-13. 신규 테스트로 인해 strict-inventory 진단 수가 증가하지 않았는가?
-14. 모든 수정/생성 프로덕션 파일이 실제 typecheck 대상에 포함되어 있는가?
-15. [DB 변경 작업 시에만] DB 스키마/마이그레이션 작업 시 읽기 전용 진단 쿼리를 통해 실제 타입을 확정하고 멱등한 실행문을 제공했는가?
+12. 신규 테스트로 인해 strict-inventory 진단 수가 증가하지 않았는가?
 
 ## 8. 타입 안전성 상세 (원본 §4 검증 요건)
 
-- 모든 변경/생성 프로덕션 파일은 `// @ts-check` 활성화 및 실제 typecheck 대상 포함 필수 (파일 제외를 통한 허위 0 errors 금지).
+- `// @ts-check` 필수 자체는 `AGENTS.md` §6 참고 — 여기선 **타입체크 대상에서 파일을 제외해
+  허위로 0 errors를 만드는 것 금지**만 추가.
 - 함수 시그니처 변경 시 프로덕션 및 테스트 전체 호출부 수정.
 - 신규 테스트 코드로 인한 TypeScript 진단 추가 금지.
 - strict-inventory 진단 수는 정규식 `error TS\d+:` 시작 줄 기준으로 이전 기준선과 비교.
-- 런타임 경계 검증: JSON 파싱 결과는 dateKey와 모든 중첩 value/field를 런타임에서 검증한 뒤에만 도메인 타입으로 좁혀라. `typeof value === 'object' && !Array.isArray(value)`만 확인하고 `Record<string, DomainType>`로 단언하는 것은 검증 완료로 인정 안 함. 런타임 검증기 스키마와 JSDoc/typedef 스키마는 정확히 일치해야 한다.
+- 런타임 경계 검증 상세 (`AGENTS.md` §6 "중첩 필드까지 검증" 원칙의 구체 기준): `typeof value === 'object' && !Array.isArray(value)`만 확인하고 `Record<string, DomainType>`로 단언하는 것은 검증 완료로 인정 안 함. 런타임 검증기 스키마와 JSDoc/typedef 스키마는 정확히 일치해야 한다.
