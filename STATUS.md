@@ -20,10 +20,10 @@
 ## 지금 하는 일
 
 **"부가세 해제" 레이블 16px 잔존 — 착수지시서 보리 확인 완료
-(2026-09-11), 작업자 전달 대기.** 원인: react-app `call-detail-form.css`의
+(2026-09-11), 착수 대기.** 원인: react-app `call-detail-form.css`의
 `.call-vat-row` 규칙에 `font-size` 지정이 없어 브라우저 기본 크기(16px)로
 남음. 원본은 `var(--fs-2)`로 스코프. 수정안: CSS 1개 파일에 규칙 3줄
-추가. 상세는 `docs/report.md` 참고 — 작업자에게 그대로 전달하면 됨.
+추가. 상세는 `docs/report.md` 참고.
 
 ## 다음 할 일
 
@@ -32,7 +32,7 @@
 
 ### AI 관찰 (미확인 — 실행 지시 아님)
 
-- **홈 하단 "{이름}님 · 달력에 횟수 기록" 문구 고정 표시 의심** — 감시관이 코드만
+- **홈 하단 "{이름}님 · 달력에 횟수 기록" 문구 고정 표시 의심** — AI가 코드만
   보고 떠올림, 보리 확인 전. `inputMode==='fare'` 계정이면 "횟수 기록" 표시가
   실제 설정과 안 맞을 수 있음. 오판 가능성 있어 보리 실화면 확인 전엔 등재 안 함.
 
@@ -96,7 +96,7 @@
   `insuranceFee` 등 통화 필드가 빈 문자열이면 스키마 검증 실패 → owner
   Store 초기화 전체가 무산돼 앱이 "빈 계정"처럼 보이던 버그(디스크
   `localStorage`는 안 지워짐). `isValidCurrencyAmount`가 빈 값을 유효(0)로
-  인정하도록 수정. 보리 `[x]` 2026-09-11(감시관 배포앱 실측 + 보리 확인).
+  인정하도록 수정. 보리 `[x]` 2026-09-11(AI 배포앱 실측 + 보리 확인).
   상세 `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
 - **Step 0~10 전부 완료·푸시.** Step 9(매출제/월급제·기사연동), Step 10(백업·알림·PDF·
   온보딩·고객센터), 회원탈퇴 등. 슬라이스별 상세: `docs/archive/audit.md`,
@@ -149,8 +149,8 @@
 - **ubiquitous-parakeet**: `main` = 이 세션의 문서 커밋 예정
   (`STATUS.md`/`docs/report.md`/`docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`
   — 거래처 스코프 `[x]` 확정 + 3그룹 교차검증 기록 + report.md 리셋).
-  **감시관은 push 안 함 — 보리가 push.**
-- 확인 2026-09-11(감시관 세션, 작업자 커밋 확인 + 보리 최종 승인 + 추가
+  **AI는 push 안 함 — 보리가 push.**
+- 확인 2026-09-11(AI 세션, 코드 커밋 확인 + 보리 최종 승인 + 추가
   교차검증 요청 처리). 정확한 HEAD·미커밋 범위는 매 세션 시작 시
   `git log`/`git status`로 직접 재확인 (AGENTS §0-6).
 

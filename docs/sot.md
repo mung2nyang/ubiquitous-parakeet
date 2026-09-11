@@ -418,7 +418,7 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 - 홈 정산 수수료 SoT: `getOwnerMonthlyFinanceDetail` → `CalendarPage` / `OwnerRevenueView`
 - 홈 정산 수수료 테스트: `src/components/calendar/CalendarPage.test.js`
 
-## 11. UI/CSS 정리 (감시관 기록)
+## 11. UI/CSS 정리 (작업 기록)
 
 - [2026-09-10] [UI/CSS] 공용 헤더(PageHeader) 도입 및 15개+ 화면 통일 완료 (회귀 이상 없음)
 - [2026-09-10] [UI/CSS] side-menu.css form-group/input-box 공용 클래스 추출(shared-controls.css) 완료 (회귀 이상 없음)

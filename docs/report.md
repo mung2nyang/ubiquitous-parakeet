@@ -85,4 +85,65 @@ CSS 규칙 하나로 둘 다 커버됩니다.
   3. 라이트·다크 테마 둘 다 확인(색상 무변경, 크기만 확인).
 
 **→ 보리 확인 완료 (2026-09-11).** 위 목표 상태·건드릴 파일(1개, CSS
-3줄)로 진행 — 작업자 전달.
+3줄)로 바로 진행.
+
+---
+
+## `LinkedDriverClientsPage` 스코프 키 출처 — 후속 nit 재조사 결론
+
+### 배경
+
+STATUS.md "후속 nit"[확인 2026-09-11, 거래처 스코프 교차검증 중 발견]:
+`LinkedDriverClientsPage`(차주가 보는 "기사 거래처" 화면)의 연동 모드
+스코프 키가 콜상세·`OwnerScopedClientsView`(기사 본인 화면)와 "다른 소스"
+(`driver.vehicleNumber`, owner 쪽 기록)에서 온다고 기록해두고 "버그 아님·
+데이터정합 전제로만 기록·급하지 않음"으로 미뤄둔 항목. 이번 세션에서
+"처리" 지시를 받아 출처를 끝까지 추적했다.
+
+### 조사 결과 (코드 추적, 재현 실험 아님)
+
+- **`LinkedDriverClientsPage.jsx:58`** → `scopeKey = ctx.car?.number`
+  (연동 모드). `ctx.car`는 [`driverManagementContext.js:31-33`](../react-app/src/domain/driverManagementContext.js:31)에서
+  `driver.vehicleNumber`(문자열)를 owner의 `cars` 배열과 매칭해 찾은
+  차량 객체 — 즉 `ctx.car.number`는 사실상 `driver.vehicleNumber`와
+  같은 값이다(매칭 실패 시에만 빈 값).
+- **`driver.vehicleNumber`의 출처** → [`hydrateMerge.js:78-84`](../react-app/src/lib/hydrateMerge.js:78):
+  owner hydrate마다 서버 `driver_links` 행(`row.vehicle_id`)을 owner 자신의
+  `vehicles` 병합 결과(`mergedCars`)와 클라이언트에서 조인해 채운다.
+  **정본은 `driver_links.vehicle_id`** — owner 쪽 로컬 캐시 문자열이
+  아니라 매 hydrate마다 서버 값으로 새로 계산된다.
+- **`get_assigned_vehicle_summary()` RPC의 출처** →
+  [`0002_driver_invite_redeem.sql:94-98`](../react-app/supabase/migrations/0002_driver_invite_redeem.sql:94):
+  `vehicles v join driver_links dl on dl.vehicle_id = v.id where dl.driver_id = auth.uid() and dl.status='linked'`.
+  **똑같이 `driver_links.vehicle_id` 조인.**
+
+### 결론
+
+두 화면이 "서로 다른 소스"를 쓰는 게 아니라, **같은 정본 컬럼
+(`driver_links.vehicle_id`)을 서로 다른 위치(서버 RPC vs 클라이언트
+hydrate 병합)에서 조인**할 뿐이다. 둘 다 각자의 hydrate/호출 시점마다
+서버 값으로 새로 계산되므로 구조적 어긋남 지점이 없다. 유일한 이론적
+창구는 "기사 재배정 직후, owner가 아직 재hydrate 안 한 그 찰나"인데
+이는 이 화면 고유의 결함이 아니라 owner 쪽 모든 hydrate 기반 화면에
+공통인 일반적 지연이다 — 스코프 키 로직만 따로 손볼 대상이 아니다.
+
+**제안: 코드 변경 없음. STATUS.md "후속 nit" 이 항목을 "확인 완료 —
+버그 아님, 종결"로 갱신.** 갱신 문구 초안:
+
+> **`LinkedDriverClientsPage` 스코프 키 출처 — 종결**[재확인
+> 2026-09-11] — 콜상세/`OwnerScopedClientsView`의 `get_assigned_vehicle_summary`
+> RPC와 `LinkedDriverClientsPage`의 `driver.vehicleNumber` 둘 다 정본은
+> `driver_links.vehicle_id`(서버 조인 위치만 다름, [report.md](docs/report.md)
+> 조사). 구조적 어긋남 없음 — 버그 아님, 코드 변경 불필요.
+
+### 건드릴 파일
+
+없음 — react-app 코드 무변경. 승인되면 `STATUS.md` 한 곳만 AI가 직접 갱신.
+
+### 검증 방법
+
+코드 3파일 대조로 결론 도출(위 근거) — 재현할 불일치 자체가 없어 브라우저
+검증 대상 없음. 원한다면 실제 기사 재배정 후 두 화면을 번갈아 열어
+동시에 갱신되는지 육안 확인 가능(선택, 급하지 않음).
+
+**→ 보리 확인 대기.** "종결" 갱신 문구 승인하면 STATUS.md만 바로 갱신.
