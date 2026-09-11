@@ -46,15 +46,6 @@
 - **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 메인·서브 분리**[확인 2026-09-09,
   `ui-comparison-report.md` §1-1 2번] — 원본은 메인·서브 차량별 세부입력 토글 6종을
   각각 갖는데 react-app은 공유. 미연동 서브차량 일지 화면 작업 때 함께.
-- **`LinkedDriverClientsPage`(차주가 보는 "기사 거래처" 화면)의 연동 모드
-  스코프 키가 `driver.vehicleNumber`(차주 측 기록)에서 옴**[확인 2026-09-11,
-  거래처 스코프 교차검증 중 발견] — 콜상세·`OwnerScopedClientsView`(기사 본인
-  화면)는 둘 다 배정 차량 조회(`get_assigned_vehicle_summary`) 결과에서 스코프
-  키를 구하는데, 이 화면만 owner 쪽에 저장된 `driver.vehicleNumber` 문자열을
-  씀. 두 값이 항상 같다는 전제(재배정 시점차 등으로 어긋날 가능성은 이론상
-  있음)로 지금은 실제 불일치 재현·확인 안 됨 — 버그 아님, 데이터정합
-  전제로만 기록. 급하지 않음.
-
 ### 보류 (보리 결정 대기, 급하지 않음)
 
 1. **`.test.js` 나머지 strict 진단** — migration 원칙 "증가 금지"는 지킴, "전부 수정"은 안 함.
@@ -71,6 +62,13 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 archive)
 
+- **`LinkedDriverClientsPage` 스코프 키 출처 — 종결(코드 변경 없음)**
+  [재확인 2026-09-11] — 콜상세·`OwnerScopedClientsView`가 쓰는
+  `get_assigned_vehicle_summary` RPC와 `LinkedDriverClientsPage`가 쓰는
+  `driver.vehicleNumber` 둘 다 정본은 같은 `driver_links.vehicle_id`(서버
+  RPC 조인 vs owner hydrate 클라이언트 조인 — 계산 위치만 다름) 코드
+  추적으로 확인. 구조적 어긋남 지점 없음 — 버그 아님. 상세
+  `docs/report.md`. 보리 `[x]` 2026-09-11.
 - **연동 기사 본인 로그의 거래처 스코프 불일치 수정** — react-app `76d9829`.
   콜상세 폼이 쓰는 `logId`(workData용)와 "거래처 스코프 키"를 분리하고,
   하이드레이트 쿼리도 배정 차량(`scopedToVehicleNumber`)으로 좁힘 — 5개
