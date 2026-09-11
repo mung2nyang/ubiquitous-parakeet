@@ -92,7 +92,7 @@
   높이 보정)으로 바깥 넘침은 없앴으나 스크롤바 위치가 다른 화면과 달라 보리가
   재지적 → `work-log-page` 자체 스크롤을 완전히 제거하고 문서 스크롤로 통일하는
   근본 수정(`387e3c3`)으로 재해결. react-app `[x]` 2026-09-10. 상세
-  `docs/report.md` §1~§1-2(다음 슬라이스 시작 전 archive 예정).
+  `docs/archive/day-log-part2-scroll-card-bugs.md`.
 - **홈 캘린더 UI·이관 계획 ②③** — 문자문구·공지·PDF저장·리포트 세부내역서·엑셀저장·
   월간정산 위젯 통일 등 전부 `[x]`. 상세 `docs/archive/status-snapshot-2026-09-10.md` "완료" 절.
 
@@ -110,9 +110,10 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `387e3c3`(일일운행 2부 최종 — 문서 스크롤 통일).
-- **ubiquitous-parakeet**: 문서 갱신분 미커밋일 수 있음.
-- 정확한 HEAD·미커밋 범위는 세션 시작 시 `git log`/`git status`로 직접 확인 (AGENTS §0-6).
+- **react-app**: `main` = `387e3c3`(일일운행 2부 최종 — 문서 스크롤 통일). 클린.
+- **ubiquitous-parakeet**: `main` = `4e58448`(일일운행 2부 `[x]` 확정). 클린.
+- 확인 2026-09-11(감시관 세션 시작). 정확한 HEAD·미커밋 범위는 매 세션 시작 시
+  `git log`/`git status`로 직접 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
 
