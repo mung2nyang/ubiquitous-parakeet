@@ -19,16 +19,23 @@
 
 ## 지금 하는 일
 
-**"부가세 해제" 레이블 16px 잔존 — 착수지시서 보리 확인 완료
-(2026-09-11), 착수 대기.** 원인: react-app `call-detail-form.css`의
-`.call-vat-row` 규칙에 `font-size` 지정이 없어 브라우저 기본 크기(16px)로
-남음. 원본은 `var(--fs-2)`로 스코프. 수정안: CSS 1개 파일에 규칙 3줄
-추가. 상세는 `docs/report.md` 참고.
+**아코디언 "열기"가 처음부터 안 보임 — 리뷰 4차 `[~]`** — 닫기(1~3차)는
+보리 브라우저 확인 완료·푸시됨(`67762ff`/`d575247`/`a019e68`, 상세
+`docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`). 열기는
+애초에 클립이 없어 클릭 즉시 내용물이 100% 그려지는 게 원인 —
+착수지시서 작성 완료(승인 대기). 상세 `docs/report.md`.
 
 ## 다음 할 일
 
 1. §1-A 이후 — 보리가 직접 작성한 §2~§14 화면별 대조 기록을 순차로. 각 화면 =
    대조 + 그 화면 전용 CSS 분리 한 슬라이스.
+2. **"부가세 해제" 레이블 글자 굵기 누락**[원인 확인 2026-09-11] — 원본
+   `style.css:3283-3284`의 `.call-vat-row > label:first-child { font-weight: 750; }`
+   (일반 규칙)를 react-app 이식(`3ae7db9`) 때 빠뜨림. 인라인 폼 전용 스코프
+   규칙(`color`/`font-size`)만 옮기고 이 굵기 규칙을 놓쳐 "부가세 해제"만
+   `font-weight: 400`, 옆 레이블들은 750~800. 수정: `call-detail-form.css`의
+   `.work-log-page .call-vat-row > label:first-child`에 `font-weight: 750;`
+   1줄 추가.
 
 ### AI 관찰 (미확인 — 실행 지시 아님)
 
@@ -62,6 +69,14 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 archive)
 
+- **일일운행 인라인 폼 아코디언 슬라이드 애니메이션(닫기까지) 1~3차** —
+  react-app `67762ff`(min-content→1fr) → `d575247`(닫기 forceInstant +
+  열기 0.4s) → `a019e68`(닫기 opacity 페이드로 "말림" 제거). 보리 브라우저
+  확인 완료·푸시됨(2026-09-11). 열기 쪽 잔여 문제는 위 "지금 하는 일" 4차로
+  이어짐. 상세 `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
+- **"부가세 해제" 레이블 16px → `var(--fs-2)`** — react-app `3ae7db9`.
+  `call-detail-form.css`에 `.call-vat-row > label:first-child` 규칙 추가.
+  푸시됨. 보리 브라우저 확인 완료 기록은 착수지시서에 있음(2026-09-11).
 - **`LinkedDriverClientsPage` 스코프 키 출처 — 종결(코드 변경 없음)**
   [재확인 2026-09-11] — 콜상세·`OwnerScopedClientsView`가 쓰는
   `get_assigned_vehicle_summary` RPC와 `LinkedDriverClientsPage`가 쓰는
@@ -143,10 +158,11 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `76d9829`(연동 기사 거래처 스코프 수정, CI green). 클린.
+- **react-app**: `main` = `a019e68`(아코디언 닫기 opacity 페이드, 보리 푸시
+  완료). 클린.
 - **ubiquitous-parakeet**: `main` = 이 세션의 문서 커밋 예정
-  (`STATUS.md`/`docs/report.md`/`docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`
-  — 거래처 스코프 `[x]` 확정 + 3그룹 교차검증 기록 + report.md 리셋).
+  (`STATUS.md`/`docs/report.md`/`docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`
+  — 아코디언 1~3차·부가세·거래처 스코프 archive 정리 + 열기 4차 착수지시서).
   **AI는 push 안 함 — 보리가 push.**
 - 확인 2026-09-11(AI 세션, 코드 커밋 확인 + 보리 최종 승인 + 추가
   교차검증 요청 처리). 정확한 HEAD·미커밋 범위는 매 세션 시작 시
