@@ -19,11 +19,11 @@
 
 ## 지금 하는 일
 
-**아코디언 "열기"가 처음부터 안 보임 — 리뷰 4차 `[~]`** — 닫기(1~3차)는
-보리 브라우저 확인 완료·푸시됨(`67762ff`/`d575247`/`a019e68`, 상세
-`docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`). 열기는
-애초에 클립이 없어 클릭 즉시 내용물이 100% 그려지는 게 원인 —
-착수지시서 작성 완료(승인 대기). 상세 `docs/report.md`.
+**정비/주유/기타 "종류 선택→폼" 전환 애니메이션 — 5차 `[~]`** — 4차(열기
+클립 복원, `355b865`)는 보리 브라우저 확인 완료·푸시됨. 콜상세는 정상이나
+정비/주유/기타의 "종류 선택 → 실제 폼" 2단계 전환만 여전히 즉시 점프 —
+`useExpenseForm.js`의 `openAdd`를 닫기→재열기로 바꾸는 착수지시서 작성
+완료(승인 대기, 0.4~0.5초 지연 트레이드오프 있음). 상세 `docs/report.md`.
 
 ## 다음 할 일
 
@@ -69,11 +69,13 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 archive)
 
-- **일일운행 인라인 폼 아코디언 슬라이드 애니메이션(닫기까지) 1~3차** —
+- **일일운행 인라인 폼 아코디언 슬라이드 애니메이션(콜상세 열기·닫기) 1~4차** —
   react-app `67762ff`(min-content→1fr) → `d575247`(닫기 forceInstant +
-  열기 0.4s) → `a019e68`(닫기 opacity 페이드로 "말림" 제거). 보리 브라우저
-  확인 완료·푸시됨(2026-09-11). 열기 쪽 잔여 문제는 위 "지금 하는 일" 4차로
-  이어짐. 상세 `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
+  열기 0.4s) → `a019e68`(닫기 opacity 페이드로 "말림" 제거) →
+  `355b865`(열기도 클립 복원, `settled`/`is-settled`). 보리 브라우저
+  확인 완료·푸시됨(2026-09-11). 정비/주유/기타의 "종류 선택→폼" 전환만
+  잔여 — 위 "지금 하는 일" 5차. 상세
+  `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
 - **"부가세 해제" 레이블 16px → `var(--fs-2)`** — react-app `3ae7db9`.
   `call-detail-form.css`에 `.call-vat-row > label:first-child` 규칙 추가.
   푸시됨. 보리 브라우저 확인 완료 기록은 착수지시서에 있음(2026-09-11).
@@ -158,7 +160,7 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `a019e68`(아코디언 닫기 opacity 페이드, 보리 푸시
+- **react-app**: `main` = `355b865`(아코디언 열기 클립 복원, 보리 푸시
   완료). 클린.
 - **ubiquitous-parakeet**: `main` = 이 세션의 문서 커밋 예정
   (`STATUS.md`/`docs/report.md`/`docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`

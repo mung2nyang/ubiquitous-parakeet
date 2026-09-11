@@ -1,86 +1,79 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-> 직전 완료 슬라이스(아코디언 인라인 시트 애니메이션 1~3차 `[x]`, 부가세
+> 직전 완료 슬라이스(아코디언 인라인 시트 애니메이션 1~4차 `[x]`, 부가세
 > 레이블 크기 `[x]`, 거래처 스코프 종결 `[x]`) 상세는
 > `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`로 옮김(동결).
 
 ---
 
-## 아코디언 "열기"가 처음부터 안 보임 — 리뷰 4차
+## 정비/주유/기타 "종류 선택 → 실제 폼" 전환이 애니메이션 없이 즉시 바뀜 — 5차
 
 ### 원인
 
-닫기(3차, `a019e68`)와 달리 열기는 애초에 클립(reveal) 자체가 없었다.
-`is-visible`이 붙는 순간 패널이 곧바로 `overflow: visible` +
-`min-height: min-content`가 되어, **클릭한 그 프레임에 폼 내용물이 이미
-100% 다 그려진다.** 그 아래로 "빈 공간"만 0.4초에 걸쳐 조용히 자라날
-뿐이라 — 실제 내용물은 처음부터 끝까지 그대로 보여서 슬라이드가 안
-보이는 게 당연했다(실측: `panel.getBoundingClientRect().height`가 바깥
-박스는 아직 624px인 시점에 이미 1156px로 완성).
+`grid-template-rows`는 **값 자체가 바뀔 때만**(0fr↔1fr) 전환이 걸린다.
+종류를 고르면 시트는 계속 열려 있는 채(값은 내내 `1fr`) 안의 내용물만
+바뀌는데, 이건 "값 변화"가 아니라 콘텐츠 크기 변화라 전환이 아예 안
+걸린다 — CSS만으로는 못 고친다(실측: 219px→511px가 25ms 안에 즉시 점프,
+`is-settled` 상태 그대로 유지된 채였음).
 
 ### 목표 상태
 
-열 때도 닫을 때처럼 실제로 내용물이 점차 드러나는 게 보인다.
+종류를 고르면 실제 폼이 나타날 때도 슬라이드가 보인다.
 
 ### 수정안
 
-닫기 때 쓴 것과 같은 원리 — 열리는 동안에도 패널을 `overflow: hidden`
-상태로 유지해 실제로 점차 드러나게 하고, 전환이 "완전히 끝난 후"에만
-`overflow: visible`(닫힌 뒤 폼 내용이 늘어나도 안 잘리게)로 바꾼다.
-opacity는 닫기(빠른 페이드아웃)와 반대로 **늦게, 짧게** 페이드인해서
-초반 reflow 구간을 가린다.
+내용 교체를 "잠깐 닫혔다가 새 내용으로 다시 열리는" 것으로 처리한다 —
+이미 검증된 열기/닫기 사이클을 그대로 재사용(InlineSheet 안 건드림).
 
-**`InlineSheet.jsx`** — `settled` state 추가(전환 완료 후에만 true),
-`onTransitionEnd`에서 열기 완료 시 `setSettled(true)`, 닫기 시작하면
-`setSettled(false)`. 클래스에 `is-settled` 추가.
+**`useExpenseForm.js`의 `openAdd(kind)`** — 종류 선택 패널에서 불렸을 때만
+(`kindPick`이 이미 true인 경우) 즉시 열지 않고, 먼저 `kindPick`을 꺼서
+닫히게 한 뒤(닫기 애니메이션 재생) 그 시간만큼 지나서 `modalOpen`을 켠다
+(직접 "+ 정비 추가" 버튼처럼 이미 닫힌 상태에서 부르는 경우는 지금처럼
+즉시 처리, 무변경):
 
-**`day-log.css`**:
-
-```css
-.inline-sheet-panel {
-  overflow: hidden;
-  min-height: 0;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.inline-sheet.is-visible .inline-sheet-panel {
-  opacity: 1;
-  transition: opacity 0.15s ease 0.25s; /* 0.4s 성장 중 후반 150ms에만 페이드인 */
-}
-.inline-sheet.is-settled .inline-sheet-panel {
-  min-height: min-content;
-  overflow: visible;
+```js
+function openAdd(kind) {
+  if (kindPick) {
+    setKindPick(false)
+    setTimeout(() => {
+      setEditingId(null)
+      setDraft(emptyExpenseDraft(kind, dateKey, logId !== 'main' ? logId : undefined))
+      setModalOpen(true)
+    }, 420)
+    return
+  }
+  setKindPick(false)
+  setEditingId(null)
+  setDraft(emptyExpenseDraft(kind, dateKey, logId !== 'main' ? logId : undefined))
+  setModalOpen(true)
 }
 ```
 
-### 건드릴 파일 (정확히 2개)
+### 미리 알려드릴 트레이드오프
 
-1. `react-app/src/components/day-log/InlineSheet.jsx` — `settled` state.
-2. `react-app/src/components/day-log/day-log.css` — 위 CSS.
+종류를 고른 뒤 실제 폼이 뜰 때까지 **약 0.4~0.5초 더 걸립니다**(짧게
+접혔다가 다시 펼쳐지는 동작 하나가 끼어듦). CSS 트릭의 구조적 한계상
+"즉시 전환 + 슬라이드 둘 다"는 안 되고 이 중 하나만 고를 수 있음 —
+이 지연이 거슬리면 5차는 접고 "종류 선택 후 폼은 즉시 나타난다"로
+그대로 두는 것도 방법입니다.
+
+### 건드릴 파일 (정확히 1개)
+
+`react-app/src/components/day-log/useExpenseForm.js` — `openAdd` 함수만.
 
 ### 안 건드릴 것
 
-`forceInstant`/`mounted` 로직(닫기용, 3차까지 완성됨) 무변경.
-`DayLogPage.jsx`/`DayLogExpenses.jsx` 무변경(새 prop 불필요).
-
-### 위험 요소 — 미리 알려드림
-
-닫기 때와 같은 이유로, 열기도 매 프레임 실제 레이아웃이 다시 계산되는
-방식이라 복잡한 폼에선 여전히 약간 뻑뻑해 보일 수 있다. opacity 지연으로
-초반(0~250ms, reflow가 가장 심한 구간)은 가리지만, 완벽히 매끈한
-"슬라이드"는 아닐 수 있음 — 브라우저 확인 후 여전히 어색하면 지속시간·
-지연값을 더 조정하거나, 아예 열기도 페이드 위주(클립 없이 부드럽게
-나타나기만)로 바꾸는 대안도 있음.
+`InlineSheet.jsx`·`day-log.css`(1~4차 완성본) 무변경. `openEdit`(기존
+항목 수정)은 kindPick을 거치지 않아 무변경.
 
 ### §8 4대 질문
 
-1~5 무관 — UI 전환 타이밍만, 구독/값 출처/쓰기창구/hydrate/DB 무변경.
+1~5 무관 — 폼 여닫는 타이밍만, 구독/값 출처/쓰기창구/hydrate/DB 무변경.
 
 ### 검증 방법
 
 - `npm run test:app`.
-- 보리 브라우저 실검증: "+ 운행 일지 추가" 클릭 → 이번엔 실제로 내용이
-  점차 드러나는 느낌인지, 닫기처럼 이상하게 잘리거나 말리는 느낌은
-  없는지.
+- 보리 브라우저 실검증: "차량 정비/주유/기타" → "+ 추가" → "정비" 선택 →
+  실제 정비 폼이 슬라이드로 나타나는지(살짝 늦게 뜨는 건 의도된 지연).
 
-바로 진행해도 될지 확인 부탁드립니다.
+이 방향(0.4~0.5초 지연 감수)으로 진행해도 될지 확인 부탁드립니다.
