@@ -6,7 +6,36 @@
 
 ---
 
-## 다크모드에서 거래처 드롭다운 선택 시 입력창이 라이트모드처럼 밝아짐 (§1-F)
+> **다음 세션 진행 순서: F-1 → F-2 → (E는 보리가 나머지 항목 설명 후 착수) → D.**
+> 아래 F-1, F-2 둘 다 착수지시서 완성·승인 대기 상태 — 승인만 받으면
+> 바로 코드 진행 가능. 서로 무관한 버그라 별개 커밋으로.
+
+## F-1. "부가세 해제" 레이블 글자 굵기 누락
+
+### 원인
+
+원본([style.css:3283-3284](../style.css:3283))엔 `.call-vat-row >
+label:first-child`에 `font-weight: 750`을 주는 **일반 규칙**이 인라인 폼
+전용 스코프 규칙과 별도로 있는데, react-app 이식(`3ae7db9`) 때 스코프
+규칙(`color`/`font-size`)만 옮기고 이 굵기 규칙을 빠뜨렸다 — "부가세
+해제"만 `font-weight: 400`, 옆 레이블("산재보험료"·"거래처" 등)은
+750~800.
+
+### 건드릴 파일 (정확히 1개, 1줄)
+
+`react-app/src/components/day-log/call-detail-form.css` — 기존
+[`.work-log-page .call-vat-row > label:first-child { font-size: var(--fs-2); }`](../react-app/src/components/day-log/call-detail-form.css:139)에
+`font-weight: 750;` 한 줄 추가.
+
+### 검증 방법
+
+- `npm run test:app`.
+- 보리 브라우저 실검증: 콜상세 폼 → "부가세 해제" 글자가 옆 레이블들과
+  같은 굵기로 보이는지(계산서 켜짐/꺼짐 둘 다).
+
+---
+
+## F-2. 다크모드에서 거래처 드롭다운 선택 시 입력창이 라이트모드처럼 밝아짐
 
 ### 원인
 
