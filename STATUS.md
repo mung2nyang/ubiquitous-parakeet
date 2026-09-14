@@ -68,12 +68,14 @@
 - Billing(net/gross) 삭제 or "공제 후" 고정(보리 고민 중, 기능 자체는 이관됨).
 - `driver_direct` 죽은 코드 정리 / 다중 배정 차량 집계(`upsertDriver`가 막아 사실상 닫힘, 참고용).
 - 미룸("이관 후 UI 정리"): 테마 저장 위치, 서브차량 설정 배치, 차량관리 라벨, 기사연동관리 UI 패턴.
-- **`InlineSheet` 전환 리팩토링 + 스크롤 애니메이션 추가**(보리 지시,
-  2026-09-14) — `useExpenseForm.js`의 `setTimeout(420)`(매직넘버,
-  `day-log.css` `0.4s`와 숫자로만 동기화, `clearTimeout` 정리도 없어
-  언마운트 레이스 위험)을 `InlineSheet`가 이미 가진 `onTransitionEnd`
-  메커니즘 기반 콜백(`onClosed` prop 신설 등)으로 바꾸는 작업. 원본에
-  없던 새 개선(스크롤 애니메이션도 원본에 없음)이라 이관 완료 후.
+- **`InlineSheet` 전환 리팩토링**(보리 지시, 2026-09-14) — **결정: 방식은
+  이벤트 기반으로 확정(다시 고민 안 해도 됨).** `useExpenseForm.js`의
+  `setTimeout(420)`(매직넘버, `day-log.css` `0.4s`와 숫자로만 동기화,
+  `clearTimeout` 정리도 없어 언마운트 레이스 위험)을 `InlineSheet`가
+  이미 가진 `onTransitionEnd` 메커니즘 기반 콜백(`onClosed` prop 신설
+  등)으로 바꾼다. 원본에 없던 새 개선이라 이관 완료 후.
+  **스크롤 애니메이션 추가는 별개 — 이 리팩토링 끝난 뒤 그 위에 얹을
+  후보일 뿐, 할지 여부는 그때 다시 판단(미확정).**
   E의 "토글 닫기" 기능은 이 리팩토링 없이도 착수 가능(막지 않음).
 
 ## 완료 (커밋·푸시됨 — 상세는 각 archive/report.md, 아래는 한 줄 요약만)
