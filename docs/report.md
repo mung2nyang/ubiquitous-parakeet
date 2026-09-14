@@ -103,4 +103,28 @@ CSS를 따로 얹는 구조가 원본과 같은 설계.
 - 화면 미연결이라 브라우저 실검증은 D-1부터(이 슬라이스는 컴포넌트
   단독 완성까지).
 
-D-0부터 진행해도 될지 확인 부탁드립니다. 승인되면 코드 작업 시작하겠습니다.
+### 구현 (2026-09-14)
+
+지시서대로 진행하되 200줄 초과해 3개 파일로 분리(계획된 대안):
+- `TemporalInput.jsx`(155줄) — 오케스트레이션(포지셔닝, 열림/닫힘, 커밋 규칙)
+- `TemporalColumns.jsx`(83줄) — 연/월/일·시/분 컬럼 렌더
+- `temporalValue.js`(38줄) — `pad`/`daysInMonth`/`parseCursor` 순수 함수
+- `temporal-input.css`(94줄) — 원본 포팅(`--subtext-color`는 react-app
+  실제 변수명 `--sub-text-color`로 정정, grep으로 확인 후 반영)
+- `TemporalInput.test.js`(신규, 지시서에 적은 3가지 시나리오 + 날짜
+  연/월/일 커밋 규칙 검증 1개 추가 — 총 4개 테스트)
+
+버그 2개를 테스트로 잡아 자체 수정: ① 외부 클릭 판정에 쓴 전역 `Node`가
+이 테스트 환경(jsdom, `setupDom.js`)엔 없어 `ReferenceError` — `window.Node`로
+수정. ② 포지셔닝 테스트에서 직접 계산한 기대값이 산수 오류(224 아니라
+232)였던 걸 재확인해 테스트 쪽을 고침(컴포넌트는 원본 로직 그대로 정확).
+
+검증: `npm test`(unit 628 + app 159 전부 통과) · `npm run typecheck`(0 에러,
+cursor 상태를 date/time 공용 shape로 통일해 union 타입 좁히기 에러 해결) ·
+`npm run lint`(신규 파일 경고 없음) · `npm run build`(성공).
+
+react-app 로컬 커밋 `e65b2c0`. **AI는 push 안 함 — 사용자가 push해야
+CI(GitHub Actions)가 돈다.** 화면 미연결이라 브라우저 실검증은 D-1부터.
+
+push 후 CI 확인 부탁드립니다. 초록 확인되면 D-0 `[x]` 확정하고 D-1(콜상세
+폼 연결)로 넘어가겠습니다.

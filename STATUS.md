@@ -23,10 +23,11 @@
 
 **§1 남은 순서(D → E, 보리 2026-09-14: D 먼저).**
 
-**D. 시간입력 위젯(`app-temporal` 대체) — 하위 슬라이스 계획 완료, D-0
-착수지시서 승인 대기** (상세 `docs/report.md`):
+**D. 시간입력 위젯(`app-temporal` 대체)** (상세 `docs/report.md`):
 1. **D-0. 공용 `TemporalInput` 컴포넌트 + 기본 CSS(신규 파일만)** `[~]` —
-   착수지시서 완료·승인 대기.
+   코드 완료(react-app `e65b2c0`), `npm test`/`typecheck`/`lint`/`build`
+   전부 통과. **push·CI·`[x]` 대기(화면 미연결이라 브라우저 실검증은
+   D-1부터).**
 2. D-1. 콜상세 폼(일일운행) 연결 `[ ]` — D-0 완료 후.
 3. D-2. 기사 관리 + 세금계산서 연결 `[ ]` — D-0 완료 후.
 4. D-3. 정비/주유/기타 연결 `[ ]` — **`ExpenseFormModal.jsx`는 E가 곧
@@ -134,9 +135,10 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `ed83703`(F-1·F-2 포함), 클린, origin과 동기화.
-- **ubiquitous-parakeet**: `main` = `b0d77d4`. STATUS·report.md 수정 중
-  (D 하위 슬라이스 계획 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
+- **react-app**: `main` = `e65b2c0`(D-0 포함), origin보다 1개 앞섬 —
+  **사용자 push 대기.** AI는 push 안 함.
+- **ubiquitous-parakeet**: `main` = `a4e5c46`. STATUS·report.md 수정 중
+  (D-0 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
