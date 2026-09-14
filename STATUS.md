@@ -27,14 +27,8 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 `useExpenseForm.js`가 `InlineSheet` 리팩토링 대상이라 그거 끝난 뒤로
 이월(2026-09-14 보리 결정, UI 대조상 급하지 않음) — §1을 더 막지 않음.
 
-**§2(차량 관리) — §2-1-A. 카드 라벨칩/정산정보 복원** `[~]` — 보리
-승인 후 구현 완료(react-app `8641be3`). "기사연동"/"운행일지"가 원본에서도
-칩이었다는 착수지시서 조사 오류를 보리가 지적해 정정 후 진행(상세
-`docs/report.md`). `npm test`(791)/`typecheck`/`lint`/`build` 통과,
-AI 브라우저 프리뷰 실기동 확인 완료. **push·보리 실사용 데이터 실검증
-대기.** B(수정/삭제 아이콘 공용화)는 A 확정 후 별도 착수지시서로 분리
-진행(A·B를 한번에 묶어 처리한 순서 위반 재발 방지, 2026-09-14 보리
-지적).
+**§2(차량 관리) — §2-1-A `[x]` 완료.** 다음: **§2-1-B(수정/삭제
+아이콘 공용화) — 아직 착수지시서 작성 전.**
 
 **보리 지시(2026-09-14, 디자인 토큰 건에서 확인): "라이트 전용만
 있는 건 다크모드도 적용해야 한다, 앱 통일을 위해서."** — 일반 원칙으로
@@ -59,6 +53,21 @@ AI 브라우저 프리뷰 실기동 확인 완료. **push·보리 실사용 데�
 
 ### 후속 nit (확인된 것만)
 
+- **outbox 9개 파일 사실상 죽은 코드**[확인 2026-09-14] — `react-app/src/lib/`
+  `mutationOutbox.js`·`outboxFlush.js`·`outboxCommit.js`·`outboxRollback.js`·
+  `outboxReconcile.js`·`outboxDriverMerge.js`·`outboxTypes.js`·`outboxErrors.js`·
+  `syncQueue.js`. 새 op를 넣는 유일 함수 `commitWithOutboxAndFlush`(`outboxCommit.js`)를
+  프로덕션 어디서도 안 부름(차량/거래처/기사초대/삭제 창구 전부 `commitLocalOnly`/
+  `STORAGE_FAIL_TOAST`만 씀) — 남은 역할은 이관 전 예전 큐 잔여 flush뿐
+  (`docs/sot.md` §8). 정리 여부·시점 미정, 보리 결정 대기.
+- **`workDataDeletedDates`(tombstone) 삭제-flush 절반 죽음**[확인 2026-09-14] —
+  실제 원격 삭제 함수 `syncDeletedWorkDates()`(`react-app/src/lib/syncDeletedWorkDates.js`)와
+  `syncWorkData.js`의 구 `syncWorkData()`(bulk syncAll) 둘 다 프로덕션 호출부 없음
+  (`syncQueue.js`/`clientMutations.js`/`clientCloudSave.js` 주석 "syncAll은 쓰지
+  않는다"로 명시). 읽기 쪽(hydrate 필터, `hydrateMergeWork.js:34,38,65`)은 살아있어
+  화면엔 안 보이지만, 그 좁은 엣지케이스(로그인했지만 그 차량이 아직 Supabase
+  미동기화일 때 빈 날 삭제)에서 생긴 tombstone은 서버 쪽 원본 행을 영원히 못 지움.
+  정리 여부·시점 미정, 보리 결정 대기.
 - **리포트 화면이 메인 차량 전용**[확인 2026-09-07] — 서브차량(소속기사)
   리포트·수수료 줄이 react-app엔 없음. 범위 커서 별도 상의 필요.
 - **`receivables/*` 뒤로가기 `?back=` 유실**[문서화 2026-09-07] — 드문 경로라 미루는 중.
@@ -88,6 +97,9 @@ AI 브라우저 프리뷰 실기동 확인 완료. **push·보리 실사용 데�
 
 ## 완료 (커밋·푸시됨 — 상세는 각 archive/report.md, 아래는 한 줄 요약만)
 
+- §2-1-A 차량 카드 라벨칩/정산정보 복원 + 칩 조건 버그 수정 `[x]` —
+  react-app `8641be3`/`032e807`/`15bfc43`, CI 초록·보리 실검증·최종
+  승인(2026-09-14). 상세 `docs/archive/2-1-a-car-card-label-chips-2026-09-14.md`.
 - D-0~D-3·E-1·F-1~F-3·디자인 토큰 통합(시간입력 위젯 전체+정비/주유/기타
   공용 스타일+콜상세 아이콘/별표 SVG+CSS 변수 1곳화) `[x]` — react-app
   `e65b2c0`/`b14fcd8`/`c395ab3`/`93a4f2c`/`9e6f93d`/`8ced672`/`ed83703`/
@@ -118,6 +130,10 @@ AI 브라우저 프리뷰 실기동 확인 완료. **push·보리 실사용 데�
 
 ### 이관 완료 시 처리할 숙제 (§1~§14 UI 대조·이관 전부 끝난 뒤 한꺼번에)
 
+- **월급제 기사 등록(미연동 서브차량) 시 월급 입력하면 연동기사로
+  바뀌며 미연동 차량이 저장 안 됨**[보리 발견 2026-09-14, §2-1-A
+  검증 중] — 원인 미조사, §2-1-A 범위 밖이라 손대지 않음. 상세는
+  `docs/archive/2-1-a-car-card-label-chips-2026-09-14.md` 마지막 절.
 - **`react-app/src/components/mypage.css`에 죽은 CSS 규칙 2개 보존돼 있음**
   (`.mypage-header-spacer`, `.mypage-role-pill` — 둘 다 JSX 소비처 0,
   `grep` 확인됨). 출처: 2026-09-10 §2 마이페이지 CSS 분리 때
@@ -142,10 +158,10 @@ AI 브라우저 프리뷰 실기동 확인 완료. **push·보리 실사용 데�
 
 ## 저장소 상태
 
-- **react-app**: `main` = `8641be3`(§2-1-A 포함), origin보다 1개 앞섬 —
-  **사용자 push 대기.** AI는 push 안 함.
-- **ubiquitous-parakeet**: 이 커밋으로 STATUS·report.md에 §2-1-A 구현
-  반영. **AI는 push 안 함.**
+- **react-app**: `main` = `15bfc43`(§2-1-A + 칩 조건 수정), origin과 동일
+  (푸시 완료, CI "verify"·"Deploy GitHub Pages" 둘 다 초록 확인).
+- **ubiquitous-parakeet**: STATUS·report.md·archive `[x]` 문서 정리 중,
+  커밋 대기. **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
