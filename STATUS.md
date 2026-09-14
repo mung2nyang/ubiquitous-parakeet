@@ -27,8 +27,18 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 `useExpenseForm.js`가 `InlineSheet` 리팩토링 대상이라 그거 끝난 뒤로
 이월(2026-09-14 보리 결정, UI 대조상 급하지 않음) — §1을 더 막지 않음.
 
-**§2(차량 관리) — §2-1-A·§2-1-B·§2-1-C 전부 `[x]` 완료.** 다음:
-**§9 기사연동관리 전체 대조 — 아직 착수지시서 작성 전.**
+**§2(차량 관리) — §2-1-A·B·C `[x]` 완료.**
+**버그: 운행일지↔기사연동 전환** `[~]` — `f4de520`(log 수정 시 초대
+스킵) + `bc25009`(link→log 시 ConfirmModal 후 `requestDriverDeletion`
+재사용). **AI 브라우저 실검증 완료**(2026-09-14, 보리 요청 대행) —
+동작 4개 경로 전부 통과, 회귀 없음.
+
+**단, push 후 CI "typecheck" 워크플로우 실패 확인**(2026-09-14,
+`gh run list`) — `CarListPage.jsx:137` `del.drivers.some(...)`이
+`commitLocalOnly`(`outboxCommit.js`)의 넓은 유니언 반환 타입과 충돌.
+**동작 자체는 이미 검증 통과, 순수 타입 문제.** 3차 착수지시서
+작성 완료(`docs/report.md`), **아직 `[x]` 승인 못 함 — 착수 전 대기.**
+다음 후보: §9 기사연동관리.
 
 **보리 지시(2026-09-14, 디자인 토큰 건에서 확인): "라이트 전용만
 있는 건 다크모드도 적용해야 한다, 앱 통일을 위해서."** — 일반 원칙으로
@@ -174,10 +184,10 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 
 ## 저장소 상태
 
-- **react-app**: `main` = `2e1fcac`(§2-1-C), origin과 동일(푸시 완료,
-  CI "verify"·"Deploy GitHub Pages" 둘 다 초록 확인).
-- **ubiquitous-parakeet**: STATUS·report.md·archive `[x]` 문서 정리 중,
-  커밋 대기. **AI는 push 안 함.**
+- **react-app**: `main` = `bc25009`(link→log 연동 해제), origin보다
+  ahead 2(`f4de520`+`bc25009`). **사용자 push 대기.** AI는 push 안 함.
+- **ubiquitous-parakeet**: STATUS·report.md 수정 중(`[x]` 후 문서 커밋).
+  **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
