@@ -24,12 +24,13 @@
 **§1 남은 순서(D → E, 보리 2026-09-14: D 먼저).**
 
 **D. 시간입력 위젯(`app-temporal` 대체)** (상세 `docs/report.md`):
-1. **D-0. 공용 `TemporalInput` 컴포넌트 + 기본 CSS(신규 파일만)** `[~]` —
-   코드 완료(react-app `e65b2c0`), `npm test`/`typecheck`/`lint`/`build`
-   전부 통과. **push·CI·`[x]` 대기(화면 미연결이라 브라우저 실검증은
-   D-1부터).**
-2. D-1. 콜상세 폼(일일운행) 연결 `[ ]` — D-0 완료 후.
-3. D-2. 기사 관리 + 세금계산서 연결 `[ ]` — D-0 완료 후.
+1. D-0. 공용 `TemporalInput` 컴포넌트 `[x]` — react-app `e65b2c0`,
+   CI 초록·사용자 확인 완료.
+2. **D-1. 콜상세 폼(일일운행) 연결** `[~]` — 코드 완료(react-app
+   `b14fcd8`), `npm test`/`typecheck`/`lint`/`build` 전부 통과. **push·
+   브라우저 실검증·`[x]` 대기**(AI 쪽 dev 서버 프리뷰가 이 세션에서 안
+   열려 AI 자체 확인은 못 함 — 순수 마크업 교체라 리스크는 낮음).
+3. D-2. 기사 관리 + 세금계산서 연결 `[ ]` — D-1 완료 후.
 4. D-3. 정비/주유/기타 연결 `[ ]` — **`ExpenseFormModal.jsx`는 E가 곧
    더 건드릴 파일이라 D 안에서도 순서상 마지막.**
 
@@ -71,6 +72,9 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 각 archive/report.md, 아래는 한 줄 요약만)
 
+- D-0. 공용 `TemporalInput` 컴포넌트(`app-temporal` 대체) `[x]` —
+  react-app `e65b2c0`, CI 초록·사용자 확인 완료(2026-09-14). 상세
+  `docs/archive/d0-temporal-input-component-2026-09-14.md`.
 - F-2. 다크모드 datalist 자동완성 입력창 밝아짐(`:-webkit-autofill`
   덮어쓰기) `[x]` — react-app `ed83703`, CI 초록·브라우저 실검증
   완료(2026-09-14). 상세 `docs/archive/f2-autofill-dark-mode-2026-09-14.md`.
@@ -86,11 +90,11 @@
   `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
 - B그룹 ①산재보험료·②즐겨찾기 칩·콜상세 "거래처+추가" `[x]`(③원안은 폐기) —
   react-app `1de2537`/`6b4a9b7`/`0db5bde`. 상세 `docs/archive/b-group-report-2026-09-11.md`.
-- Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업·알림·PDF·온보딩·고객센터 등) —
-  상세 `docs/archive/audit.md`, `docs/archive/status-snapshot-2026-09-10.md`.
-- Step 11 200줄 강제 `[x]`, JS→TS(JSDoc) 프로덕션 전체 `[x]`(잔여는 위 "보류" 참고).
-- 미연동 서브차량 데이터 분리 4단계 `[x]` — 도메인 정의 `docs/sot.md` §0.
-- 사이드메뉴 UI 정리(§1-1) 1·3번 `[x]`(2번은 위 "후속 nit").
+- Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업·알림·PDF·온보딩·고객센터 등,
+  상세 `docs/archive/audit.md`·`status-snapshot-2026-09-10.md`) · Step 11
+  200줄 강제·JS→TS(JSDoc) 프로덕션 전체 `[x]`(잔여는 위 "보류" 참고).
+- 미연동 서브차량 데이터 분리 4단계 `[x]`(도메인 정의 `docs/sot.md` §0) ·
+  사이드메뉴 UI 정리(§1-1) 1·3번 `[x]`(2번은 위 "후속 nit").
 - 공용 헤더 `PageHeader` 통일(22개 화면) `[x]` — `docs/archive/pageheader-unification.md`.
 - `side-menu.css` 다이어트 `[x]` — `docs/archive/side-menu-css-diet.md`.
 - `main-calendar.css` 책임 분리 1~10차 `[x]` — `docs/archive/main-calendar-css-split.md`.
@@ -112,17 +116,14 @@
   관례에 따라 죽은 채로 같이 옮김(상세
   `docs/archive/report-snapshot-2026-09-10.md`). 보리 개인 메모로 이미
   추적 중, 여기 동기화만.
-- **`ModalShell` 공용 컴포넌트 미추출** — `modal-overlay`/`modal-content`
-  CSS는 통일돼 있는데 JSX 래퍼(바깥 클릭 닫힘+`stopPropagation`)가 9개
-  파일 중 8개에 동일 복붙(`grep` 확인, 2026-09-11 architecture-audit).
-  `ExpenseFormModal`만 구조 다름(래퍼 없음). 순수 구조적 중복이라 안전하게
-  뽑아낼 수 있음 — "이관 중 전면 리팩터 안 함" 원칙으로 지금은 보류.
+- **`ModalShell` 공용 컴포넌트 미추출** — 바깥 클릭 닫힘+`stopPropagation`
+  JSX 래퍼가 9개 파일 중 8개에 동일 복붙(`ExpenseFormModal`만 다름,
+  2026-09-11 architecture-audit). 안전하게 뽑아낼 수 있으나 "이관 중
+  전면 리팩터 안 함" 원칙으로 보류.
 - **"재감사/FAIL 지적" 감사 이력 주석 다이어트** — 코드 전체 242곳 중
-  테스트 파일(`App.test.js` 등) 비중이 커서 그건 있는 게 맞는 종류.
-  실제 다이어트 후보는 `pendingWorkDataWritesTypes.js`(7)·
+  테스트 파일 비중이 커서 그건 정상. 실제 후보는 `pendingWorkDataWritesTypes.js`(7)·
   `durableStorage.js`(6)·`useDayDraft.js`(5)·`ownerDataHooks.js`(4) 등
-  durable-write 관련 lib 파일 소수(2026-09-11 architecture-audit 발견).
-  ModalShell 건과는 겹치는 파일이 없는 별개 작업.
+  durable-write lib 파일 소수(2026-09-11 architecture-audit, ModalShell과 무관한 별개 작업).
 - **정비/주유/기타 Supabase 동기화가 항상 "메인" 차량 `vehicle_id`로만 저장**
   (`lib/syncExpenseRecords.js` 51·88·125 / `lib/hydrate.js` 142-144). DB row 정합성만의
   문제라 화면엔 영향 없음 — 서브차량 sync 루프 고칠 때 같이 처리(백로그).
@@ -135,10 +136,10 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `e65b2c0`(D-0 포함), origin보다 1개 앞섬 —
-  **사용자 push 대기.** AI는 push 안 함.
-- **ubiquitous-parakeet**: `main` = `a4e5c46`. STATUS·report.md 수정 중
-  (D-0 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
+- **react-app**: `main` = `b14fcd8`(D-0·D-1 포함), origin보다 1개 앞섬
+  (D-0 `e65b2c0`는 이미 push됨) — **사용자 push 대기.** AI는 push 안 함.
+- **ubiquitous-parakeet**: `main` = `fbc4bc4`. STATUS·report.md 수정 중
+  (D-1 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)

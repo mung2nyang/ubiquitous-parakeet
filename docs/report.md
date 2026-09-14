@@ -7,6 +7,8 @@
 > `docs/archive/f1-vat-label-font-weight-2026-09-14.md`로 옮김(동결).
 > F-2(`[x]`, react-app `ed83703`) 상세는
 > `docs/archive/f2-autofill-dark-mode-2026-09-14.md`로 옮김(동결).
+> D-0(`[x]`, react-app `e65b2c0`) 상세는
+> `docs/archive/d0-temporal-input-component-2026-09-14.md`로 옮김(동결).
 
 ---
 
@@ -62,69 +64,77 @@ CSS를 따로 얹는 구조가 원본과 같은 설계.
 
 ---
 
-## D-0. 공용 `TemporalInput` 컴포넌트 + 기본 CSS
+## D-1. 콜상세 폼(일일운행) `TemporalInput` 연결
 
 ### 목표
 
-네이티브 `<input type="date">`/`<input type="time">`와 동일한
-`value`(문자열)/`onChange`(문자열 인자) 계약을 갖는 React 컴포넌트를 만들어
-호출부 변경을 최소화한다. 렌더:
+`CallDetailForm.jsx`의 출발/도착 시간·입금예정일 3개 네이티브
+date/time input을 D-0의 `TemporalInput`으로 교체. `value`/`onChange`
+계약이 기존 native input과 동일해 호출부는 태그명+`className="input-box"`
+제거만 바뀐다(로직 무변경).
 
-- 트리거 버튼(값 없으면 "날짜 선택"/"시간 선택", 있으면 `YYYY.MM.DD`/`HH:MM`)
-- 클릭 시 `document.body`에 포털된 메뉴: date는 연/월/일 3컬럼, time은
-  시/분 2컬럼 스크롤 리스트, 각 옵션 클릭 시 값 반영 + 자동 닫힘(일/분
-  선택 시)
-- 메뉴 위치: 트리거 `getBoundingClientRect` 기준 `position: fixed`,
-  뷰포트 우측 초과 시 좌측으로 당김(원본 `positionAnchoredOverlay` 로직
-  포팅), `resize`/`scroll`마다 재계산
-- 외부 클릭·Escape로 닫힘, 포커스 트리거로 복귀
+### 건드릴 파일
 
-### 건드릴 파일 (신규만, 기존 파일 무변경)
+- `react-app/src/components/day-log/CallDetailForm.jsx` — 3줄
+  ([113](../react-app/src/components/day-log/CallDetailForm.jsx:113)
+  출발시간, [117](../react-app/src/components/day-log/CallDetailForm.jsx:117)
+  도착시간, [201](../react-app/src/components/day-log/CallDetailForm.jsx:201)
+  입금예정일 — `<input type="date|time" .../>` → `<TemporalInput type="date|time" .../>`).
+- `react-app/src/components/day-log/call-detail-form.css` — 원본
+  `style.css` 6498~6660줄의 `#callDetailModal`/`#workModal
+  .call-detail-inline-host` 스코프를 `.work-log-page`로 포팅(아래 참고).
 
-- `react-app/src/components/shared/TemporalInput.jsx`(신규)
-- `react-app/src/components/shared/temporal-input.css`(신규, 원본
-  `style.css:935-1034` 기본 스타일 포팅)
+### 스코프 CSS — 트리거만 포팅, 메뉴는 포팅 안 함(원본도 사실상 죽은 CSS)
+
+원본은 이 화면에서 트리거를 **가운데 정렬 + 아이콘 우측 절대위치**로
+꾸민다(`justify-content:center`, `.app-temporal-value{padding:0 22px;
+text-align:center}`, `.app-temporal-icon{position:absolute;right:12px}`).
+이건 포털되지 않는 트리거/래퍼 요소라 `.work-log-page .app-temporal-trigger`
+조상 선택자로 정상 적용된다 — 이 부분만 포팅.
+
+원본은 메뉴에도 스코프 CSS(`#callDetailModal .app-temporal-menu`
+padding/radius, `.app-temporal-option` 크기 등)를 두는데, **D-0에서
+메뉴는 `document.body`에 포털**되므로 `#callDetailModal`(또는
+`.work-log-page`)의 자손이 아니게 된다 — 조상 선택자로는 절대 안 걸리는
+선택자라, 원본에서도 사실상 죽은 CSS였던 것으로 판단(DOM 구조상 불가능).
+그래서 메뉴 쪽은 포팅하지 않고 D-0 기본 스타일(모든 화면 공통)을 그대로
+쓴다 — 실제 사용자가 보는 화면도 어차피 그 죽은 CSS 영향을 받은 적이
+없으므로 동작 동일.
 
 ### §6 200줄
 
-신규 파일 — 렌더 로직(트리거+메뉴+포지셔닝)과 옵션 리스트 빌드를 분리하면
-200줄 안에 들어갈 것으로 예상. 넘으면 `TemporalInput.jsx`(오케스트레이션)
-+ `useTemporalPosition.js`(포지셔닝 훅) 분리 검토.
+`CallDetailForm.jsx` 226줄(기존 초과, 교체라 순증 거의 없음 — 실측
+보고). `call-detail-form.css` 257줄(기존 초과, "§6 응집도 우선" 주석
+있음)에 트리거 스코프 규칙 약 15줄 추가 → 272줄. 분리 없이 진행(F-2와
+같은 전례 — 기존 초과 파일에 소량 추가).
 
 ### §8 4대 질문
 
-1~5 무관 — 신규 UI 컴포넌트, 구독/값 출처/쓰기창구/hydrate/DB 전부
-관계없음(부모가 넘긴 `value`/`onChange`만 사용).
+1~5 무관 — 마크업만 교체, `value`/`onChange`로 기존 `draft` state에
+그대로 연결(구독/값 출처/쓰기창구/hydrate/DB 전부 무변경).
 
 ### 검증 방법
 
-- `npm run test:app`(신규 컴포넌트 유닛 테스트 추가 — 값 선택 시
-  `onChange` 호출, 외부 클릭 시 닫힘, 뷰포트 우측 초과 시 좌측 정렬).
-- 화면 미연결이라 브라우저 실검증은 D-1부터(이 슬라이스는 컴포넌트
-  단독 완성까지).
+- `npm test` 전체.
+- 보리 브라우저 실검증(다크모드 포함): 콜상세 폼에서 출발/도착 시간,
+  입금예정일 트리거 클릭 → 스크롤 픽커로 값 선택 → 폼에 반영되는지,
+  가운데 정렬 스타일이 유지되는지.
 
 ### 구현 (2026-09-14)
 
-지시서대로 진행하되 200줄 초과해 3개 파일로 분리(계획된 대안):
-- `TemporalInput.jsx`(155줄) — 오케스트레이션(포지셔닝, 열림/닫힘, 커밋 규칙)
-- `TemporalColumns.jsx`(83줄) — 연/월/일·시/분 컬럼 렌더
-- `temporalValue.js`(38줄) — `pad`/`daysInMonth`/`parseCursor` 순수 함수
-- `temporal-input.css`(94줄) — 원본 포팅(`--subtext-color`는 react-app
-  실제 변수명 `--sub-text-color`로 정정, grep으로 확인 후 반영)
-- `TemporalInput.test.js`(신규, 지시서에 적은 3가지 시나리오 + 날짜
-  연/월/일 커밋 규칙 검증 1개 추가 — 총 4개 테스트)
+지시서대로 3줄 교체(`CallDetailForm.jsx` 226→227줄, 순증 거의 없음
+— 예상대로) + 스코프 CSS 35줄 추가(`call-detail-form.css` 257→292줄,
+지시서엔 "약 15줄"로 적었으나 주석 포함 실측 35줄 — 여기 정정). 메뉴
+스코프는 지시서대로 포팅 안 함(포털 구조상 조상 선택자로 안 닿음).
 
-버그 2개를 테스트로 잡아 자체 수정: ① 외부 클릭 판정에 쓴 전역 `Node`가
-이 테스트 환경(jsdom, `setupDom.js`)엔 없어 `ReferenceError` — `window.Node`로
-수정. ② 포지셔닝 테스트에서 직접 계산한 기대값이 산수 오류(224 아니라
-232)였던 걸 재확인해 테스트 쪽을 고침(컴포넌트는 원본 로직 그대로 정확).
+검증: `npm test`(unit 628 + app 159 전부 통과, D-0 테스트도 그대로 통과
+— 회귀 없음) · `npm run typecheck`(0 에러) · `npm run lint`(경고 없음)
+· `npm run build`(성공). **이 세션 환경에서 로컬 dev 서버 브라우저
+프리뷰가 열리지 않아(권한/네트워크 문제로 `navigate`가 매번 거부됨)
+AI 쪽 브라우저 실검증은 이번엔 못 했다** — 지시서에 적은 대로 순수
+마크업 교체(로직 무변경)라 리스크는 낮다고 판단하지만, 보리 브라우저
+실검증은 그대로 필요.
 
-검증: `npm test`(unit 628 + app 159 전부 통과) · `npm run typecheck`(0 에러,
-cursor 상태를 date/time 공용 shape로 통일해 union 타입 좁히기 에러 해결) ·
-`npm run lint`(신규 파일 경고 없음) · `npm run build`(성공).
+react-app 로컬 커밋 `b14fcd8`. **AI는 push 안 함.**
 
-react-app 로컬 커밋 `e65b2c0`. **AI는 push 안 함 — 사용자가 push해야
-CI(GitHub Actions)가 돈다.** 화면 미연결이라 브라우저 실검증은 D-1부터.
-
-push 후 CI 확인 부탁드립니다. 초록 확인되면 D-0 `[x]` 확정하고 D-1(콜상세
-폼 연결)로 넘어가겠습니다.
+push 후 브라우저 실검증 부탁드립니다.
