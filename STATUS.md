@@ -23,26 +23,24 @@
 
 **§1 남은 순서(D → E, 보리 2026-09-14: D 먼저).**
 
-**D. 시간입력 위젯(`app-temporal` 대체)** (상세 `docs/report.md`):
-1. D-0. 공용 `TemporalInput` 컴포넌트 `[x]` — react-app `e65b2c0`.
-2. D-1. 콜상세 폼(일일운행) 연결 `[x]` — react-app `b14fcd8`(이후
-   `93a4f2c`에서 CSS 공용 modifier로 리팩터, computed style 동일).
-3. D-2. 기사 관리 + 세금계산서 연결 `[x]` — react-app `c395ab3`,
-   CI 초록·사용자 확인 완료.
-4. **D-3. 정비/주유/기타 연결** `[~]` — 코드 완료(react-app `93a4f2c`),
-   원본 스코프 CSS가 D-1과 핵심 동일해 `TemporalInput`에 `centered`
-   prop 추가 + 공용 `.is-centered` modifier로 통합(보리 "중복 3개
-   이상 공용화" 원칙). `npm test`/`typecheck`/`lint`/`build` 통과.
-   **push·브라우저 실검증·`[x]` 대기.**
+**D. 시간입력 위젯(`app-temporal` 대체) — 전체 완료 `[x]`** — D-0~D-3
+전부 확정(react-app `e65b2c0`/`b14fcd8`/`c395ab3`/`93a4f2c`). 상세는
+`docs/archive/d0-`~`d3-` 동일 접두 파일.
 
-**E. 정비/주유/기타 패널** `[ ]` — **착수 전 보리가 나머지 항목부터
-설명 필요**(지금 3개는 목록 미완성). 다 모이면 슬라이스 재분할.
-**+ E 착수 전 P0도 먼저 확인**: architecture-audit(2026-09-11, Cursor)이
-지적한 `useExpenseForm.js`의 `setTimeout(420)`이 `day-log.css` `0.4s`
-전환 시간과 숫자로만 묶여 있는 문제(`docs/sot.md` §4-11과 같은 지점) —
-`InlineSheet`가 자기 전환 종료를 이벤트로 알려주는 방식으로 바꿀지
-여부를 E 작업 시작 전에 결정한다. E가 이 컴포넌트를 더 건드릴 예정이라
-먼저 정리 안 하면 또 어긋날 여지가 큼.
+**E. 정비/주유/기타 패널** — 보리가 스크린샷으로 항목 지시 시작:
+1. **E-1. 공용 스타일(그리드/아이콘/분류칩/결제방식)** `[~]` — 코드
+   완료(react-app `9e6f93d`), 날짜·누적거리 5:5 그리드, 날짜 트리거
+   아이콘 삭제, 분류 칩 사각 라운드, 결제방식 세그먼트 컨트롤(원본
+   `.segment-control`/`.segment-btn` 신규 도입). `npm test`(791개)
+   /`typecheck`/`lint`/`build` 통과 + **AI 브라우저 실기동 확인 완료**
+   (그리드·아이콘·세그먼트 토글 전부 정상). **push·보리 확인·`[x]` 대기.**
+2. 나머지 항목 — "지금 3개는 목록 미완성"이라던 것 중 아직 안 나온 게
+   있으면 계속 받을 것.
+**+ E 착수 전 P0 — 아직 미해결**: architecture-audit(2026-09-11,
+Cursor)이 지적한 `useExpenseForm.js`의 `setTimeout(420)`이
+`day-log.css` `0.4s` 전환 시간과 숫자로만 묶여 있는 문제(`docs/sot.md`
+§4-11) — E-1은 마크업/CSS만이라 안 건드림. E가 인라인 시트 열림/닫힘
+로직 자체를 만질 차례가 오면 그때 결정.
 
 상세·근거는 `docs/ui-comparison-report.md` §1, 착수지시서는 `docs/report.md`.
 
@@ -134,10 +132,10 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `93a4f2c`(D-0~D-3 포함), origin보다 1개 앞섬
-  (D-0~D-2는 이미 push됨) — **사용자 push 대기.** AI는 push 안 함.
-- **ubiquitous-parakeet**: `main` = `345b3f0`. STATUS·report.md 수정 중
-  (D-3 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
+- **react-app**: `main` = `9e6f93d`(D 전체 + E-1 포함), origin보다 2개
+  앞섬(D-0~D-2는 이미 push됨) — **사용자 push 대기.** AI는 push 안 함.
+- **ubiquitous-parakeet**: `main` = `0181233`. STATUS·report.md 수정 중
+  (E-1 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
