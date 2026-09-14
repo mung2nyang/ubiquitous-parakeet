@@ -29,8 +29,8 @@
    CI 초록·사용자 브라우저 확인 완료.
 3. **D-2. 기사 관리 + 세금계산서 연결** `[~]` — 코드 완료(react-app
    `c395ab3`), `npm test`/`typecheck`/`lint`/`build` 전부 통과. **push·
-   브라우저 실검증·`[x]` 대기**(AI 쪽 dev 서버 프리뷰가 이 세션에서 계속
-   안 열려 AI 자체 확인은 못 함 — 순수 마크업 교체라 리스크는 낮음).
+   브라우저 실검증·`[x]` 대기**(AI 쪽 dev 서버 프리뷰 미작동, 순수
+   마크업 교체라 리스크 낮음).
 4. D-3. 정비/주유/기타 연결 `[ ]` — **`ExpenseFormModal.jsx`는 E가 곧
    더 건드릴 파일이라 D 안에서도 순서상 마지막.**
 
@@ -49,6 +49,11 @@
 
 1. §1 전부 끝나면 §2~§14(보리가 직접 작성한 화면별 대조 기록)를 순차로.
    각 화면 = 대조 + 그 화면 전용 CSS 분리 한 슬라이스.
+2. **전역 드롭다운(`<select>`) 다크모드·스타일 통일** — 검수계획 대기
+   (보리 2026-09-14 지시, 착수 전 계획 필요). 후보 10파일/14곳(grep
+   확인, 상세는 이 세션 기록): `.date-select`(연/월) 중복 5파일은
+   기존 `CalendarDateSelect`(app-dropdown) 재사용 후보, 나머지는
+   단일값 select라 개별 검토.
 
 ### 후속 nit (확인된 것만)
 
@@ -95,15 +100,12 @@
   200줄 강제·JS→TS(JSDoc) 프로덕션 전체 `[x]`(잔여는 위 "보류" 참고).
 - 미연동 서브차량 데이터 분리 4단계 `[x]`(도메인 정의 `docs/sot.md` §0) ·
   사이드메뉴 UI 정리(§1-1) 1·3번 `[x]`(2번은 위 "후속 nit").
-- 공용 헤더 `PageHeader` 통일(22개 화면) `[x]` — `docs/archive/pageheader-unification.md`.
-- `side-menu.css` 다이어트 `[x]` — `docs/archive/side-menu-css-diet.md`.
-- `main-calendar.css` 책임 분리 1~10차 `[x]` — `docs/archive/main-calendar-css-split.md`.
+- `PageHeader` 통일(22개 화면) `[x]`·`side-menu.css` 다이어트 `[x]`·
+  `main-calendar.css` 책임 분리 1~10차 `[x]` — 상세 각 archive 동명 파일.
 - `ui-comparison-report.md` §2 마이페이지·§3 매출·§1-A 일일운행(CSS 4건)·
-  일일운행 2부(2중스크롤+카드이탈)·홈 캘린더 ②③ 전부 `[x]` — react-app
-  `8c1ccc7`/`1a5d702`/`c6c831b`/`796bea6`+`387e3c3`. 상세
-  `docs/archive/report-snapshot-2026-09-10.md`,
-  `docs/archive/day-log-part2-scroll-card-bugs.md`,
-  `docs/archive/status-snapshot-2026-09-10.md`.
+  일일운행 2부(2중스크롤+카드이탈)·홈 캘린더 ②③ 전부 `[x]` — 상세
+  `docs/archive/report-snapshot-2026-09-10.md`·`day-log-part2-scroll-card-bugs.md`·
+  `status-snapshot-2026-09-10.md`.
 
 ## 알려진 이슈 (안 고쳐도 되지만 잊으면 안 됨)
 
@@ -117,22 +119,20 @@
   `docs/archive/report-snapshot-2026-09-10.md`). 보리 개인 메모로 이미
   추적 중, 여기 동기화만.
 - **`ModalShell` 공용 컴포넌트 미추출** — 바깥 클릭 닫힘+`stopPropagation`
-  JSX 래퍼가 9개 파일 중 8개에 동일 복붙(`ExpenseFormModal`만 다름,
-  2026-09-11 architecture-audit). 안전하게 뽑아낼 수 있으나 "이관 중
-  전면 리팩터 안 함" 원칙으로 보류.
+  JSX 래퍼가 9개 파일 중 8개에 동일 복붙(`ExpenseFormModal`만 다름).
+  안전하게 뽑아낼 수 있으나 "이관 중 전면 리팩터 안 함" 원칙으로 보류.
 - **"재감사/FAIL 지적" 감사 이력 주석 다이어트** — 코드 전체 242곳 중
   테스트 파일 비중이 커서 그건 정상. 실제 후보는 `pendingWorkDataWritesTypes.js`(7)·
   `durableStorage.js`(6)·`useDayDraft.js`(5)·`ownerDataHooks.js`(4) 등
   durable-write lib 파일 소수(2026-09-11 architecture-audit, ModalShell과 무관한 별개 작업).
 - **정비/주유/기타 Supabase 동기화가 항상 "메인" 차량 `vehicle_id`로만 저장**
-  (`lib/syncExpenseRecords.js` 51·88·125 / `lib/hydrate.js` 142-144). DB row 정합성만의
-  문제라 화면엔 영향 없음 — 서브차량 sync 루프 고칠 때 같이 처리(백로그).
+  (`lib/syncExpenseRecords.js`/`lib/hydrate.js`). DB row 정합성만의 문제라
+  화면 영향 없음 — 서브차량 sync 루프 고칠 때 같이 처리(백로그).
 - **게스트 백업 가져오기가 `dismissedNotifications`·`workDataDeletedDates` 복원 안 함**
   (`store/owner-state.js` `OwnerSnapshot` 구조적 한계). 핵심 데이터엔 영향 없음.
-- **비용 3종 테이블 RLS** — 정책은 라이브에 이미 존재(진단 확인), 마이그레이션 파일엔
-  없음. 필요 시 `0005`로 스냅샷화(안 급함).
-- DB 마이그레이션 `0001`~`0004` 전부 라이브 적용·검증 완료.
-- `npm run typecheck` → 현재 **0 에러**.
+- **비용 3종 테이블 RLS** — 정책은 라이브에 이미 존재, 마이그레이션 파일엔 없음.
+  필요 시 `0005`로 스냅샷화(안 급함).
+- DB 마이그레이션 `0001`~`0004` 전부 라이브 적용·검증 완료 · `npm run typecheck` → 0 에러.
 
 ## 저장소 상태
 
