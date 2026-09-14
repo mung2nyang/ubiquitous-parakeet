@@ -33,3 +33,14 @@ date/time input을 D-0의 `TemporalInput`으로 교체.
 ## 결과
 
 react-app 커밋 `b14fcd8`, `main`에 push 완료, origin과 동기화.
+
+## 후속 (2026-09-14, D-3 작업 중 발견)
+
+D-3(정비/주유/기타)의 원본 스코프 CSS가 이 화면 것과 핵심 5개 선언이
+동일해, "중복 3개 이상은 공용 컴포넌트화"(보리 지시) 원칙에 따라
+`TemporalInput`에 `centered` prop을 추가하고 공용 `.is-centered`
+modifier로 옮김(`temporal-input.css`). 이 화면 CSS는 화면 전용
+디테일(말줄임표·gap·아이콘 색·열림 모서리)만 남기고 291→280줄로
+축소. **computed style은 리팩터 전과 100% 동일**(순수 소스 정리) —
+react-app `93a4f2c`. 상세는 `docs/archive/d3-expense-form-temporal-2026-09-14.md`
+(작성 예정) 참고.

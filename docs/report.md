@@ -9,8 +9,11 @@
 > `docs/archive/f2-autofill-dark-mode-2026-09-14.md`로 옮김(동결).
 > D-0(`[x]`, react-app `e65b2c0`) 상세는
 > `docs/archive/d0-temporal-input-component-2026-09-14.md`로 옮김(동결).
-> D-1(`[x]`, react-app `b14fcd8`) 상세는
+> D-1(`[x]`, react-app `b14fcd8`, 이후 `93a4f2c`에서 `centered` 공용
+> modifier로 리팩터·재검증 필요 없음: computed style 동일) 상세는
 > `docs/archive/d1-call-detail-form-temporal-2026-09-14.md`로 옮김(동결).
+> D-2(`[x]`, react-app `c395ab3`) 상세는
+> `docs/archive/d2-driver-tax-invoice-temporal-2026-09-14.md`로 옮김(동결).
 
 ---
 
@@ -66,62 +69,70 @@ CSS를 따로 얹는 구조가 원본과 같은 설계.
 
 ---
 
-## D-2. 기사 관리 + 세금계산서 `TemporalInput` 연결
+## D-3. 정비/주유/기타 `TemporalInput` 연결 (+ `centered` 공용 modifier화)
 
 ### 목표
 
-`DriverFormModal.jsx`(할당 시작일·종료일 2개)·`TaxInvoiceDraftModal.jsx`
-(작성일자 1개) 네이티브 date input을 `TemporalInput`으로 교체. 둘 다
-평범한 `.modal-overlay > .modal-content` 구조라 D-1보다 단순.
+`ExpenseFormModal.jsx`의 `expenseDate` 1개를 `TemporalInput`으로 교체.
+D의 마지막 하위 슬라이스 — 여기까지 끝나면 `app-temporal` 대체 4화면
+전부 완료.
 
-### 조사 결과 — 스코프 CSS 불필요
+### 조사 결과 — D-1과 스코프 CSS가 사실상 같음
 
-원본 `style.css` grep 결과 `driverModal`/`taxInvoiceModal`에 대한
-`app-temporal` 스코프 규칙이 **하나도 없음**(D-1의 `#callDetailModal`,
-D-3 예정 대상 `#maintRecordModal`/`#fuelDetailModal`과 다름) — 두
-화면 다 D-0 기본 스타일 그대로 써야 원본과 같다. CSS 파일 변경 없음.
+원본 `style.css:6655-6699`(`#maintRecordModal`/`#fuelDetailModal`)의
+트리거 가운데 정렬 CSS가, D-1에서 콜상세용으로 이미 포팅한 것과 **핵심
+5개 선언이 완전히 같음**(트리거 `position:relative;justify-content:
+center`, 값 `width:100%;padding:0 22px;color/font/text-align`, 아이콘
+`position:absolute;right:12px;margin-left:0`). 콜상세만 추가로 갖는
+디테일(말줄임표·gap·아이콘 색·열림 모서리)은 원본에도 없음.
 
-### 건드릴 파일 (정확히 2개, 3줄)
+**보리 지시(2026-09-14, "중복 3개 이상은 공용 컴포넌트화")에 따라**
+화면 2곳에서 완전히 같은 CSS를 또 복붙하는 대신, `TemporalInput`에
+`centered` prop을 추가하고 공용 `.is-centered` modifier로 뽑았다
+(상세는 아래 "구현"). `lockDate`(정비/주유가 일지 안에서 열릴 때 날짜
+고정)는 `TemporalInput`의 기존 `disabled` prop으로 매핑.
 
-- `react-app/src/components/DriverFormModal.jsx` —
-  [54](../react-app/src/components/DriverFormModal.jsx:54) 할당
-  시작일, [58](../react-app/src/components/DriverFormModal.jsx:58)
-  할당 종료일.
-- `react-app/src/components/TaxInvoiceDraftModal.jsx` —
-  [37](../react-app/src/components/TaxInvoiceDraftModal.jsx:37) 작성일자.
+### 건드릴 파일
 
-`<input type="date" className="input-box" .../>` →
-`<TemporalInput type="date" .../>`, `value`/`onChange`는 기존 그대로.
+- `react-app/src/components/ExpenseFormModal.jsx` — `expenseDate` 1줄.
+- `react-app/src/components/shared/TemporalInput.jsx` — `centered` prop 추가.
+- `react-app/src/components/shared/temporal-input.css` — `.is-centered`
+  공용 모디파이어(핵심 5선언) 추가.
+- (동반) `react-app/src/components/day-log/CallDetailForm.jsx`·
+  `call-detail-form.css` — D-1의 중복 CSS를 공용 modifier로 옮기고
+  화면 전용 디테일만 남김. **computed style은 이전과 100% 동일**(순수
+  소스 정리, D-1의 확정된 `[x]`를 재검증할 필요는 없다고 판단 — 다만
+  원하시면 재확인 환영).
 
 ### §6 200줄
 
-`DriverFormModal.jsx` 69줄, `TaxInvoiceDraftModal.jsx` 56줄 — 여유
-충분, 문제 없음.
+전부 여유 있음(`ExpenseFormModal.jsx` 183줄, `TemporalInput.jsx` 155줄,
+`call-detail-form.css`는 오히려 291→280줄로 줄어듦).
 
 ### §8 4대 질문
 
-1~5 무관 — 마크업만 교체, 기존 `draft`/`modalItem` state 그대로 연결.
+1~5 무관 — 마크업만 교체, `draft`/`onChange` 그대로 연결. `centered`는
+순수 CSS 클래스 토글.
 
 ### 검증 방법
 
 - `npm test` 전체.
-- 보리 브라우저 실검증: 기사 관리(초대/수정) 할당 시작일·종료일,
-  세금계산서 작성일자 트리거 클릭 → 스크롤 픽커로 값 선택 → 폼에
-  반영되는지.
+- 보리 브라우저 실검증: 정비/주유/기타 날짜 트리거(모달·일지 인라인
+  둘 다) 클릭 → 값 선택 반영, 가운데 정렬 유지되는지. 콜상세 폼도
+  기존과 똑같이 보이는지(회귀 없어야 함) 같이 한 번 봐주시면 좋음.
 
 ### 구현 (2026-09-14)
 
-지시서대로 3줄 교체 + CSS 변경 없음. 도중 발견: `DriverDraft.startDate`/
-`endDate`가 `string|undefined`라 `TemporalInput`의 `value: string` 계약과
-안 맞아 타입 에러 — 호출부에 `|| ''` 폴백 추가(`TaxInvoiceDraftModal`의
-기존 관례와 동일, 지시서에 없던 사소한 보완).
+지시서대로 진행. 도중 발견: `ExpenseDraft.date`가 `string|undefined`라
+타입 에러 — `|| ''` 폴백 추가(기존 관례와 동일).
 
-검증: `npm test`(787개 전부 통과) · `npm run typecheck`(0 에러) ·
-`npm run lint`(경고 없음) · `npm run build`(성공). D-1과 같은 이유로
-이번에도 AI 쪽 브라우저 프리뷰는 못 열었다(dev 서버 재기동해 재시도
-했으나 동일하게 빈 화면 — 환경 문제로 판단, 순수 마크업 교체라 리스크
-낮음).
+검증: `npm test`(787개 전부 통과, D-1 관련 테스트도 회귀 없음) ·
+`npm run typecheck`(0 에러) · `npm run lint`(경고 없음) ·
+`npm run build`(성공). AI 쪽 브라우저 프리뷰는 이번에도 이 세션에서
+안 열려 확인 못 함(환경 문제로 판단, 리스크 낮음).
 
-react-app 로컬 커밋 `c395ab3`. **AI는 push 안 함.**
+react-app 로컬 커밋 `93a4f2c`. **AI는 push 안 함.**
 
-push 후 브라우저 실검증 부탁드립니다.
+push 후 브라우저 실검증 부탁드립니다. D-3까지 확정되면 D(시간입력
+위젯) 전체가 끝나고, 다음은 E(정비/주유/기타 패널 — 보리가 나머지
+항목 설명 필요) 차례입니다.
