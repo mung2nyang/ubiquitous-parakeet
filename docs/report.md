@@ -9,6 +9,8 @@
 > `docs/archive/f2-autofill-dark-mode-2026-09-14.md`로 옮김(동결).
 > D-0(`[x]`, react-app `e65b2c0`) 상세는
 > `docs/archive/d0-temporal-input-component-2026-09-14.md`로 옮김(동결).
+> D-1(`[x]`, react-app `b14fcd8`) 상세는
+> `docs/archive/d1-call-detail-form-temporal-2026-09-14.md`로 옮김(동결).
 
 ---
 
@@ -64,77 +66,62 @@ CSS를 따로 얹는 구조가 원본과 같은 설계.
 
 ---
 
-## D-1. 콜상세 폼(일일운행) `TemporalInput` 연결
+## D-2. 기사 관리 + 세금계산서 `TemporalInput` 연결
 
 ### 목표
 
-`CallDetailForm.jsx`의 출발/도착 시간·입금예정일 3개 네이티브
-date/time input을 D-0의 `TemporalInput`으로 교체. `value`/`onChange`
-계약이 기존 native input과 동일해 호출부는 태그명+`className="input-box"`
-제거만 바뀐다(로직 무변경).
+`DriverFormModal.jsx`(할당 시작일·종료일 2개)·`TaxInvoiceDraftModal.jsx`
+(작성일자 1개) 네이티브 date input을 `TemporalInput`으로 교체. 둘 다
+평범한 `.modal-overlay > .modal-content` 구조라 D-1보다 단순.
 
-### 건드릴 파일
+### 조사 결과 — 스코프 CSS 불필요
 
-- `react-app/src/components/day-log/CallDetailForm.jsx` — 3줄
-  ([113](../react-app/src/components/day-log/CallDetailForm.jsx:113)
-  출발시간, [117](../react-app/src/components/day-log/CallDetailForm.jsx:117)
-  도착시간, [201](../react-app/src/components/day-log/CallDetailForm.jsx:201)
-  입금예정일 — `<input type="date|time" .../>` → `<TemporalInput type="date|time" .../>`).
-- `react-app/src/components/day-log/call-detail-form.css` — 원본
-  `style.css` 6498~6660줄의 `#callDetailModal`/`#workModal
-  .call-detail-inline-host` 스코프를 `.work-log-page`로 포팅(아래 참고).
+원본 `style.css` grep 결과 `driverModal`/`taxInvoiceModal`에 대한
+`app-temporal` 스코프 규칙이 **하나도 없음**(D-1의 `#callDetailModal`,
+D-3 예정 대상 `#maintRecordModal`/`#fuelDetailModal`과 다름) — 두
+화면 다 D-0 기본 스타일 그대로 써야 원본과 같다. CSS 파일 변경 없음.
 
-### 스코프 CSS — 트리거만 포팅, 메뉴는 포팅 안 함(원본도 사실상 죽은 CSS)
+### 건드릴 파일 (정확히 2개, 3줄)
 
-원본은 이 화면에서 트리거를 **가운데 정렬 + 아이콘 우측 절대위치**로
-꾸민다(`justify-content:center`, `.app-temporal-value{padding:0 22px;
-text-align:center}`, `.app-temporal-icon{position:absolute;right:12px}`).
-이건 포털되지 않는 트리거/래퍼 요소라 `.work-log-page .app-temporal-trigger`
-조상 선택자로 정상 적용된다 — 이 부분만 포팅.
+- `react-app/src/components/DriverFormModal.jsx` —
+  [54](../react-app/src/components/DriverFormModal.jsx:54) 할당
+  시작일, [58](../react-app/src/components/DriverFormModal.jsx:58)
+  할당 종료일.
+- `react-app/src/components/TaxInvoiceDraftModal.jsx` —
+  [37](../react-app/src/components/TaxInvoiceDraftModal.jsx:37) 작성일자.
 
-원본은 메뉴에도 스코프 CSS(`#callDetailModal .app-temporal-menu`
-padding/radius, `.app-temporal-option` 크기 등)를 두는데, **D-0에서
-메뉴는 `document.body`에 포털**되므로 `#callDetailModal`(또는
-`.work-log-page`)의 자손이 아니게 된다 — 조상 선택자로는 절대 안 걸리는
-선택자라, 원본에서도 사실상 죽은 CSS였던 것으로 판단(DOM 구조상 불가능).
-그래서 메뉴 쪽은 포팅하지 않고 D-0 기본 스타일(모든 화면 공통)을 그대로
-쓴다 — 실제 사용자가 보는 화면도 어차피 그 죽은 CSS 영향을 받은 적이
-없으므로 동작 동일.
+`<input type="date" className="input-box" .../>` →
+`<TemporalInput type="date" .../>`, `value`/`onChange`는 기존 그대로.
 
 ### §6 200줄
 
-`CallDetailForm.jsx` 226줄(기존 초과, 교체라 순증 거의 없음 — 실측
-보고). `call-detail-form.css` 257줄(기존 초과, "§6 응집도 우선" 주석
-있음)에 트리거 스코프 규칙 약 15줄 추가 → 272줄. 분리 없이 진행(F-2와
-같은 전례 — 기존 초과 파일에 소량 추가).
+`DriverFormModal.jsx` 69줄, `TaxInvoiceDraftModal.jsx` 56줄 — 여유
+충분, 문제 없음.
 
 ### §8 4대 질문
 
-1~5 무관 — 마크업만 교체, `value`/`onChange`로 기존 `draft` state에
-그대로 연결(구독/값 출처/쓰기창구/hydrate/DB 전부 무변경).
+1~5 무관 — 마크업만 교체, 기존 `draft`/`modalItem` state 그대로 연결.
 
 ### 검증 방법
 
 - `npm test` 전체.
-- 보리 브라우저 실검증(다크모드 포함): 콜상세 폼에서 출발/도착 시간,
-  입금예정일 트리거 클릭 → 스크롤 픽커로 값 선택 → 폼에 반영되는지,
-  가운데 정렬 스타일이 유지되는지.
+- 보리 브라우저 실검증: 기사 관리(초대/수정) 할당 시작일·종료일,
+  세금계산서 작성일자 트리거 클릭 → 스크롤 픽커로 값 선택 → 폼에
+  반영되는지.
 
 ### 구현 (2026-09-14)
 
-지시서대로 3줄 교체(`CallDetailForm.jsx` 226→227줄, 순증 거의 없음
-— 예상대로) + 스코프 CSS 35줄 추가(`call-detail-form.css` 257→292줄,
-지시서엔 "약 15줄"로 적었으나 주석 포함 실측 35줄 — 여기 정정). 메뉴
-스코프는 지시서대로 포팅 안 함(포털 구조상 조상 선택자로 안 닿음).
+지시서대로 3줄 교체 + CSS 변경 없음. 도중 발견: `DriverDraft.startDate`/
+`endDate`가 `string|undefined`라 `TemporalInput`의 `value: string` 계약과
+안 맞아 타입 에러 — 호출부에 `|| ''` 폴백 추가(`TaxInvoiceDraftModal`의
+기존 관례와 동일, 지시서에 없던 사소한 보완).
 
-검증: `npm test`(unit 628 + app 159 전부 통과, D-0 테스트도 그대로 통과
-— 회귀 없음) · `npm run typecheck`(0 에러) · `npm run lint`(경고 없음)
-· `npm run build`(성공). **이 세션 환경에서 로컬 dev 서버 브라우저
-프리뷰가 열리지 않아(권한/네트워크 문제로 `navigate`가 매번 거부됨)
-AI 쪽 브라우저 실검증은 이번엔 못 했다** — 지시서에 적은 대로 순수
-마크업 교체(로직 무변경)라 리스크는 낮다고 판단하지만, 보리 브라우저
-실검증은 그대로 필요.
+검증: `npm test`(787개 전부 통과) · `npm run typecheck`(0 에러) ·
+`npm run lint`(경고 없음) · `npm run build`(성공). D-1과 같은 이유로
+이번에도 AI 쪽 브라우저 프리뷰는 못 열었다(dev 서버 재기동해 재시도
+했으나 동일하게 빈 화면 — 환경 문제로 판단, 순수 마크업 교체라 리스크
+낮음).
 
-react-app 로컬 커밋 `b14fcd8`. **AI는 push 안 함.**
+react-app 로컬 커밋 `c395ab3`. **AI는 push 안 함.**
 
 push 후 브라우저 실검증 부탁드립니다.

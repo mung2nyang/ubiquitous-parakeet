@@ -24,13 +24,13 @@
 **§1 남은 순서(D → E, 보리 2026-09-14: D 먼저).**
 
 **D. 시간입력 위젯(`app-temporal` 대체)** (상세 `docs/report.md`):
-1. D-0. 공용 `TemporalInput` 컴포넌트 `[x]` — react-app `e65b2c0`,
-   CI 초록·사용자 확인 완료.
-2. **D-1. 콜상세 폼(일일운행) 연결** `[~]` — 코드 완료(react-app
-   `b14fcd8`), `npm test`/`typecheck`/`lint`/`build` 전부 통과. **push·
-   브라우저 실검증·`[x]` 대기**(AI 쪽 dev 서버 프리뷰가 이 세션에서 안
-   열려 AI 자체 확인은 못 함 — 순수 마크업 교체라 리스크는 낮음).
-3. D-2. 기사 관리 + 세금계산서 연결 `[ ]` — D-1 완료 후.
+1. D-0. 공용 `TemporalInput` 컴포넌트 `[x]` — react-app `e65b2c0`.
+2. D-1. 콜상세 폼(일일운행) 연결 `[x]` — react-app `b14fcd8`,
+   CI 초록·사용자 브라우저 확인 완료.
+3. **D-2. 기사 관리 + 세금계산서 연결** `[~]` — 코드 완료(react-app
+   `c395ab3`), `npm test`/`typecheck`/`lint`/`build` 전부 통과. **push·
+   브라우저 실검증·`[x]` 대기**(AI 쪽 dev 서버 프리뷰가 이 세션에서 계속
+   안 열려 AI 자체 확인은 못 함 — 순수 마크업 교체라 리스크는 낮음).
 4. D-3. 정비/주유/기타 연결 `[ ]` — **`ExpenseFormModal.jsx`는 E가 곧
    더 건드릴 파일이라 D 안에서도 순서상 마지막.**
 
@@ -52,16 +52,16 @@
 
 ### 후속 nit (확인된 것만)
 
-- **리포트 화면이 메인 차량 전용**[확인 2026-09-07] — 서브차량(소속기사) 리포트·
-  수수료 줄이 react-app엔 없음. 범위 커서 별도 상의 필요.
+- **리포트 화면이 메인 차량 전용**[확인 2026-09-07] — 서브차량(소속기사)
+  리포트·수수료 줄이 react-app엔 없음. 범위 커서 별도 상의 필요.
 - **`receivables/*` 뒤로가기 `?back=` 유실**[문서화 2026-09-07] — 드문 경로라 미루는 중.
-- **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 메인·서브 분리**[확인 2026-09-09,
-  `ui-comparison-report.md` §1-1 2번] — 미연동 서브차량 일지 화면 작업 때 함께.
+- **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 분리**[확인 2026-09-09,
+  `ui-comparison-report.md` §1-1 2번] — 미연동 서브차량 일지 작업 때.
 
 ### 보류 (보리 결정 대기, 급하지 않음)
 
-1. **`.test.js` 나머지 strict 진단** — migration 원칙 "증가 금지"는 지킴, "전부 수정"은 안 함.
-2. **`.ts`/`.tsx` 확장자 실전환** — JSDoc 타입 → 실제 TS. 보리가 "별도 단계"로 미뤄둠(2026-09-05).
+1. **`.test.js` 나머지 strict 진단** — "증가 금지"는 지킴, "전부 수정"은 안 함.
+2. **`.ts`/`.tsx` 실전환** — JSDoc 타입 → 실제 TS. "별도 단계"로 미뤄둠(2026-09-05).
 
 ## 이관 완료 후 진행사항 (원본에 없던 새 방향 — 이관 끝난 뒤에만)
 
@@ -72,9 +72,10 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 각 archive/report.md, 아래는 한 줄 요약만)
 
-- D-0. 공용 `TemporalInput` 컴포넌트(`app-temporal` 대체) `[x]` —
-  react-app `e65b2c0`, CI 초록·사용자 확인 완료(2026-09-14). 상세
-  `docs/archive/d0-temporal-input-component-2026-09-14.md`.
+- D-0(공용 `TemporalInput` 컴포넌트)·D-1(콜상세 폼 연결) `[x]` —
+  react-app `e65b2c0`/`b14fcd8`, 둘 다 CI 초록·확인 완료(2026-09-14).
+  상세 `docs/archive/d0-temporal-input-component-2026-09-14.md`,
+  `docs/archive/d1-call-detail-form-temporal-2026-09-14.md`.
 - F-2. 다크모드 datalist 자동완성 입력창 밝아짐(`:-webkit-autofill`
   덮어쓰기) `[x]` — react-app `ed83703`, CI 초록·브라우저 실검증
   완료(2026-09-14). 상세 `docs/archive/f2-autofill-dark-mode-2026-09-14.md`.
@@ -85,9 +86,8 @@
   상세 `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
 - "부가세 해제" 레이블 16px→fs-2 `[x]` — react-app `3ae7db9`(상세는 위 아카이브).
 - 연동 기사·거래처 스코프 3건(`LinkedDriverClientsPage` 종결 확인·거래처
-  스코프 수정+3그룹 교차검증·게스트 데이터 유실 근본 수정) `[x]` —
-  react-app `76d9829`/`0b9358d`. 상세
-  `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
+  스코프 수정+3그룹 교차검증·게스트 데이터 유실 근본 수정) `[x]` — react-app
+  `76d9829`/`0b9358d`. 상세 `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
 - B그룹 ①산재보험료·②즐겨찾기 칩·콜상세 "거래처+추가" `[x]`(③원안은 폐기) —
   react-app `1de2537`/`6b4a9b7`/`0db5bde`. 상세 `docs/archive/b-group-report-2026-09-11.md`.
 - Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업·알림·PDF·온보딩·고객센터 등,
@@ -136,10 +136,10 @@
 
 ## 저장소 상태
 
-- **react-app**: `main` = `b14fcd8`(D-0·D-1 포함), origin보다 1개 앞섬
-  (D-0 `e65b2c0`는 이미 push됨) — **사용자 push 대기.** AI는 push 안 함.
-- **ubiquitous-parakeet**: `main` = `fbc4bc4`. STATUS·report.md 수정 중
-  (D-1 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
+- **react-app**: `main` = `c395ab3`(D-0~D-2 포함), origin보다 1개 앞섬
+  (D-0·D-1은 이미 push됨) — **사용자 push 대기.** AI는 push 안 함.
+- **ubiquitous-parakeet**: `main` = `07d9e43`. STATUS·report.md 수정 중
+  (D-2 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
