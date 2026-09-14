@@ -21,18 +21,25 @@
 
 **§1(일일운행) 마무리 중** — 주말 전 정리(보리 2026-09-11: 오늘은 여기까지, 주말 지나고 아래 순서대로 계속).
 
-**§1 남은 순서(E → D):**
-1. **E. 정비/주유/기타 패널** `[ ]` — **착수 전 보리가 나머지 항목부터
-   설명 필요**(지금 3개는 목록 미완성). 다 모이면 슬라이스 재분할.
-   **+ E 착수 전 P0도 먼저 확인**: architecture-audit(2026-09-11, Cursor)이
-   지적한 `useExpenseForm.js`의 `setTimeout(420)`이 `day-log.css` `0.4s`
-   전환 시간과 숫자로만 묶여 있는 문제(`docs/sot.md` §4-11과 같은 지점) —
-   `InlineSheet`가 자기 전환 종료를 이벤트로 알려주는 방식으로 바꿀지
-   여부를 E 작업 시작 전에 결정한다. E가 이 컴포넌트를 더 건드릴 예정이라
-   먼저 정리 안 하면 또 어긋날 여지가 큼.
-2. **D. 시간입력 위젯(`app-temporal` 대체)** `[ ]` — 새 공용 컴포넌트
-   작업이라 한 슬라이스로 안 끝남, §1 중 제일 크고 마지막. 착수 전 별도
-   하위 슬라이스 계획 필요.
+**§1 남은 순서(D → E, 보리 2026-09-14: D 먼저).**
+
+**D. 시간입력 위젯(`app-temporal` 대체) — 하위 슬라이스 계획 완료, D-0
+착수지시서 승인 대기** (상세 `docs/report.md`):
+1. **D-0. 공용 `TemporalInput` 컴포넌트 + 기본 CSS(신규 파일만)** `[~]` —
+   착수지시서 완료·승인 대기.
+2. D-1. 콜상세 폼(일일운행) 연결 `[ ]` — D-0 완료 후.
+3. D-2. 기사 관리 + 세금계산서 연결 `[ ]` — D-0 완료 후.
+4. D-3. 정비/주유/기타 연결 `[ ]` — **`ExpenseFormModal.jsx`는 E가 곧
+   더 건드릴 파일이라 D 안에서도 순서상 마지막.**
+
+**E. 정비/주유/기타 패널** `[ ]` — **착수 전 보리가 나머지 항목부터
+설명 필요**(지금 3개는 목록 미완성). 다 모이면 슬라이스 재분할.
+**+ E 착수 전 P0도 먼저 확인**: architecture-audit(2026-09-11, Cursor)이
+지적한 `useExpenseForm.js`의 `setTimeout(420)`이 `day-log.css` `0.4s`
+전환 시간과 숫자로만 묶여 있는 문제(`docs/sot.md` §4-11과 같은 지점) —
+`InlineSheet`가 자기 전환 종료를 이벤트로 알려주는 방식으로 바꿀지
+여부를 E 작업 시작 전에 결정한다. E가 이 컴포넌트를 더 건드릴 예정이라
+먼저 정리 안 하면 또 어긋날 여지가 큼.
 
 상세·근거는 `docs/ui-comparison-report.md` §1, 착수지시서는 `docs/report.md`.
 
@@ -72,13 +79,12 @@
 - 일일운행 아코디언 슬라이드 애니메이션 1~6차 `[x]` — react-app `67762ff`~`6c5ba8d`.
   상세 `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
 - "부가세 해제" 레이블 16px→fs-2 `[x]` — react-app `3ae7db9`(상세는 위 아카이브).
-- `LinkedDriverClientsPage` 스코프 종결(버그 아님, 코드 변경 없음) `[x]` — 확인 2026-09-11.
-- 연동 기사 거래처 스코프 수정 + 3그룹 교차검증 `[x]` — react-app `76d9829`.
-  상세 `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
+- 연동 기사·거래처 스코프 3건(`LinkedDriverClientsPage` 종결 확인·거래처
+  스코프 수정+3그룹 교차검증·게스트 데이터 유실 근본 수정) `[x]` —
+  react-app `76d9829`/`0b9358d`. 상세
+  `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
 - B그룹 ①산재보험료·②즐겨찾기 칩·콜상세 "거래처+추가" `[x]`(③원안은 폐기) —
   react-app `1de2537`/`6b4a9b7`/`0db5bde`. 상세 `docs/archive/b-group-report-2026-09-11.md`.
-- 게스트 데이터 유실 버그 근본 수정 `[x]` — react-app `0b9358d`.
-  상세 `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
 - Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업·알림·PDF·온보딩·고객센터 등) —
   상세 `docs/archive/audit.md`, `docs/archive/status-snapshot-2026-09-10.md`.
 - Step 11 200줄 강제 `[x]`, JS→TS(JSDoc) 프로덕션 전체 `[x]`(잔여는 위 "보류" 참고).
@@ -106,15 +112,10 @@
   `docs/archive/report-snapshot-2026-09-10.md`). 보리 개인 메모로 이미
   추적 중, 여기 동기화만.
 - **`ModalShell` 공용 컴포넌트 미추출** — `modal-overlay`/`modal-content`
-  CSS는 `account-flow.css`에 이미 통일돼 있는데, JSX 래퍼(바깥 클릭 시
-  닫힘 + `stopPropagation`)는 9개 파일 중 8개(`CarFormModal`,
-  `ClientFormModal`, `ConfirmModal`, `DriverFormModal`,
-  `ForgotPasswordModal`, `ReportDetailView`, `ReportShareModal`,
-  `TaxInvoiceDraftModal`)에 완전히 동일하게 복붙돼 있음(`grep` 확인,
-  2026-09-11 architecture-audit 발견). `ExpenseFormModal`만 구조가 달라
-  (stopPropagation 래퍼 없음) 추출 시 별도 확인 필요. 순수 구조적
-  중복이라 뽑아내도 안전(로직 변경 없음) — 다만 "이관 중 전면 리팩터
-  안 함" 원칙 때문에 지금은 보류.
+  CSS는 통일돼 있는데 JSX 래퍼(바깥 클릭 닫힘+`stopPropagation`)가 9개
+  파일 중 8개에 동일 복붙(`grep` 확인, 2026-09-11 architecture-audit).
+  `ExpenseFormModal`만 구조 다름(래퍼 없음). 순수 구조적 중복이라 안전하게
+  뽑아낼 수 있음 — "이관 중 전면 리팩터 안 함" 원칙으로 지금은 보류.
 - **"재감사/FAIL 지적" 감사 이력 주석 다이어트** — 코드 전체 242곳 중
   테스트 파일(`App.test.js` 등) 비중이 커서 그건 있는 게 맞는 종류.
   실제 다이어트 후보는 `pendingWorkDataWritesTypes.js`(7)·
@@ -134,8 +135,8 @@
 ## 저장소 상태
 
 - **react-app**: `main` = `ed83703`(F-1·F-2 포함), 클린, origin과 동기화.
-- **ubiquitous-parakeet**: `main` = `7ec4090`. STATUS·report.md 수정 중
-  (F-2 `[x]` 확정 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
+- **ubiquitous-parakeet**: `main` = `b0d77d4`. STATUS·report.md 수정 중
+  (D 하위 슬라이스 계획 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
