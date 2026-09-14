@@ -21,6 +21,9 @@
 > §2-1-B(`[x]` 전체 — 수정/삭제 아이콘 공용화 5곳 + 일일운행 세로쌓임
 > 버그 수정, react-app `489e9fd`/`a0f6d6a`) 상세는
 > `docs/archive/2-1-b-card-action-icons-2026-09-14.md`로 옮김(동결).
+> §2-1-C(`[x]` — 차량관리 전용 CSS 분리, react-app `2e1fcac`) 상세는
+> `docs/archive/2-1-c-car-management-css-split-2026-09-14.md`로
+> 옮김(동결).
 
 ---
 

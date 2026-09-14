@@ -27,8 +27,8 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 `useExpenseForm.js`가 `InlineSheet` 리팩토링 대상이라 그거 끝난 뒤로
 이월(2026-09-14 보리 결정, UI 대조상 급하지 않음) — §1을 더 막지 않음.
 
-**§2(차량 관리) — §2-1-A·§2-1-B `[x]` 완료.** 다음: **§9
-기사연동관리 전체 대조 — 아직 착수지시서 작성 전.**
+**§2(차량 관리) — §2-1-A·§2-1-B·§2-1-C 전부 `[x]` 완료.** 다음:
+**§9 기사연동관리 전체 대조 — 아직 착수지시서 작성 전.**
 
 **보리 지시(2026-09-14, 디자인 토큰 건에서 확인): "라이트 전용만
 있는 건 다크모드도 적용해야 한다, 앱 통일을 위해서."** — 일반 원칙으로
@@ -97,6 +97,9 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 
 ## 완료 (커밋·푸시됨 — 상세는 각 archive/report.md, 아래는 한 줄 요약만)
 
+- §2-1-C 차량관리 전용 CSS 분리 `[x]` — react-app `2e1fcac`, CI
+  초록·보리 실검증·최종 승인(2026-09-14). 상세
+  `docs/archive/2-1-c-car-management-css-split-2026-09-14.md`.
 - §2-1-B 수정/삭제 아이콘 공용화(5곳) + 일일운행 세로쌓임 회귀 수정
   `[x]` — react-app `489e9fd`/`a0f6d6a`, CI 초록·보리 실검증·최종
   승인(2026-09-14). 검증 중 발견한 CSS 블라스트 반경 문제로 `AGENTS.md`
@@ -135,6 +138,14 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 
 ### 이관 완료 시 처리할 숙제 (§1~§14 UI 대조·이관 전부 끝난 뒤 한꺼번에)
 
+- **`react-app/src/side-menu.css`에 죽은 CSS 규칙 2개 보존돼 있음**
+  (§2-1-C 차량관리 CSS 분리 조사 중 발견, 2026-09-14) —
+  `car-commission-heading`+`strong`+`span`(336~353행, 18줄): 전체
+  `*.jsx` grep 0건. `car-daylog-preview`+`li`(461~479행, 19줄): 마찬가지
+  0건이고, `CarDriverConnectPanel.test.js`가 오히려 "이 클래스로
+  렌더된 요소가 0개"임을 검증하는 대상. **보리 결정: 지금 안 건드림,
+  이관 완료 후 처리.** 상세는
+  `docs/archive/2-1-c-car-management-css-split-2026-09-14.md`.
 - **월급제 기사 등록(미연동 서브차량) 시 월급 입력하면 연동기사로
   바뀌며 미연동 차량이 저장 안 됨**[보리 발견 2026-09-14, §2-1-A
   검증 중] — 원인 미조사, §2-1-A 범위 밖이라 손대지 않음. 상세는
@@ -163,8 +174,8 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 
 ## 저장소 상태
 
-- **react-app**: `main` = `a0f6d6a`(§2-1-B + 후속 flex 수정), origin과
-  동일(푸시 완료, CI "verify"·"Deploy GitHub Pages" 둘 다 초록 확인).
+- **react-app**: `main` = `2e1fcac`(§2-1-C), origin과 동일(푸시 완료,
+  CI "verify"·"Deploy GitHub Pages" 둘 다 초록 확인).
 - **ubiquitous-parakeet**: STATUS·report.md·archive `[x]` 문서 정리 중,
   커밋 대기. **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
