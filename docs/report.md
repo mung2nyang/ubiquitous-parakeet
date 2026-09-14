@@ -79,84 +79,35 @@
 **"CI"(typecheck) 워크플로우 실패** — 아래 3차로 이어짐. `[x]` 보류.
 (ahead: `f4de520`+`bc25009`)
 
-### 3차 착수지시서 — CI 타입체크 실패 수정 (`[ ]` 착수 전)
+### 3차 — CI 타입체크 실패 수정 (`dd54ca3`)
 
-**보리 지시(2026-09-14)**: 코드는 건드리지 말고 착수지시서만 작성.
+**원인**: `commitLocalOnly`가 `DomainValue` 유니언만 반환 →
+`del.drivers.some` 타입 에러.
 
-`gh run list`로 확인(2026-09-14) — `bc25009` push 후 "CI" 워크플로우
-`failure`(`Deploy GitHub Pages`는 success, "CI"만 실패). 실패 로그:
+**구현**:
+1. `outboxCommit.js` — `@template {DomainValue} T`로 `value: T` /
+   반환 `value: T|undefined`.
+2. `directMutationActions.js` — `requestDriverDeletion`에 `@returns`
+   + `failed || value === undefined`로 좁힘.
 
-```
-src/components/cars/CarListPage.jsx(137,9): error TS18048: 'del.drivers' is possibly 'undefined'.
-src/components/cars/CarListPage.jsx(137,21): error TS2339: Property 'some' does not exist on type
-  'CarLike[] | ClientLike[] | DriverRecord[] | ExpenseItem[] | InvoiceLike[] | string[] |
-  DriverRecord[] | FinanceSettings | LocalProfile | Record<...> | WorkDataTombstones'.
-  Property 'some' does not exist on type 'FinanceSettings'.
-src/components/cars/CarListPage.jsx(137,27): error TS7006: Parameter 'd' implicitly has an 'any' type.
-src/components/cars/CarListPage.jsx(143,22): error TS2345: Type '... | undefined' is not
-  assignable to parameter of type 'DriverRecord[]'.
-```
+`CarListPage.jsx` 무변경. 로컬 `npm run typecheck`·`npm test` 통과.
+런타임 동작 변경 없음.
 
-**원인(코드 직접 확인)**: `outboxCommit.js`의 `commitLocalOnly({ domain, value,
-... })`가 `value`를 **모든 도메인을 아우르는 유니언 타입** `DomainValue`(`app-store.js`
-정의 — cars/clients/drivers/expenses/... 전부 합친 타입)로만 받고 그대로
-돌려준다. 제네릭이 없어서, 호출부가 실제로 `DriverRecord[]`를 넘겨도 반환값의
-`value`는 항상 넓은 `DomainValue` 유니언으로 추론된다.
+**CI 재확인(2026-09-14, `gh run view` 직접 열람)**: "verify" 잡의
+3단계(테스트·타입검사·빌드) 전부 초록 — 겉으로만 초록이 아니라 실제로
+세 단계 다 통과한 것 확인함.
 
-`directMutationActions.js`의 `requestDriverDeletion`이 이 값을 그대로
-`drivers` 필드로 돌려주는데, 이 함수에도 명시적 `@returns` 타입이 없어
-호출부가 그 넓은 유니언을 그대로 받는다. 지금까지는 아무도 그 반환값에
-배열 메서드를 체이닝하지 않아 드러나지 않았던 타입 구멍인데,
-`CarListPage.jsx`의 새 `confirmDisconnect()`가 처음으로
-`del.drivers.some(...)`를 호출하면서(137번 줄) CI에서 드러남.
+**단, 검증 중 발견**: `commitLocalOnly` 호출부가 이 저장소에 4곳인데
+이번엔 `requestDriverDeletion` 1곳만 근본 수정. 나머지
+`requestClientDeletion`·`requestDriverStatusChange`
+(둘 다 `directMutationActions.js`)·`requestDriverInviteSave`
+(`requestDriverInviteSave.js:58`, 타입 단언 포함)는 같은 패턴 잔존 —
+지금은 아무도 그 반환값에 배열 메서드를 안 써서 CI가 안 잡을 뿐.
+**보리 결정(2026-09-14): 지금 안 고침, `STATUS.md` 후속 nit로만 기록.**
 
-**런타임 동작은 이미 브라우저로 확인 완료(위 §"AI 브라우저 실검증" 참고) —
-순수 타입 수정만 필요, 동작 자체는 안 바꾼다.**
-
-#### 기대 동작
-
-`npm run typecheck` 통과. `del.drivers`가 `Array<DriverRecord>`로 좁혀져서
-137·143번 줄의 `.some()`/`requestVehicleSave` 인자 전달이 타입 에러 없이
-통과해야 한다.
-
-#### 조사 필요(구현 세션에서 방향 결정)
-
-두 방향 중 하나(또는 검토 후 더 적합한 쪽):
-
-1. **근본 수정(권장)** — `outboxCommit.js`의 `commitLocalOnly`에
-   `@template T` 제네릭을 추가해 `value: T` / 반환 `value: T|undefined`로
-   좁힌다. `commitLocalOnly` 호출부가 이 저장소에 4곳
-   (`directMutationActions.js`·`outboxCommit.js` 자신·
-   `requestDriverInviteSave.js`·`vehicleDeletion.js`) — 전부 `npm run
-   typecheck`로 자동 검증되므로 특별한 blast-radius grep은 불필요(타입
-   에러면 CI가 바로 잡아줌).
-2. **최소 범위** — `requestDriverDeletion`에만 명시적 `@returns` 좁히기.
-   단 제네릭 없이는 `value`가 여전히 넓은 유니언이라 이것만으론 안 풀릴
-   가능성이 높음 — 시도 전 직접 확인 필요.
-
-어느 쪽이든 `any`/`@ts-ignore`/`as unknown as` 금지(AGENTS.md §6) —
-타입을 실제로 좁히는 방식으로.
-
-#### 건드릴 파일(예상)
-
-- `react-app/src/lib/outboxCommit.js` (86줄) — 제네릭 추가 시.
-- `react-app/src/lib/directMutationActions.js` (122줄) — `@returns` 추가
-  시(1번 방향과 병행 가능).
-- `CarListPage.jsx`는 이번엔 손댈 필요 없을 가능성 높음(타입 쪽만 수정).
-
-#### §4 플레이북 트리거
-
-해당 — `outboxCommit.js`는 `lib/*commit*` 패턴. 착수 전
-`docs/testing-playbook.md` 열람 필수. (단, 이번은 순수 타입 수정이라
-런타임 동작 변경 없음 — 플레이북에서도 "화면에 보여주기만? → 참고"
-쪽에 가까울 수 있음, 구현 세션에서 판단)
-
-#### 검증 방법
-
-1. 로컬 `npm run typecheck` 그린.
-2. `npm test` 그린(기존 테스트 깨지지 않는지).
-3. commit → push → CI "verify"·"CI" 둘 다 초록 확인(`gh run list`).
-4. 브라우저 재검증은 생략 가능(런타임 동작 변경 없음 — 타입만 수정).
+**보리 결정(2026-09-14): 위 CI 확인에도 불구하고 최종 `[x]` 승인은
+보류.** 이유 미상 — 다음 세션에서 직접 확인 예정으로 보임. 이 슬라이스
+전체(1~3차) `[~]` 유지, archive 안 함.
 
 ### §5 리뷰 (CI 초록 후 확정)
 

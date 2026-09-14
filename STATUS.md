@@ -28,17 +28,12 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 이월(2026-09-14 보리 결정, UI 대조상 급하지 않음) — §1을 더 막지 않음.
 
 **§2(차량 관리) — §2-1-A·B·C `[x]` 완료.**
-**버그: 운행일지↔기사연동 전환** `[~]` — `f4de520`(log 수정 시 초대
-스킵) + `bc25009`(link→log 시 ConfirmModal 후 `requestDriverDeletion`
-재사용). **AI 브라우저 실검증 완료**(2026-09-14, 보리 요청 대행) —
-동작 4개 경로 전부 통과, 회귀 없음.
-
-**단, push 후 CI "typecheck" 워크플로우 실패 확인**(2026-09-14,
-`gh run list`) — `CarListPage.jsx:137` `del.drivers.some(...)`이
-`commitLocalOnly`(`outboxCommit.js`)의 넓은 유니언 반환 타입과 충돌.
-**동작 자체는 이미 검증 통과, 순수 타입 문제.** 3차 착수지시서
-작성 완료(`docs/report.md`), **아직 `[x]` 승인 못 함 — 착수 전 대기.**
-다음 후보: §9 기사연동관리.
+**버그: 운행일지↔기사연동 전환** `[~]` — `f4de520`/`bc25009`(동작
+검증 완료) + CI 타입 수정 `dd54ca3`(`commitLocalOnly` 제네릭 +
+`requestDriverDeletion` `@returns`). **push 확인·CI "verify" 3단계
+(test/typecheck/build) 전부 초록 재확인(2026-09-14, `gh run view`
+직접 열람) — 단, 보리가 최종 `[x]` 승인은 보류.** 다음 후보:
+§9 기사연동관리.
 
 **보리 지시(2026-09-14, 디자인 토큰 건에서 확인): "라이트 전용만
 있는 건 다크모드도 적용해야 한다, 앱 통일을 위해서."** — 일반 원칙으로
@@ -63,6 +58,18 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 
 ### 후속 nit (확인된 것만)
 
+- **`commitLocalOnly` 호출부 4곳 중 3곳에 같은 undefined 미체크 패턴
+  잔존**[확인 2026-09-14, 보리 "지금은 안 고침" 결정] — `dd54ca3`가
+  `requestDriverDeletion`(`directMutationActions.js`) 1곳만 제네릭+런타임
+  체크로 고쳤고, 나머지 `requestClientDeletion`(46행)·
+  `requestDriverStatusChange`(77행, 둘 다 `directMutationActions.js`)·
+  `requestDriverInviteSave`(`requestDriverInviteSave.js:58`)는 여전히
+  `failed ? x : value`(undefined 가능성 미체크) 패턴. 특히
+  `requestDriverInviteSave.js:58`은 `/** @type {Array<DriverRecord>} */
+  (value)` **타입 단언**까지 있어 AGENTS.md §6 "타입 꼼수 금지"에 걸림
+  (이번 슬라이스가 만든 건 아니고 기존부터 있던 것). 지금 당장은 아무도
+  이 3곳 반환값에 배열 메서드를 체이닝 안 해서 CI가 못 잡을 뿐 — 나중에
+  누가 체이닝하면 똑같이 터짐. 정리 시점 미정, 보리 결정 대기.
 - **outbox 9개 파일 사실상 죽은 코드**[확인 2026-09-14] — `react-app/src/lib/`
   `mutationOutbox.js`·`outboxFlush.js`·`outboxCommit.js`·`outboxRollback.js`·
   `outboxReconcile.js`·`outboxDriverMerge.js`·`outboxTypes.js`·`outboxErrors.js`·
@@ -184,9 +191,11 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 
 ## 저장소 상태
 
-- **react-app**: `main` = `bc25009`(link→log 연동 해제), origin보다
-  ahead 2(`f4de520`+`bc25009`). **사용자 push 대기.** AI는 push 안 함.
-- **ubiquitous-parakeet**: STATUS·report.md 수정 중(`[x]` 후 문서 커밋).
+- **react-app**: `main` = `dd54ca3`(CI typecheck 제네릭 수정) — **이미
+  push됨, origin과 동일**(2026-09-14 `git rev-list` 재확인, ahead 0).
+  CI "verify" 3단계 전부 초록. 최종 `[x]` 승인만 보류 중.
+- **ubiquitous-parakeet**: STATUS·report.md 이번 갱신분 커밋함(문서
+  전용, `[x]` 전이라도 진행상황 기록은 커밋 — 보리 지시 2026-09-14).
   **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
