@@ -27,20 +27,24 @@
 전부 확정(react-app `e65b2c0`/`b14fcd8`/`c395ab3`/`93a4f2c`). 상세는
 `docs/archive/d0-`~`d3-` 동일 접두 파일.
 
-**E. 정비/주유/기타 패널** — 보리가 스크린샷으로 항목 지시 시작:
+**E. 정비/주유/기타 패널**:
 1. **E-1. 공용 스타일(그리드/아이콘/분류칩/결제방식)** `[~]` — 코드
-   완료(react-app `9e6f93d`), 날짜·누적거리 5:5 그리드, 날짜 트리거
-   아이콘 삭제, 분류 칩 사각 라운드, 결제방식 세그먼트 컨트롤(원본
-   `.segment-control`/`.segment-btn` 신규 도입). `npm test`(791개)
-   /`typecheck`/`lint`/`build` 통과 + **AI 브라우저 실기동 확인 완료**
-   (그리드·아이콘·세그먼트 토글 전부 정상). **push·보리 확인·`[x]` 대기.**
+   완료(react-app `9e6f93d`), 보리 "수정완료" 확인(2026-09-14).
+   `npm test`(791개)/`typecheck`/`lint`/`build` 통과 + AI 브라우저
+   실기동 확인 완료. **push·CI 초록 대기(아직 미push) → 그때 `[x]`.**
 2. 나머지 항목 — "지금 3개는 목록 미완성"이라던 것 중 아직 안 나온 게
    있으면 계속 받을 것.
-**+ E 착수 전 P0 — 아직 미해결**: architecture-audit(2026-09-11,
-Cursor)이 지적한 `useExpenseForm.js`의 `setTimeout(420)`이
-`day-log.css` `0.4s` 전환 시간과 숫자로만 묶여 있는 문제(`docs/sot.md`
-§4-11) — E-1은 마크업/CSS만이라 안 건드림. E가 인라인 시트 열림/닫힘
-로직 자체를 만질 차례가 오면 그때 결정.
+**+ E 착수 전 P0 — 아직 미해결**: `useExpenseForm.js`의 `setTimeout(420)`
+vs `day-log.css` `0.4s` 전환 시간 문제(`docs/sot.md` §4-11) — E-1은
+마크업/CSS만이라 안 건드림. E가 인라인 시트 열림/닫힘 로직 자체를
+만질 차례가 오면 그때 결정.
+
+**F-3. 콜상세 폼 아이콘/스핀버튼/즐겨찾기 SVG 통일** `[~]` — 코드
+완료(react-app `83de8e9`): 시간·입금예정일 트리거 아이콘 삭제, 화물
+톤수 스핀 버튼 삭제, 즐겨찾기 별표를 앱 공용 SVG 아이콘 스타일로
+교체(`icons.jsx` `StarIcon`). `npm test`/`typecheck`/`lint`/`build`
+통과, 이번엔 AI 브라우저 프리뷰가 안 열려 AI 실기동 확인은 못 함.
+**push·보리 브라우저 실검증·`[x]` 대기.**
 
 상세·근거는 `docs/ui-comparison-report.md` §1, 착수지시서는 `docs/report.md`.
 
@@ -132,10 +136,10 @@ Cursor)이 지적한 `useExpenseForm.js`의 `setTimeout(420)`이
 
 ## 저장소 상태
 
-- **react-app**: `main` = `9e6f93d`(D 전체 + E-1 포함), origin보다 2개
-  앞섬(D-0~D-2는 이미 push됨) — **사용자 push 대기.** AI는 push 안 함.
-- **ubiquitous-parakeet**: `main` = `0181233`. STATUS·report.md 수정 중
-  (E-1 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
+- **react-app**: `main` = `83de8e9`(D 전체 + E-1 + F-3 포함), origin보다
+  3개 앞섬(D-0~D-2는 이미 push됨) — **사용자 push 대기.** AI는 push 안 함.
+- **ubiquitous-parakeet**: `main` = `841f52b`. STATUS·report.md 수정 중
+  (F-3 구현 반영, 아직 미커밋 — 모아뒀다 커밋). **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
