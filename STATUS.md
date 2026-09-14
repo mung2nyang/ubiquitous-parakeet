@@ -29,8 +29,7 @@
    CI 초록·사용자 브라우저 확인 완료.
 3. **D-2. 기사 관리 + 세금계산서 연결** `[~]` — 코드 완료(react-app
    `c395ab3`), `npm test`/`typecheck`/`lint`/`build` 전부 통과. **push·
-   브라우저 실검증·`[x]` 대기**(AI 쪽 dev 서버 프리뷰 미작동, 순수
-   마크업 교체라 리스크 낮음).
+   브라우저 실검증·`[x]` 대기**(AI dev 서버 프리뷰 미작동, 리스크 낮음).
 4. D-3. 정비/주유/기타 연결 `[ ]` — **`ExpenseFormModal.jsx`는 E가 곧
    더 건드릴 파일이라 D 안에서도 순서상 마지막.**
 
@@ -50,10 +49,12 @@
 1. §1 전부 끝나면 §2~§14(보리가 직접 작성한 화면별 대조 기록)를 순차로.
    각 화면 = 대조 + 그 화면 전용 CSS 분리 한 슬라이스.
 2. **전역 드롭다운(`<select>`) 다크모드·스타일 통일** — 검수계획 대기
-   (보리 2026-09-14 지시, 착수 전 계획 필요). 후보 10파일/14곳(grep
-   확인, 상세는 이 세션 기록): `.date-select`(연/월) 중복 5파일은
-   기존 `CalendarDateSelect`(app-dropdown) 재사용 후보, 나머지는
-   단일값 select라 개별 검토.
+   (보리 2026-09-14 지시, 착수 전 계획 필요). **원칙: 같은 패턴 중복
+   3개 이상이면 공용 컴포넌트화**(TemporalInput·CalendarDateSelect 방식).
+   후보 10파일/14곳(grep 확인): `.date-select`(연/월) 5파일은
+   `CalendarDateSelect`(app-dropdown) 재사용 확정(5≥3). 나머지 5곳
+   (결제조건·문의유형·정산기준 등)도 트리거+리스트박스 패턴은 같아
+   공용화 여지 있음 — 착수 전 계획에서 판단.
 
 ### 후속 nit (확인된 것만)
 
@@ -90,9 +91,9 @@
 - 일일운행 아코디언 슬라이드 애니메이션 1~6차 `[x]` — react-app `67762ff`~`6c5ba8d`.
   상세 `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
 - "부가세 해제" 레이블 16px→fs-2 `[x]` — react-app `3ae7db9`(상세는 위 아카이브).
-- 연동 기사·거래처 스코프 3건(`LinkedDriverClientsPage` 종결 확인·거래처
-  스코프 수정+3그룹 교차검증·게스트 데이터 유실 근본 수정) `[x]` — react-app
-  `76d9829`/`0b9358d`. 상세 `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
+- 연동 기사·거래처 스코프 3건(종결 확인·스코프 수정+교차검증·게스트 데이터
+  유실 근본 수정) `[x]` — react-app `76d9829`/`0b9358d`. 상세
+  `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
 - B그룹 ①산재보험료·②즐겨찾기 칩·콜상세 "거래처+추가" `[x]`(③원안은 폐기) —
   react-app `1de2537`/`6b4a9b7`/`0db5bde`. 상세 `docs/archive/b-group-report-2026-09-11.md`.
 - Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업·알림·PDF·온보딩·고객센터 등,
@@ -121,10 +122,9 @@
 - **`ModalShell` 공용 컴포넌트 미추출** — 바깥 클릭 닫힘+`stopPropagation`
   JSX 래퍼가 9개 파일 중 8개에 동일 복붙(`ExpenseFormModal`만 다름).
   안전하게 뽑아낼 수 있으나 "이관 중 전면 리팩터 안 함" 원칙으로 보류.
-- **"재감사/FAIL 지적" 감사 이력 주석 다이어트** — 코드 전체 242곳 중
-  테스트 파일 비중이 커서 그건 정상. 실제 후보는 `pendingWorkDataWritesTypes.js`(7)·
-  `durableStorage.js`(6)·`useDayDraft.js`(5)·`ownerDataHooks.js`(4) 등
-  durable-write lib 파일 소수(2026-09-11 architecture-audit, ModalShell과 무관한 별개 작업).
+- **"재감사/FAIL 지적" 감사 이력 주석 다이어트** — 242곳 중 테스트 파일은
+  정상. 실제 후보는 `pendingWorkDataWritesTypes.js`(7)·`durableStorage.js`(6)
+  등 durable-write lib 소수(2026-09-11, ModalShell과 무관한 별개 작업).
 - **정비/주유/기타 Supabase 동기화가 항상 "메인" 차량 `vehicle_id`로만 저장**
   (`lib/syncExpenseRecords.js`/`lib/hydrate.js`). DB row 정합성만의 문제라
   화면 영향 없음 — 서브차량 sync 루프 고칠 때 같이 처리(백로그).
