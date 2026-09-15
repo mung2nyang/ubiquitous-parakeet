@@ -1,72 +1,83 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## §3(거래처) CSS 분리 (보리 지시, 2026-09-15) `[ ]` 착수 전 대기
+## `side-menu.css` 분리설계안 (보리 지시, 2026-09-15) `[ ]` 슬라이스1 승인 대기
 
-**분류**: 정리 작업 — 버그 아님. `side-menu.css`(1632줄, AGENTS §6 200줄
-훨씬 초과)에 여러 화면 CSS가 섞여 있는 것을 화면별로 분리하는 작업의
-거래처 몫. 이미 차량 화면에서 같은 작업을 해둔 선례(`car-management.css`,
-`CarListPage.jsx`가 import)를 그대로 따름.
+### 왜 설계안부터(AGENTS §6)
 
-### 조사 결과 — 거래처 전용 규칙 vs 공용 규칙
+`side-menu.css` 현재 1421줄. 200줄 초과 파일을 손대려면 기계적 분할이
+아니라 책임 경계부터 보고·승인받아야 함. 파일명과 달리 실제 내용은
+사이드메뉴 자체보다 **다른 여러 화면 스타일이 뒤섞인 잡동사니** —
+한 번에 나누면 3조각 이상 슬라이스가 뻔해서, 먼저 전체 경계를 지도로
+그리고 **이번엔 그중 1개만** 착수.
 
-`side-menu.css`에서 "거래처"(client) 관련 선택자를 전수 grep하고, 각
-클래스를 실제로 쓰는 JSX를 확인해 전용/공용을 나눔.
+### 전체 경계 지도 (grep으로 실사용처 확인함)
 
-**이동 대상(거래처 전용, 총 5블록·약 108줄)**
-- `side-menu.css:424-456` — `.commission-settings-panel`,
-  `.commission-inline-row`(+`.toggle-btn`/`.input-box`) — `ClientTradeFields.jsx`
-  전용(차량은 별도 `car-commission-panel` 클래스 씀).
-- `side-menu.css:490-518` — `.client-list`, `.client-card-title`/
-  `.client-card-badges`(+자식 `strong`/`span`) — `ClientListItem.jsx` 전용.
-- `side-menu.css:864-874` — `.client-modal-header`(+`.modal-title`) —
-  `ClientFormModal.jsx` 전용.
-- `side-menu.css:876-902` — `.client-favorite-star`(+`.active`),
-  `.management-badge.pinned` — 즐겨찾기 별 버튼·배지, `ClientListItem.jsx`만
-  씀(`pinned` class는 grep 결과 클라이언트 화면 외 사용처 없음 확인).
-- `side-menu.css:903-910` — `.client-list-card`(+`.client-dragging`) —
-  `ClientListItem.jsx` 전용(드래그 정렬).
+| # | 내용 | 줄수 | 실제 사용 파일 | 비고 |
+|---|---|---|---|---|
+| A | 사이드메뉴 자체(`.side-menu*`, `.dropdown-item`) | ~129 | `SideMenu.jsx` | 독립적, 이름과 실제 내용주인이 맞는 유일한 덩어리 |
+| B | 관리화면 공용(`.management-list-card`/`.action-icon-btn`/`.management-badge`/`.empty-state` 등) | ~134 | 차량·거래처·미수금 등 다수 | **여러 화면 공유 — 특정 화면 파일로 옮기면 안 됨.** 별도 "공용" 파일 필요 |
+| C | 차량 커미션 잔재(`.car-commission-*` 등, 죽은 CSS 2개 포함) | ~185 | 주로 `CarManagementPage`류 | §2-1-C 차량 CSS 분리 때 누락분으로 추정 — 죽은 CSS 처리 방침과 얽힘(STATUS "알려진 이슈") |
+| D | 개인정보 일부(`.personal-intro*`/`.personal-card*`) | ~102 | `PersonalInfoPage.jsx` | **주의**: 같은 구역의 `.personal-account-btn`은 7개 파일(거래처·기사·초대 등)이 공유 — 화면 전용 부분과 공용 버튼을 분리해서 다뤄야 함 |
+| E | 설정 공용(`.setting-section`/`.settings-segmented-control` 등) | ~74 | `AppSettingsPage` 외 다수 | 공용 — B와 유사 성격 |
+| F | 정비/주유/기타(`.maint-fuel-*`/`.management-day-*` 등) | ~164 | **12개 파일**(`day-log/*`·`revenue/*`·`TaxInvoicePage`·`cars/*` 등) | **화면 전용 아님 — 이관 코드 전반의 공용 위젯.** MaintFuelPage만의 것으로 착각하기 쉬운 함정 |
+| G | 리포트/운송비내역서(`.report-*`/`.info-table`/PDF출력모드) | ~233 | **`ReportPage`/`ReportDetailView`/`ReportShareModal`/`ReportSummaryContent` 4개뿐, 전부 확인** | **완전 독립. 가장 크고 가장 안전** |
+| H | 세금계산서 금액그리드(`.tax-invoice-amount-grid`) | ~28 | `TaxInvoicePage` 계열 | J와 겹치는 셀렉터 있어 분리 시 재확인 필요 |
+| I | 알림(`.notification-*`/`.top-notification-btn`) | ~114 | `NotificationPanel.jsx`+`CalendarHeader.jsx` | 2파일, 비교적 안전 |
+| J | 기사연동관리 카운트(`.driver-management-counts`/`.driver-code-row`)+세금계산서 가이드 | ~31 | `DriverConnectionPage`/`DriverFormModal`/`CarDriverConnectPanel`+`TaxInvoicePage` | H와 마찬가지로 두 화면이 섞여 있어 그대로 자르면 안 됨 |
+| K | 앱설정 프리셋(`.run-count-preset-*`/`.fixed-route-preset-*`) | ~172 | `RunCountChips.jsx`/`RoutePresetEditor.jsx` | 2파일, 안전 |
+| L | 고객센터(`.support-*`/`.faq-item*`/`.my-inquir*`) | ~33 | `CustomerCenterPage.jsx`/`NoticePage.jsx` | 안전 |
+| M | 메시지설정(`.message-settings-*`) | ~12 | `MessageSettingsPage.jsx` | 안전하지만 너무 작아 단독 슬라이스 가치 낮음 |
 
-**안 옮길 것(공용, grep으로 다른 화면 사용 확인)**
-- `.management-badge`(기본)/`.tax-invoice` — `CarListItem.jsx`/
-  `SettlementSummaryCard.jsx`/`DriverConnectionPage.jsx`/`TaxInvoicePage.jsx`
-  등도 씀.
-- `.modal-content .toggle-btn`(오늘 추가한 전역 규칙, `side-menu.css:459`) —
-  `CarFormModal`의 `CarDriverConnectPanel`도 씀.
-- `.report-page-wrap .summary-client-commission-*`(`side-menu.css:1086-1106`) —
-  이름은 client지만 매출 정산 리포트 화면(`ReportDetailView` 계열) 몫,
-  건드리지 않음.
-- `side-menu.css:131-132`의 `.client-management-page`(다른 페이지 클래스들과
-  묶여 있는 공용 리셋 선택자 목록의 일부) — 단독 분리 불가, 그대로 둠.
+**A는 파일명이 뜻하는 원래 주인이라 마지막에 남겨도 됨(제일 헷갈릴
+일 없음).** B·E는 여러 슬라이스가 공유할 "공용" 파일이 필요해서
+후순위(먼저 화면 전용 것부터 빼고 남는 게 진짜 공용). F·D·H·J는
+겉보기와 달리 여러 화면이 얽혀 있어 **그대로 자르면 다른 화면을
+깨뜨림** — 나중에 더 잘게 나눠 다룰 것.
 
-### 목표 상태
+### 이번 슬라이스 제안: **G — 리포트/운송비내역서**
 
-- 새 파일 `react-app/src/components/clients/client-management.css` 생성,
-  위 5블록을 그대로 옮김(값 변경 없음, 순수 이동).
-- `ClientListPage.jsx`에 `import './client-management.css'` 추가
-  (`CarListPage.jsx`가 `car-management.css` import하는 것과 동일 패턴).
-- `side-menu.css`에서 위 5블록 삭제.
+가장 크고(233줄, 전체 감축분의 1/6) `ReportPage`류 4개 파일 외
+어디서도 안 씀(grep 확인 완료) — 블라스트 반경 0, 가장 안전하게
+큰 걸 먼저 뺄 수 있음.
 
-**건드릴 파일**
-- `react-app/src/components/clients/client-management.css` (신규)
-- `react-app/src/components/clients/ClientListPage.jsx` (import 1줄 추가)
-- `react-app/src/side-menu.css` (5블록 삭제, 순수 이동이라 순감소)
+#### 현재 상태
 
-**안 건드릴 것**: 각 규칙의 값 자체(색상·크기·라운드 등) — 이번은 파일
-위치만 옮기는 것, 스타일 변경 없음. 위에 나열한 공용 규칙들.
+`report-*`/`info-table`/`detail-report-table`/PDF 출력모드 CSS
+(`side-menu.css:800-1032`, 233줄)가 사이드메뉴 파일에 섞여 있음.
+소비처는 `ReportPage.jsx`/`ReportDetailView.jsx`/`ReportShareModal.jsx`/
+`ReportSummaryContent.jsx` 4개뿐(전체 `*.jsx` grep 확인).
 
-**실패 시 처리**: 새 레이어 없음, CSS 블록 이동+import 1줄뿐이라 실패해도
-세 파일(신규 포함) 되돌리면 끝.
+#### 목표 상태
 
-**§6(200줄)**: 신규 `client-management.css` 약 110줄. `side-menu.css`
-1632→약 1524줄(여전히 초과, §4~§14 후속 분리로 계속 줄여감).
-`ClientListPage.jsx`는 1줄 추가.
+해당 233줄을 `components/report/report.css`(신규)로 이동, 값 변경
+없이 그대로 옮기고 위 4개 파일에 import. `side-menu.css`
+1421→약 1188줄.
 
-**검증 방법(브라우저)**: 분리 후 거래처 목록(카드 배지·즐겨찾기 별·드래그
-정렬)과 등록/수정 모달(헤더·즐겨찾기 별·수수료 인라인행) 전부 분리 전과
-픽셀 단위로 동일한지 확인. 라이트/다크 모두.
+#### 건드릴 파일
+
+- `react-app/src/components/report/report.css` (신규)
+- `react-app/src/components/ReportPage.jsx`(import 추가)
+- `react-app/src/components/ReportDetailView.jsx`(import 추가)
+- `react-app/src/components/ReportShareModal.jsx`(import 추가, 필요 시)
+- `react-app/src/components/ReportSummaryContent.jsx`(import 추가, 필요 시)
+- `react-app/src/side-menu.css`(800-1032행 삭제)
+
+#### 안 건드릴 것
+
+- 로직·데이터 흐름 전부(순수 CSS 이동).
+- 위 표의 B~F·H~M(다른 경계) — 이번엔 손 안 댐.
+- `.summary-card`/`.summary-row` 등 다른 화면(정비/주유/기타·기사정산
+  등)이 쓰는 **같은 이름이지만 다른 스코프**(`.report-page-wrap` 접두사
+  없는 것)의 규칙 — 그건 이 233줄 밖에 있음, 안 건드림.
+
+#### 실패 시 처리
+
+신규 레이어 없음. 값 변경 없는 순수 이동이라 실패해도 되돌리면 그만.
 
 ---
 
-## 다음 슬라이스 (착수 전 대기)
+## 다음 슬라이스 (착수 전 대기, 순서 미정 — 매번 보리 확인 후 진행)
 
-**§9 기사연동관리 전체 대조** 등 — `STATUS.md` "다음 할 일" 참고.
+G 완료 후 I(알림)·K(프리셋)·L(고객센터)처럼 독립적인 것부터, 얽힌
+D·F·H·J는 더 잘게 쪼개 별도 설계 필요. A(사이드메뉴 자체)는 제일
+나중. B·E(공용)는 화면 전용 분리가 어느 정도 끝난 뒤 정리.
