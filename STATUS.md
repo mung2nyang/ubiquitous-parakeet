@@ -14,80 +14,53 @@
 
 ## 우선순위 원칙 (보리 지시, 2026-09-05)
 
-**"완벽한 react 이관"이 최우선.** 원본(`ubiquitous-parakeet`)에 있던 기능을 react-app으로
-옮기는 작업을 먼저 끝낸다. 원본에 없던 새 방향·기능 강화 아이디어(토글, 역할전환 UI 등)는
-아래 "이관 완료 후 진행사항"으로 모아두고 이관 완료 전엔 착수하지 않는다.
-단, 이관 완료에 필요한 버그 수정·정합성 문제는 즉시 처리.
+**"완벽한 react 이관"이 최우선.** 원본에 있던 기능을 react-app으로
+옮기는 작업을 먼저 끝낸다. 원본에 없던 새 방향·기능 강화는 아래
+"이관 완료 후 진행사항"으로 모아두고 이관 전엔 착수 안 함(이관에
+필요한 버그 수정·정합성 문제는 예외, 즉시 처리).
 
-**라이트/다크 비대칭 원칙(보리 지시, 2026-09-14, 디자인 토큰 건에서
-확인).** 라이트 전용만 있는 스타일은 다크모드도 적용한다 — 앱 통일을
-위해서. 비슷한 라이트 전용/다크 전용 비대칭을 발견하면 이 원칙대로
-처리.
+**비대칭 발견 시 앱 통일 우선 원칙**(보리 지시, 2026-09-14 라이트/다크
+건에서 확인, 09-15 칩 스타일 건에도 적용) — 원본 자체에 라이트 전용
+스타일이나 칩/텍스트 비대칭이 있어도, react-app에선 발견 즉시 통일
+우선으로 처리.
 
 ## 지금 하는 일
 
 **§1~§8 UI 전부 `[x]` 완료 — §9~§14 UI 대조 + `side-menu.css`
 분리 작업 진행 중.** §4(일일운행) 남은 토글 닫기 기능 1건만 `InlineSheet`
 리팩토링 뒤로 이월(2026-09-14 보리 결정, "이관 완료 후 진행사항"
-참고). 그 외 완료 목록은 아래 "완료" 절.
-
-상세·근거는 `docs/ui-comparison-report.md` §4·§5.
-
-> **번호 갱신(2026-09-15, 보리가 `ui-comparison-report.md` 번호를 통합
-> 재정렬함)**: 예전엔 마이페이지·매출(§2·§3)과 일일운행·차량관리·거래처·
-> 미수금(각각 §1~§4)이 서로 다른 번호 체계로 겹쳐 있었다. 지금은 전체가
-> §1~§14 하나의 순서로 통합됨 — 일일운행=§4, 차량 관리=§5, 거래처=§6,
-> 미수금=§7(뒤로 3씩 밀림). 아래 "완료" 절의 §-표기도 새 번호로 맞춰
-> 고쳤다. 단 `§2-1-A`/`§2-1-B`/`§2-1-C` 같은 슬라이스 ID(당시
-> `docs/report.md` 착수지시서 번호)는 실제 커밋 메시지에 그대로 남아있는
-> 별개 체계라 안 건드림 — 화면 번호가 아니라 슬라이스 식별자다.
+참고). 그 외 완료 목록은 아래 "완료" 절. §-표기는 §1~§14 통합
+순서(일일운행=§4·차량관리=§5·거래처=§6·미수금=§7), `§2-1-A` 등
+슬라이스 ID는 화면 번호와 별개 체계.
 
 ## 다음 할 일
 
 1. `side-menu.css` 분리 다음 덩어리(I/K/L 등) — 어느 것부터 할지
-   보리 확인 후 착수. 경계 지도는 이전 커밋 `7854094`. §8(정비/주유/
-   기타)은 확인 결과 전용 잔여 CSS가 없어 제외(2026-09-15) —
-   `.car-list`/`.empty-state`(13개 화면 공유)·`.date-navigator`/
-   `.arrow-btn`/`.toggle-btn`(`shared-controls.css`, 이미 공용
-   분리됨)·`.maint-fuel-tabs`/`.maint-fuel-nav`(세금계산서·매출 등
-   공유) 전부 진짜 공용이라 안 건드림, `.management-record-*`/
-   `.management-day-*`는 §8-B(`8d9e06a`)에서 이미
-   `maint-fuel.css`로 이동 완료.
+   보리 확인 후 착수(경계 지도: 이전 커밋 `7854094`). §8은 확인 결과
+   전용 잔여 CSS 없어 제외(2026-09-15, 전부 다른 화면과 공유되는
+   진짜 공용 클래스).
 
 ### 후속 nit (확인된 것만)
 
 - **`commitLocalOnly` 호출부 4곳 중 3곳에 같은 undefined 미체크 패턴
   잔존**[확인 2026-09-14, 보리 "지금은 안 고침" 결정] — `dd54ca3`가
-  `requestDriverDeletion`(`directMutationActions.js`) 1곳만 제네릭+런타임
-  체크로 고쳤고, 나머지 `requestClientDeletion`(46행)·
-  `requestDriverStatusChange`(77행, 둘 다 `directMutationActions.js`)·
-  `requestDriverInviteSave`(`requestDriverInviteSave.js:58`)는 여전히
-  `failed ? x : value`(undefined 가능성 미체크) 패턴. 특히
-  `requestDriverInviteSave.js:58`은 `/** @type {Array<DriverRecord>} */
-  (value)` **타입 단언**까지 있어 AGENTS.md §6 "타입 꼼수 금지"에 걸림
-  (이번 슬라이스가 만든 건 아니고 기존부터 있던 것). 지금 당장은 아무도
-  이 3곳 반환값에 배열 메서드를 체이닝 안 해서 CI가 못 잡을 뿐 — 나중에
-  누가 체이닝하면 똑같이 터짐. 정리 시점 미정, 보리 결정 대기.
-- **outbox 9개 파일 사실상 죽은 코드**[확인 2026-09-14] — `react-app/src/lib/`
-  `mutationOutbox.js`·`outboxFlush.js`·`outboxCommit.js`·`outboxRollback.js`·
-  `outboxReconcile.js`·`outboxDriverMerge.js`·`outboxTypes.js`·`outboxErrors.js`·
-  `syncQueue.js`. 새 op를 넣는 유일 함수 `commitWithOutboxAndFlush`(`outboxCommit.js`)를
-  프로덕션 어디서도 안 부름(차량/거래처/기사초대/삭제 창구 전부 `commitLocalOnly`/
-  `STORAGE_FAIL_TOAST`만 씀) — 남은 역할은 이관 전 예전 큐 잔여 flush뿐
-  (`docs/sot.md` §8). 정리 여부·시점 미정, 보리 결정 대기.
-- **`workDataDeletedDates`(tombstone) 삭제-flush 절반 죽음**[확인 2026-09-14] —
-  실제 원격 삭제 함수 `syncDeletedWorkDates()`(`react-app/src/lib/syncDeletedWorkDates.js`)와
-  `syncWorkData.js`의 구 `syncWorkData()`(bulk syncAll) 둘 다 프로덕션 호출부 없음
-  (`syncQueue.js`/`clientMutations.js`/`clientCloudSave.js` 주석 "syncAll은 쓰지
-  않는다"로 명시). 읽기 쪽(hydrate 필터, `hydrateMergeWork.js:34,38,65`)은 살아있어
-  화면엔 안 보이지만, 그 좁은 엣지케이스(로그인했지만 그 차량이 아직 Supabase
-  미동기화일 때 빈 날 삭제)에서 생긴 tombstone은 서버 쪽 원본 행을 영원히 못 지움.
-  정리 여부·시점 미정, 보리 결정 대기.
-- **리포트 화면이 메인 차량 전용**[확인 2026-09-07] — 서브차량(소속기사)
-  리포트·수수료 줄이 react-app엔 없음. 범위 커서 별도 상의 필요.
-- **`receivables/*` 뒤로가기 `?back=` 유실**[문서화 2026-09-07] — 드문 경로라 미루는 중.
-- **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 분리**[확인 2026-09-09,
-  `ui-comparison-report.md` §1-1 2번] — 미연동 서브차량 일지 작업 때.
+  `requestDriverDeletion` 1곳만 고침. 나머지 3곳(`requestClientDeletion`·
+  `requestDriverStatusChange`·`requestDriverInviteSave`)은 여전히
+  undefined 미체크(`requestDriverInviteSave.js:58`은 타입 단언까지
+  있어 AGENTS.md §6 위반). 아무도 체이닝 안 해서 CI가 못 잡을 뿐.
+- **outbox 9개 파일 사실상 죽은 코드**[확인 2026-09-14] —
+  `commitWithOutboxAndFlush`(`outboxCommit.js`)를 프로덕션 어디서도
+  안 부름(`commitLocalOnly`만 씀). 남은 역할은 이관 전 큐 잔여 flush뿐
+  (`docs/sot.md` §8). 정리 시점 미정.
+- **`workDataDeletedDates`(tombstone) 삭제-flush 절반 죽음**[확인
+  2026-09-14] — `syncDeletedWorkDates()`/구`syncWorkData()` 둘 다
+  프로덕션 호출부 없음. 좁은 엣지케이스(미동기화 차량 빈 날 삭제)의
+  tombstone은 서버 원본을 영원히 못 지움. 정리 시점 미정.
+- **리포트 화면이 메인 차량 전용**[확인 2026-09-07] — 서브차량 리포트·
+  수수료 줄 없음, 범위 커서 별도 상의 필요.
+- **`receivables/*` 뒤로가기 `?back=` 유실**[문서화 2026-09-07].
+- **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 분리**[확인
+  2026-09-09] — 미연동 서브차량 일지 작업 때.
 
 ### 보류 (보리 결정 대기, 급하지 않음)
 
@@ -100,115 +73,74 @@
 - Billing(net/gross) 삭제 or "공제 후" 고정(보리 고민 중, 기능 자체는 이관됨).
 - `driver_direct` 죽은 코드 정리 / 다중 배정 차량 집계(`upsertDriver`가 막아 사실상 닫힘, 참고용).
 - 미룸("이관 후 UI 정리"): 테마 저장 위치, 서브차량 설정 배치, 차량관리 라벨, 기사연동관리 UI 패턴.
-- **`InlineSheet` 전환 리팩토링**(보리 지시, 2026-09-14) — **결정: 이벤트
-  기반 확정(다시 고민 불필요).** `useExpenseForm.js`의 `setTimeout(420)`
-  (매직넘버, `day-log.css` `0.4s`와 숫자로만 동기화, `clearTimeout` 정리도
-  없어 언마운트 레이스 위험)을 `InlineSheet`의 `onTransitionEnd` 기반
-  콜백(`onClosed` prop 신설 등)으로 바꾼다. 원본에 없던 새 개선이라
-  이관 완료 후. **스크롤 애니메이션 추가는 별개 후보(미확정, 그때 판단).**
-  **E의 "정비/주유/기타 토글 닫기" 기능도 같이 처리**(같은
-  `useExpenseForm.js` 흐름을 건드리므로 리팩토링 먼저 — 원본에도 있는
-  기능이지만 이 이유로 §4(일일운행)에서 이관 완료 후로 이월).
+- **`InlineSheet` 전환 리팩토링**(보리 지시, 2026-09-14, **결정: 이벤트
+  기반 확정, 다시 고민 불필요**) — `useExpenseForm.js`의 매직넘버
+  `setTimeout(420)`(`clearTimeout` 정리 없어 언마운트 레이스 위험)를
+  `onTransitionEnd` 기반 콜백으로 교체. E의 "정비/주유/기타 토글
+  닫기" 기능도 같은 흐름이라 같이 처리(§4에서 이월). 스크롤 애니메이션
+  추가는 별개 미확정 후보.
 
-## 완료 (커밋·푸시됨 — 상세는 각 커밋, 아래는 한 줄 요약만)
-
-- §8 정비/주유/기타 전체 `[x]` — 하단 dock 이관(`eda52e4`)·kind별
-  SVG 아이콘 복원(`16ff413`)·결제수단/분류 칩 통일(`8d9e06a`/
-  `bb359b4`), CI·Deploy 초록·보리 브라우저 실검증("이상없어")·AI 코드
-  리뷰(아이콘 path 원본 대조 일치, typecheck/lint/test/build 전부
-  통과) 전부 완료(2026-09-15). `side-menu.css` 분리도 이 슬라이스
-  중에 이미 끝남(아래 "다음 할 일" 참고, 이 화면 전용 잔여 CSS 없음
-  확인).
-- "원" 앞 공백 제거 `[x]` — react-app `241d4db`(`formatWon()`+테스트
-  21곳) + `86d805e`(매출 수입/지출 합계 2곳), 보리 브라우저
-  실검증(매출 화면 포함)·최종 승인(2026-09-15).
-- `side-menu.css` 분리 슬라이스 G(리포트) `[x]` — react-app `cf54899`
-  (`report/report.css` 신규 233줄, side-menu 1421→1188), 보리 브라우저
-  실검증(운송비 내역서 요약/세부/PDF/공유모달)·최종 승인(2026-09-15).
-- 미수금/정산 관리 UI 복원 `[x]` — react-app `12a9dbb`
-  (`receivables.css` 신규, 목록/카드/상세 원본 `.receivable-*` 구조
-  이식), CI 초록·보리 실검증·최종 승인(2026-09-15).
-- §6 거래처 CSS 분리 `[x]` — react-app `9bb204f`
-  (`client-management.css` 신규, `side-menu.css`에서 이동), CI 초록·
-  보리 실검증·최종 승인(2026-09-15).
-- §6 거래처 수수료·파렛트 배지·수수료 입력 UI `[x]` — react-app
-  `1a3d6aa`→`d3585db`→`647344f`→`eedf5f5`→`2065755`, CI·보리
-  승인(2026-09-15).
-- 전역 드롭다운 슬라이스 2(개별 select 5곳→`AppDropdown` 공용화)
-  `[x]` — react-app `88ba0fb`+회귀수정 `4e3aeea`, CI 초록·push·보리
-  승인(2026-09-15).
-- §4(일일운행) A~D·E-1·F-1~F-3·디자인 토큰 `[x]` — react-app
-  `e65b2c0`/`b14fcd8`/`c395ab3`/`93a4f2c`/`9e6f93d`/`8ced672`/
-  `ed83703`/`83de8e9`/`ef82306`, 전부 CI 초록·보리 확인(2026-09-14).
-  남은 토글 닫기 기능 1건은 `InlineSheet` 리팩토링 뒤로 이월(위
-  "이관 완료 후 진행사항").
+## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
 > `docs/archive/`의 상세 파일들은 2026-09-15 정리됨(git 이력엔 그대로
 > 있음, `git log --diff-filter=D -- docs/archive` 로 찾을 수 있음).
-> 아래 커밋 해시로 `git show <해시>` 하면 각 슬라이스 diff를 볼 수 있다.
+> 커밋 해시로 `git show <해시>` 하면 각 슬라이스 diff를 볼 수 있다.
 
-- 전역 드롭다운 슬라이스 1(연/월 select→`CalendarDateSelect`) `[x]` — `9df06e2`.
-- §5(차량 관리) 전체 `[x]` — `f4de520`/`bc25009`/`dd54ca3`/`028af8e`.
-- §2-1-C 차량관리 CSS 분리 `[x]` — `2e1fcac`.
-- §2-1-B 아이콘 공용화+세로쌓임 회귀수정 `[x]` — `489e9fd`/`a0f6d6a`
-  (CSS 블라스트반경 문제 발견 → `AGENTS.md` §5 항목6 신설 계기).
-- §2-1-A 라벨칩/정산정보 복원 `[x]` — `8641be3`/`032e807`/`15bfc43`.
-- D-0~D-3·E-1·F-1~F-3·디자인 토큰 통합 `[x]` — `e65b2c0`~`ef82306`(9커밋).
-- 일일운행 아코디언 슬라이드 1~6차·"부가세 해제" 폰트 수정 `[x]` —
-  `67762ff`~`6c5ba8d`/`3ae7db9`.
-- 연동 기사·거래처 스코프 3건(게스트 데이터 유실 근본 수정 포함) `[x]` —
-  `76d9829`/`0b9358d`.
-- B그룹 산재보험료·즐겨찾기 칩·콜상세 거래처 추가 `[x]` —
-  `1de2537`/`6b4a9b7`/`0db5bde`.
-- Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업 등) · Step 11 200줄
-  강제·JS→TS(JSDoc) 전체 `[x]`(잔여는 위 "보류" 참고).
-- 미연동 서브차량 데이터 분리 4단계 `[x]` · 사이드메뉴 UI 정리 1·3번 `[x]`.
-- `PageHeader` 통일 `[x]`·`side-menu.css` 다이어트 `[x]`·
-  `main-calendar.css` 책임 분리 `[x]`.
-- `ui-comparison-report.md` §2·§3·일일운행 A그룹·일일운행 2부·홈 캘린더 ②③ 전부 `[x]`.
+- §8 정비/주유/기타 전체 `[x]` — `eda52e4`/`16ff413`/`8d9e06a`/
+  `bb359b4`, CI·Deploy 초록·보리 브라우저 실검증·AI 코드 리뷰
+  완료(2026-09-15).
+- "원" 앞 공백 제거 `[x]` — `241d4db`/`86d805e`(2026-09-15).
+- side-menu.css 분리 슬라이스 G(리포트) `[x]` — `cf54899`(2026-09-15).
+- 미수금/정산 관리 UI 복원 `[x]` — `12a9dbb`(2026-09-15).
+- §6 거래처 CSS 분리·수수료/파렛트 배지 `[x]` — `9bb204f`/`1a3d6aa`~
+  `2065755`(2026-09-15).
+- 전역 드롭다운 슬라이스 1·2 `[x]` — `9df06e2`/`88ba0fb`+`4e3aeea`
+  (2026-09-15).
+- §4(일일운행) A~D·E-1·F-1~F-3·디자인 토큰 `[x]` — `e65b2c0`~
+  `ef82306`(2026-09-14). 남은 토글 닫기 1건은 `InlineSheet` 리팩토링
+  뒤로 이월(위 "이관 완료 후 진행사항").
+- §5(차량 관리) 전체·§2-1-A/B/C `[x]` — `f4de520`~`028af8e`,
+  `8641be3`~`a0f6d6a`(2026-09-14, CSS 블라스트반경 문제 발견 →
+  `AGENTS.md` §5 항목6 신설 계기).
+- 아코디언 슬라이드·연동 기사/거래처 스코프·B그룹(산재보험료 등)
+  `[x]` — `67762ff`~`0db5bde`(2026-09-11).
+- Step 0~10·200줄 강제·JS→TS(JSDoc) `[x]`(잔여는 위 "보류") · 미연동
+  서브차량 분리 4단계 `[x]` · `PageHeader` 통일·`side-menu.css`
+  다이어트·`main-calendar.css` 분리 `[x]`.
+- `ui-comparison-report.md` §1~§7 전부 `[x]`.
 
 ## 알려진 이슈 (안 고쳐도 되지만 잊으면 안 됨)
 
 ### 이관 완료 시 처리할 숙제 (§1~§14 UI 대조·이관 전부 끝난 뒤 한꺼번에)
 
-- **`react-app/src/side-menu.css`에 죽은 CSS 규칙 2개 보존돼 있음**
-  (§2-1-C 차량관리 CSS 분리 조사 중 발견, 2026-09-14) —
-  `car-commission-heading`+`strong`+`span`(336~353행, 18줄): 전체
-  `*.jsx` grep 0건. `car-daylog-preview`+`li`(461~479행, 19줄): 마찬가지
-  0건이고, `CarDriverConnectPanel.test.js`가 오히려 "이 클래스로
-  렌더된 요소가 0개"임을 검증하는 대상. **보리 결정: 지금 안 건드림,
-  이관 완료 후 처리.**
-- **`react-app/src/components/mypage.css`에 죽은 CSS 규칙 2개 보존돼 있음**
-  (`.mypage-header-spacer`, `.mypage-role-pill` — 둘 다 JSX 소비처 0,
-  `grep` 확인됨). 출처: 2026-09-10 §2 마이페이지 CSS 분리 때
-  `side-menu.css` 1387~1605줄을 그대로 옮기며 "삭제 안 하고 보존 이동"
-  관례에 따라 죽은 채로 같이 옮김. 보리 개인 메모로 이미
-  추적 중, 여기 동기화만.
+- **`side-menu.css` 죽은 CSS 2개**(§2-1-C 조사 중 발견, 2026-09-14) —
+  `car-commission-heading`+`strong`+`span`(336~353행)·
+  `car-daylog-preview`+`li`(461~479행), 둘 다 `*.jsx` grep 0건. 보리
+  결정: 이관 완료 후 처리.
+- **`mypage.css` 죽은 CSS 2개** — `.mypage-header-spacer`/
+  `.mypage-role-pill`(JSX 소비처 0). 2026-09-10 §2 CSS 분리 때 "삭제
+  안 하고 보존 이동" 관례로 같이 옮김.
 - **`ModalShell` 공용 컴포넌트 미추출** — 바깥 클릭 닫힘+`stopPropagation`
-  JSX 래퍼가 9개 파일 중 8개에 동일 복붙(`ExpenseFormModal`만 다름).
-  안전하게 뽑아낼 수 있으나 "이관 중 전면 리팩터 안 함" 원칙으로 보류.
-- **"재감사/FAIL 지적" 감사 이력 주석 다이어트** — 242곳 중 테스트 파일은
-  정상. 실제 후보는 `pendingWorkDataWritesTypes.js`(7)·`durableStorage.js`(6)
-  등 durable-write lib 소수(2026-09-11, ModalShell과 무관한 별개 작업).
-- **정비/주유/기타 Supabase 동기화가 항상 "메인" 차량 `vehicle_id`로만 저장**
-  (`lib/syncExpenseRecords.js`/`lib/hydrate.js`). DB row 정합성만의 문제라
-  화면 영향 없음 — 서브차량 sync 루프 고칠 때 같이 처리(백로그).
-- **게스트 백업 가져오기가 `dismissedNotifications`·`workDataDeletedDates` 복원 안 함**
-  (`store/owner-state.js` `OwnerSnapshot` 구조적 한계). 핵심 데이터엔 영향 없음.
-- **비용 3종 테이블 RLS** — 정책은 라이브에 이미 존재, 마이그레이션 파일엔 없음.
-  필요 시 `0005`로 스냅샷화(안 급함).
-- DB 마이그레이션 `0001`~`0004` 전부 라이브 적용·검증 완료 · `npm run typecheck` → 0 에러.
+  래퍼가 9개 파일 중 8개 복붙. "이관 중 전면 리팩터 안 함" 원칙으로 보류.
+- **"재감사/FAIL 지적" 주석 다이어트** — 실제 후보는
+  `pendingWorkDataWritesTypes.js`(7)·`durableStorage.js`(6) 소수뿐.
+- **정비/주유/기타 Supabase 동기화가 항상 "메인" 차량으로만 저장**
+  (`lib/syncExpenseRecords.js`/`lib/hydrate.js`) — 서브차량 sync 루프
+  고칠 때 같이 처리(백로그).
+- **게스트 백업 가져오기가 `dismissedNotifications`·
+  `workDataDeletedDates` 복원 안 함**(`OwnerSnapshot` 구조적 한계).
+- **비용 3종 테이블 RLS** — 정책은 라이브에 존재, 마이그레이션 파일엔
+  없음(필요 시 `0005`로 스냅샷화).
+- DB 마이그레이션 `0001`~`0004` 라이브 적용·검증 완료 ·
+  `npm run typecheck` → 0 에러.
 
 ## 저장소 상태
 
-- **react-app**: `main` = `bb359b4`(§8 정비/주유/기타 칩 통일 fix) —
-  push됨, origin과 동일. §8 관련 CI·Deploy 전부 초록·보리 브라우저
-  실검증·AI 코드 리뷰·최종 `[x]` 승인 완료(2026-09-15).
-- **ubiquitous-parakeet**: local `main`이 origin보다 1커밋 앞섬(`4aaf963`,
-  아직 미푸시). 이번 세션 §8 최종 승인 문서 정리(`report.md`/
-  `ui-comparison-report.md`/`STATUS.md`)를 이어서 커밋함. **AI는 push
-  안 함.**
-- 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
+- **react-app**: `main` = `bb359b4`(§8 칩 통일 fix) — push됨, origin과
+  동일. CI·Deploy 초록·보리 실검증·AI 코드 리뷰·최종 `[x]` 완료.
+- **ubiquitous-parakeet**: local이 origin보다 앞섬(`4aaf963` +
+  이번 세션 §8 문서 정리 커밋). **AI는 push 안 함.** 정확한 HEAD는
+  매 세션 시작 시 재확인(AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
 
