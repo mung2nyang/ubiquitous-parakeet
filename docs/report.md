@@ -1,83 +1,90 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## `side-menu.css` 분리설계안 (보리 지시, 2026-09-15) `[ ]` 슬라이스1 승인 대기
+> **소급 기록**: 아래는 미수금 UI 복원(react-app `12a9dbb`) 착수 전
+> 이 세션이 작성한 원인조사 착수지시서다. 당시 커밋을 안 해서 다른
+> AI의 구현 이후 이 파일 내용이 구현요약으로 덮어써졌고, 그 뒤 이
+> 세션이 다음 슬라이스 설계안으로 다시 덮어쓰며 원본 조사 내용이
+> 유실됐었다. 대화 기록에서 복원해 커밋으로 남긴다(보리 지적,
+> 2026-09-15). 다음 커밋에서 다시 "현재 슬라이스"(side-menu.css
+> 분리설계안)로 교체.
 
-### 왜 설계안부터(AGENTS §6)
+## 미수금/정산 관리 화면 UI 불일치 수정 (보리 스크린샷, 2026-09-15)
 
-`side-menu.css` 현재 1421줄. 200줄 초과 파일을 손대려면 기계적 분할이
-아니라 책임 경계부터 보고·승인받아야 함. 파일명과 달리 실제 내용은
-사이드메뉴 자체보다 **다른 여러 화면 스타일이 뒤섞인 잡동사니** —
-한 번에 나누면 3조각 이상 슬라이스가 뻔해서, 먼저 전체 경계를 지도로
-그리고 **이번엔 그중 1개만** 착수.
+### 현재 상태 (원인)
 
-### 전체 경계 지도 (grep으로 실사용처 확인함)
+react-app 미수금 화면이 원본과 다른 건 사소한 스타일 차이가 아니라,
+**이관 당시 원본 전용 CSS/구조를 안 옮기고 다른 화면(차량·거래처 목록)의
+공용 컴포넌트를 잘못 재사용**한 결과. 확인된 원인 5가지:
 
-| # | 내용 | 줄수 | 실제 사용 파일 | 비고 |
-|---|---|---|---|---|
-| A | 사이드메뉴 자체(`.side-menu*`, `.dropdown-item`) | ~129 | `SideMenu.jsx` | 독립적, 이름과 실제 내용주인이 맞는 유일한 덩어리 |
-| B | 관리화면 공용(`.management-list-card`/`.action-icon-btn`/`.management-badge`/`.empty-state` 등) | ~134 | 차량·거래처·미수금 등 다수 | **여러 화면 공유 — 특정 화면 파일로 옮기면 안 됨.** 별도 "공용" 파일 필요 |
-| C | 차량 커미션 잔재(`.car-commission-*` 등, 죽은 CSS 2개 포함) | ~185 | 주로 `CarManagementPage`류 | §2-1-C 차량 CSS 분리 때 누락분으로 추정 — 죽은 CSS 처리 방침과 얽힘(STATUS "알려진 이슈") |
-| D | 개인정보 일부(`.personal-intro*`/`.personal-card*`) | ~102 | `PersonalInfoPage.jsx` | **주의**: 같은 구역의 `.personal-account-btn`은 7개 파일(거래처·기사·초대 등)이 공유 — 화면 전용 부분과 공용 버튼을 분리해서 다뤄야 함 |
-| E | 설정 공용(`.setting-section`/`.settings-segmented-control` 등) | ~74 | `AppSettingsPage` 외 다수 | 공용 — B와 유사 성격 |
-| F | 정비/주유/기타(`.maint-fuel-*`/`.management-day-*` 등) | ~164 | **12개 파일**(`day-log/*`·`revenue/*`·`TaxInvoicePage`·`cars/*` 등) | **화면 전용 아님 — 이관 코드 전반의 공용 위젯.** MaintFuelPage만의 것으로 착각하기 쉬운 함정 |
-| G | 리포트/운송비내역서(`.report-*`/`.info-table`/PDF출력모드) | ~233 | **`ReportPage`/`ReportDetailView`/`ReportShareModal`/`ReportSummaryContent` 4개뿐, 전부 확인** | **완전 독립. 가장 크고 가장 안전** |
-| H | 세금계산서 금액그리드(`.tax-invoice-amount-grid`) | ~28 | `TaxInvoicePage` 계열 | J와 겹치는 셀렉터 있어 분리 시 재확인 필요 |
-| I | 알림(`.notification-*`/`.top-notification-btn`) | ~114 | `NotificationPanel.jsx`+`CalendarHeader.jsx` | 2파일, 비교적 안전 |
-| J | 기사연동관리 카운트(`.driver-management-counts`/`.driver-code-row`)+세금계산서 가이드 | ~31 | `DriverConnectionPage`/`DriverFormModal`/`CarDriverConnectPanel`+`TaxInvoicePage` | H와 마찬가지로 두 화면이 섞여 있어 그대로 자르면 안 됨 |
-| K | 앱설정 프리셋(`.run-count-preset-*`/`.fixed-route-preset-*`) | ~172 | `RunCountChips.jsx`/`RoutePresetEditor.jsx` | 2파일, 안전 |
-| L | 고객센터(`.support-*`/`.faq-item*`/`.my-inquir*`) | ~33 | `CustomerCenterPage.jsx`/`NoticePage.jsx` | 안전 |
-| M | 메시지설정(`.message-settings-*`) | ~12 | `MessageSettingsPage.jsx` | 안전하지만 너무 작아 단독 슬라이스 가치 낮음 |
+1. **액션 버튼 글자가 세로로 깨짐(스크린샷의 핵심 증상)** — "상세"·
+   "입금 완료" 같은 텍스트 버튼에 `action-icon-btn`을 썼는데, 이
+   클래스는 다른 화면 SVG 아이콘 버튼 전용이라 `.management-list-card
+   .action-icon-btn{width:34px;height:34px}` 고정 정사각형(`side-menu.css:219-223`).
+   텍스트가 34px 폭 안에서 한 글자씩 줄바꿈됨.
+   (`ReceivablesListPage.jsx:62-63`, `ReceivableItemCard.jsx:57,70-73`)
+2. **원본 전용 버튼 클래스 자체가 이관 안 됨** — 원본
+   `.receivable-detail-btn`/`.receivable-complete-btn`(자동 폭,
+   `min-height:44px`, 테두리+텍스트 스타일, `style.css:6385-6413`)가
+   react-app 어디에도 없음.
+3. **카드 골격이 다른 화면 것** — 원본은 세로 스택(제목→기간→차량배지→
+   요약→구분선→가로 버튼줄, `style.css:6314-6413`). react-app은
+   `management-list-card`(정보 왼쪽/버튼 오른쪽 가로분할, 다른 관리
+   화면 공용)를 그대로 씀 — `.receivable-card-actions{flex-direction:
+   column}`(`side-menu.css:819-824`)이 그 흔적.
+4. **차량 구분이 배지가 아니라 평문** — 원본은 `<span class=
+   "management-badge car-type main">메인 차량</span>` 배지
+   (`finance.js:1313`). react-app은 `car-sub-text`에 텍스트만 join
+   (`ReceivablesListPage.jsx:53`).
+5. **탭이 다른 화면 컴포넌트 재사용** — 원본 전용 `.receivable-tabs`/
+   `.receivable-tab`(단일 컨테이너, 그리드 2열, `style.css:6284-6312`)
+   대신 정비/주유/기타 탭 것(`settings-segmented-control`+`toggle-btn`)을
+   재사용 — 분리된 알약 버튼 2개로 보임(스크린샷).
 
-**A는 파일명이 뜻하는 원래 주인이라 마지막에 남겨도 됨(제일 헷갈릴
-일 없음).** B·E는 여러 슬라이스가 공유할 "공용" 파일이 필요해서
-후순위(먼저 화면 전용 것부터 빼고 남는 게 진짜 공용). F·D·H·J는
-겉보기와 달리 여러 화면이 얽혀 있어 **그대로 자르면 다른 화면을
-깨뜨림** — 나중에 더 잘게 나눠 다룰 것.
+"입금 예정 미수금" 탭 카드(`ReceivableItemCard.jsx`)와 상세 페이지
+(`ReceivablesDetailPage.jsx`)도 1·2·3과 같은 `action-icon-btn` 텍스트
+버튼 패턴이라 스크린샷엔 안 보여도 똑같이 깨질 것으로 추정 — 브라우저로
+확인 필요.
 
-### 이번 슬라이스 제안: **G — 리포트/운송비내역서**
+### 확인 필요 → 보리 답변(2026-09-15)
 
-가장 크고(233줄, 전체 감축분의 1/6) `ReportPage`류 4개 파일 외
-어디서도 안 씀(grep 확인 완료) — 블라스트 반경 0, 가장 안전하게
-큰 걸 먼저 뺄 수 있음.
+- 안내문구("운행 일지 세부 입력에서 자동으로 모읍니다...") → **삭제**.
+- 버튼 라벨 → "상세"는 **"미수금 상세"**로(원본과 동일), "입금 완료"는
+  **"입금완료"**로(원본 "입금 완료 처리"와 다름 — 보리가 고른 표현,
+  그대로 반영). `ReceivablesListPage.jsx:62-63`.
 
-#### 현재 상태
+### 목표 상태
 
-`report-*`/`info-table`/`detail-report-table`/PDF 출력모드 CSS
-(`side-menu.css:800-1032`, 233줄)가 사이드메뉴 파일에 섞여 있음.
-소비처는 `ReportPage.jsx`/`ReportDetailView.jsx`/`ReportShareModal.jsx`/
-`ReportSummaryContent.jsx` 4개뿐(전체 `*.jsx` grep 확인).
+원본 `finance.js`/`style.css`의 `.receivable-*` 전용 클래스 구조를
+react-app에 온전히 이식 — 카드 골격(세로 스택+하단 버튼줄)·버튼 스타일
+(auto-width 텍스트 버튼)·차량 배지·탭 바를 원본과 동일하게. 단, 안내문구는
+삭제하고 버튼 라벨은 "미수금 상세"/"입금완료"(보리 결정, 위).
 
-#### 목표 상태
+### 건드릴 파일
 
-해당 233줄을 `components/report/report.css`(신규)로 이동, 값 변경
-없이 그대로 옮기고 위 4개 파일에 import. `side-menu.css`
-1421→약 1188줄.
+- `react-app/src/components/receivables/ReceivablesListPage.jsx`
+- `react-app/src/components/receivables/ReceivableItemCard.jsx`
+- `react-app/src/components/receivables/ReceivablesDetailPage.jsx`
+- `react-app/src/components/receivables/receivables.css` (신규 —
+  `side-menu.css`에 흩어진 `.receivable-*` 블록 이동 + 누락된
+  `.receivable-detail-btn`/`.receivable-complete-btn`/`.receivable-tabs`/
+  `.receivable-tab` 추가)
+- `react-app/src/side-menu.css` (이동한 블록 삭제, 1520→더 줄어듦)
 
-#### 건드릴 파일
+### 안 건드릴 것
 
-- `react-app/src/components/report/report.css` (신규)
-- `react-app/src/components/ReportPage.jsx`(import 추가)
-- `react-app/src/components/ReportDetailView.jsx`(import 추가)
-- `react-app/src/components/ReportShareModal.jsx`(import 추가, 필요 시)
-- `react-app/src/components/ReportSummaryContent.jsx`(import 추가, 필요 시)
-- `react-app/src/side-menu.css`(800-1032행 삭제)
+- `finance.js`/`useReceivablesActions.js`/`useReceivablesData.js` 등
+  로직·데이터 흐름 (순수 UI/CSS 문제).
+- 다른 관리 화면(차량·거래처)의 `management-list-card`/`action-icon-btn`
+  자체 — 그 화면들엔 맞는 스타일이라 안 건드림.
+- DB/Supabase 스키마.
 
-#### 안 건드릴 것
+### 실패 시 처리
 
-- 로직·데이터 흐름 전부(순수 CSS 이동).
-- 위 표의 B~F·H~M(다른 경계) — 이번엔 손 안 댐.
-- `.summary-card`/`.summary-row` 등 다른 화면(정비/주유/기타·기사정산
-  등)이 쓰는 **같은 이름이지만 다른 스코프**(`.report-page-wrap` 접두사
-  없는 것)의 규칙 — 그건 이 233줄 밖에 있음, 안 건드림.
+신규 레이어 없음. 실패해도 기존 `management-list-card`/`action-icon-btn`
+재사용 상태로 되돌리면 그만(구조적 되돌리기 리스크 없음).
 
-#### 실패 시 처리
+### 실제 구현 결과 (react-app `12a9dbb`, 다른 AI 진행)
 
-신규 레이어 없음. 값 변경 없는 순수 이동이라 실패해도 되돌리면 그만.
-
----
-
-## 다음 슬라이스 (착수 전 대기, 순서 미정 — 매번 보리 확인 후 진행)
-
-G 완료 후 I(알림)·K(프리셋)·L(고객센터)처럼 독립적인 것부터, 얽힌
-D·F·H·J는 더 잘게 쪼개 별도 설계 필요. A(사이드메뉴 자체)는 제일
-나중. B·E(공용)는 화면 전용 분리가 어느 정도 끝난 뒤 정리.
+`receivables.css` 신규 + 목록/카드/상세 3개 JSX를 위 목표대로 이식.
+CI 초록·보리 브라우저 실검증·최종 승인(2026-09-15). §5 리뷰·상세
+diff는 `git show 12a9dbb`(react-app).
