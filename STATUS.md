@@ -40,11 +40,11 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 최종 승인. 상세
 `docs/archive/dropdown-slice1-calendar-date-select-2026-09-15.md`.
 
-**지금 하는 일: 전역 드롭다운 슬라이스 2 착수지시서 작성 완료,
-착수 승인 대기(2026-09-15).** 보리 결정(A안: 범용 이름으로 일반화) 반영 —
-`CalendarDateSelect`의 버튼+listbox 로직을 `src/components/shared/AppDropdown.jsx`로
-추출하고 개별 select 5곳(문의유형·결제조건·정산기준·거래처선택·
-기사선택) + 관련 테스트 1곳까지 총 10개 파일. 상세 `docs/report.md`.
+**전역 드롭다운 슬라이스 2 `[x]` 완료(2026-09-15).** 개별 select
+5곳 → `AppDropdown` 공용화(`88ba0fb`) + 회귀 수정
+`4e3aeea`(`app-dropdown-boxed`로 폼 select 박스 스타일 복원). CI
+초록·push 완료·보리 승인. 상세
+`docs/archive/dropdown-slice2-appdropdown-and-boxed-regression-2026-09-15.md`.
 
 **보리 지시(2026-09-14, 디자인 토큰 건에서 확인): "라이트 전용만
 있는 건 다크모드도 적용해야 한다, 앱 통일을 위해서."** — 일반 원칙으로
@@ -57,8 +57,8 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 
 ## 다음 할 일
 
-1. **전역 드롭다운 슬라이스 2**(위 "지금 하는 일") 착수 승인 → 진행.
-   `docs/report.md`.
+1. **§9 기사연동관리 전체 대조** — `docs/ui-comparison-report.md` §9.
+   착수지시서 별도 작성 필요. `docs/report.md`.
 2. §3~§14(보리가 직접 작성한 화면별 대조 기록)를 순차로. 각 화면 =
    대조 + 그 화면 전용 CSS 분리 한 슬라이스.
 
