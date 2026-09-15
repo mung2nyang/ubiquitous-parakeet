@@ -33,9 +33,18 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 실검증·최종 승인. 상세
 `docs/archive/2-2-car-driver-link-and-connectmode-bugs-2026-09-15.md`.
 
-**지금 하는 일: 전역 드롭다운 통일 슬라이스 1 착수지시서 작성 완료,
-착수 승인 대기(2026-09-15)** — 연/월 `<select>` 5파일(10곳)을
-`CalendarDateSelect` 재사용으로 교체. 상세 `docs/report.md`.
+**전역 드롭다운 슬라이스 1 `[x]` 완료(2026-09-15).** 연/월
+`<select>` 5파일(10곳) → `CalendarDateSelect` 재사용, react-app
+`9df06e2`. 구현은 다른 AI가 진행, 이 세션이 `git show --stat`·
+`wc -l`·grep·`gh run list`로 §5 독립 검수 + 보리 브라우저 실검증·
+최종 승인. 상세
+`docs/archive/dropdown-slice1-calendar-date-select-2026-09-15.md`.
+
+**지금 하는 일: 전역 드롭다운 슬라이스 2 — 개별 select 5곳(문의유형·
+결제조건·정산기준·거래처선택·기사선택) 공용화 설계 결정 대기.**
+`CalendarDateSelect`는 이름·CSS 파일이 연/월 전용이라 그대로
+재사용 불가 — 범용 이름(`AppDropdown` 등)으로 일반화할지, 5곳
+각자 손댈지 보리 결정 필요.
 
 **보리 지시(2026-09-14, 디자인 토큰 건에서 확인): "라이트 전용만
 있는 건 다크모드도 적용해야 한다, 앱 통일을 위해서."** — 일반 원칙으로
@@ -48,14 +57,10 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 
 ## 다음 할 일
 
-1. **전역 드롭다운 슬라이스 1**(위 "지금 하는 일") 착수 승인 →
-   진행. 슬라이스 2(개별 select 5곳 공용화 여부, 보리 결정 필요)는
-   그 다음. 착수지시서 `docs/report.md`.
+1. **전역 드롭다운 슬라이스 2** — 개별 select 5곳 공용화 여부 보리
+   결정 → 착수지시서 작성. `docs/report.md`.
 2. §3~§14(보리가 직접 작성한 화면별 대조 기록)를 순차로. 각 화면 =
    대조 + 그 화면 전용 CSS 분리 한 슬라이스.
-
-*(grep 재확인 결과 후보가 10파일/14곳 → **10파일/15곳**으로 정정됨 —
-근거는 `docs/report.md` 참고.)*
 
 ### 후속 nit (확인된 것만)
 
@@ -115,6 +120,9 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 
 ## 완료 (커밋·푸시됨 — 상세는 각 archive/report.md, 아래는 한 줄 요약만)
 
+- 전역 드롭다운 슬라이스 1(연/월 select 5파일→`CalendarDateSelect`)
+  `[x]` — react-app `9df06e2`, CI 초록·보리 최종 승인(2026-09-15).
+  상세 `docs/archive/dropdown-slice1-calendar-date-select-2026-09-15.md`.
 - §2(차량 관리) 전체 `[x]` — 기사연동 전환 버그 + 신규등록 connectMode
   기본값 버그 포함, react-app `f4de520`/`bc25009`/`dd54ca3`/`028af8e`,
   전부 CI 초록·보리 최종 승인(2026-09-15). 상세
@@ -192,11 +200,11 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 
 ## 저장소 상태
 
-- **react-app**: `main` = `028af8e`(신규등록 connectMode 기본값 수정) —
-  push됨, origin과 동일. §2 관련 CI "verify" 전부 초록·보리 최종
-  `[x]` 승인 완료(2026-09-15).
-- **ubiquitous-parakeet**: 이번 갱신분(§2 완료 archive + 드롭다운
-  슬라이스 1 착수지시서) 커밋 예정. **AI는 push 안 함.**
+- **react-app**: `main` = `9df06e2`(드롭다운 슬라이스 1) — push됨,
+  origin과 동일. §2·드롭다운 슬라이스 1 관련 CI "verify" 전부
+  초록·보리 최종 `[x]` 승인 완료(2026-09-15).
+- **ubiquitous-parakeet**: 이번 갱신분(드롭다운 슬라이스 1 archive +
+  검수 결과) 커밋 예정. **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
