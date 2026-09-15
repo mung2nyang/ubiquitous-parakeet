@@ -1,7 +1,7 @@
 # 단일진실원 (SoT)
 
 > 이전 파일명: `handoff-2026-08-30.md`. 대상: `react-app` (구현) + `ubiquitous-parakeet` (원칙·계획).
-> 갱신일: 2026-09-11. "Step 8 미착수" 등 오래된 오기 3곳 삭제(보리 승인, 실제로는 Step 0~11 로드맵 전체 완료 — 상세는 `docs/report.md`/`docs/archive/status-snapshot-*.md`).
+> 갱신일: 2026-09-11. "Step 8 미착수" 등 오래된 오기 3곳 삭제(보리 승인, 실제로는 Step 0~11 로드맵 전체 완료 — 상세는 `docs/report.md`, 지난 스냅샷은 git 이력).
 > 푸시는 별도 지시 전 하지 않는다. 신규 durable/fallback/unsafe/tombstone/큐 금지.
 
 이 문서는 **도메인 읽기=Store** 와 화면이 **같은 계산 함수**를 쓰는지 한곳에 둔다.
@@ -350,8 +350,8 @@ Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). �
 완료 기록에서 확인할 것 — 무작정 "버그 아니다"로 답하지 말고 어느
 쪽을 택했는지부터 확인.
 
-상세 조사·실측 근거: `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`,
-`docs/report.md`(5차, 진행 중).
+상세 조사·실측 근거: git 이력(2026-09-11 아코디언 슬라이드 커밋들, react-app
+`67762ff`~`6c5ba8d`/`3ae7db9`).
 
 ---
 

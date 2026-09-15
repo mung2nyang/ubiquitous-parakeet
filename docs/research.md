@@ -1,5 +1,10 @@
 # ubiquitous-parakeet React 이전 조사
 
+> `docs/archive/`(작업 이력)가 아니라 여기(`docs/`)에 둔 이유: 이건 지난 작업
+> 기록이 아니라 **원본 바닐라 앱 구조를 조사한 현역 참고자료**다. `docs/plan.md`가
+> 지금도 이 문서를 "기준 문서"로 인용한다. 2026-09-15 `docs/archive/research.md`에서
+> 이동(archive는 커밋 이력으로 대체하기로 해서 그쪽은 삭제 대상).
+
 조사 기준: 바닐라 SPA(단일 `index.html` + 전역 스크립트). 화면은 라우터가 아니라 `.page` / `.modal-overlay`의 `hidden` 클래스로 전환한다. 저장은 **로컬 우선(localStorage 동기 기록) + Supabase 백그라운드 업서트**. 모든 도메인 함수는 모듈이 아니라 `window` 전역에 올라가며, `index.html`의 `onclick`/`onchange`가 그 이름을 직접 호출한다.
 
 로드 순서(의존성): `supabase-config.js` → ESM `createClient` → `finance.js` → `finance-sync.js` → `ui-widgets.js` → `maint-fuel-misc.js` → `driver-link.js` → `notifications.js` → `mypage.js` → `client-management.js` → `car-management.js` → `supabase-sync.js` → `script.js`. `script.js`는 파싱 직후 `normalizeLegacyData()` / `syncNormalizedEntityStore()` / `initRevenueDateSelects()` 등을 **즉시 실행**하므로, React로 옮길 때도 “하이드레이션 전에 빈 settings로 Supabase를 덮어쓰면 유실” 같은 부트 순서 제약이 그대로 남는다.
@@ -404,7 +409,7 @@ React Router와 **이중 히스토리**가 된다. SPA 라우터를 쓰면 이 �
 
 ### 3.3 DOM expando (노드에 붙는 숨은 상태)
 
-React가 DOM을 갈아끼우면 전부 사라지거나, 반대로  ple된 노드에 남는 다.
+React가 DOM을 갈아끼우면 전부 사라지거나, 반대로 유령 노드에 남는다.
 
 - `wrapper._dropdownMenu`, `_dropdownSync`, `_temporalMenu`, `_temporalSync`, `_temporalPosition`
 - `input._autocompleteMenu`, `_autocompleteClose`, `_autocompletePosition`
@@ -419,7 +424,7 @@ React가 DOM을 갈아끼우면 전부 사라지거나, 반대로  ple된 노드
 
 - `window` `online` → `flushAllBackgroundSaves`
 - `document` `visibilitychange` (`document.hidden`일 때 flush)
-- `window` `pagehide` → flush  
+- `window` `pagehide` → flush
   모바일에서 setTimeout 디바운스가 죽어서 클라우드 미반영이던 문제를 막기 위한 것. React `useEffect` cleanup에서 빼먹으면 다시 발생하고, Strict Mode에선 이중 등록된다.
 
 **부트**
@@ -470,7 +475,7 @@ React가 DOM을 갈아끼우면 전부 사라지거나, 반대로  ple된 노드
 
 - `queueBackgroundSave(..., 320|600ms)` / `flush` 재귀. 언마운트 후 `updateSaveStatusIndicator`가 null id면 return하지만, 저장 자체는 계속됨 (원함). React state로 스피너를 묶으면 언마운트 경고.
 - `executeApiRequest` 10초 AbortController.
-- 차량 uuid 대기: 500ms × 5. 실패 시 throw해야 토스트가 남. 조용히 return하면 “저장 성공처럼 보이는데 서버에 없음”.
+- 차량 uuid 대기: 500ms × 5. 실패 시 throw해야 토스트가 남는다. 조용히 return하면 “저장 성공처럼 보이는데 서버에 없음”.
 - 인라인 패널 80ms / 420ms timeout. 그 사이 다른 화면으로 가면 패널이 잘못된 부모에 남음 → `restoreMaintFuelModalToRoot`가 필요한 이유.
 - 알림/토스트/설정 접기/스플래시 타이머.
 - `linkedDriver` 비동기 렌더: 응답 도착 시 `activeLinkedDriverId`와 페이지 hidden 여부를 다시 검사. React면 abort/ignore stale response.

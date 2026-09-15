@@ -3,9 +3,11 @@
 > **매 세션 이 파일부터 읽는다.** "지금 어디까지 왔나"의 정본.
 > **갱신 규칙(엄수): 이 파일은 슬라이스마다 관련 절을 고쳐 쓴다 — append 금지.**
 > "이전 최종 갱신 …" 을 위에 쌓지 마라. "완료" 절은 한 줄 요약만 추가하고,
-> 슬라이스 상세는 `docs/report.md`(현재 슬라이스) / `docs/archive/`(끝난 것)에만 둔다.
-> 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 archive로 옮기고 요약만 남긴다.
-> 직전 스냅샷: `docs/archive/status-snapshot-2026-09-10.md` (1093줄까지 커졌던 것 정리).
+> 슬라이스 상세는 `docs/report.md`(현재 슬라이스)에만 둔다. 끝난 슬라이스는
+> 커밋 메시지가 기록이다(`docs/archive/` 새 파일 안 만듦, 2026-09-15부터 —
+> `AGENTS.md` §0-2). 지난 내용은 `git log -p -- docs/report.md` 또는 아래
+> 커밋 해시로 `git show`.
+> 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
 > 최종 갱신: 2026-09-15
 
 ---
@@ -30,26 +32,23 @@ A~D·E-1·F-1~F-3·디자인 토큰 전부 `[x]` 확정 완료(react-app
 **§2(차량 관리) `[x]` 전체 완료(2026-09-15).** §2-1-A·B·C +
 기사연동 전환 버그(`f4de520`/`bc25009`/`dd54ca3`) + 신규등록
 connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
-실검증·최종 승인. 상세
-`docs/archive/2-2-car-driver-link-and-connectmode-bugs-2026-09-15.md`.
+실검증·최종 승인.
 
 **전역 드롭다운 슬라이스 1 `[x]` 완료(2026-09-15).** 연/월
 `<select>` 5파일(10곳) → `CalendarDateSelect` 재사용, react-app
 `9df06e2`. 구현은 다른 AI가 진행, 이 세션이 `git show --stat`·
 `wc -l`·grep·`gh run list`로 §5 독립 검수 + 보리 브라우저 실검증·
-최종 승인. 상세
-`docs/archive/dropdown-slice1-calendar-date-select-2026-09-15.md`.
+최종 승인.
 
 **전역 드롭다운 슬라이스 2 `[x]` 완료(2026-09-15).** 개별 select
 5곳 → `AppDropdown` 공용화(`88ba0fb`) + 회귀 수정
 `4e3aeea`(`app-dropdown-boxed`로 폼 select 박스 스타일 복원). CI
-초록·push 완료·보리 승인. 상세
-`docs/archive/dropdown-slice2-appdropdown-and-boxed-regression-2026-09-15.md`.
+초록·push 완료·보리 승인.
 
 **보리 지시(2026-09-14, 디자인 토큰 건에서 확인): "라이트 전용만
 있는 건 다크모드도 적용해야 한다, 앱 통일을 위해서."** — 일반 원칙으로
 기록. 토큰 파일 재검토 결과 이 원칙에 걸리는 나머지 사례는 없음
-(`--fs-7` 1건은 이미 이 작업으로 해결됨, 상세는 archive 참고). 앞으로
+(`--fs-7` 1건은 이미 이 작업으로 해결됨). 앞으로
 비슷한 라이트 전용/다크 전용 비대칭을 발견하면 이 원칙대로 처리.
 
 상세·근거는 `docs/ui-comparison-report.md` §1·§2, 착수지시서는
@@ -57,10 +56,9 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 
 ## 다음 할 일
 
-1. **§9 기사연동관리 전체 대조** — `docs/ui-comparison-report.md` §9.
-   착수지시서 별도 작성 필요. `docs/report.md`.
-2. §3~§14(보리가 직접 작성한 화면별 대조 기록)를 순차로. 각 화면 =
-   대조 + 그 화면 전용 CSS 분리 한 슬라이스.
+1. **§3(거래처)부터 §14까지 순차로**(보리가 직접 작성한 화면별 대조
+   기록, `docs/ui-comparison-report.md`). 각 화면 = 대조 + 그 화면
+   전용 CSS 분리 한 슬라이스. 어느 화면부터 할지는 보리 지정 대기.
 
 ### 후속 nit (확인된 것만)
 
@@ -118,51 +116,44 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
   `useExpenseForm.js` 흐름을 건드리므로 리팩토링 먼저 — 원본에도 있는
   기능이지만 이 이유로 §1에서 이관 완료 후로 이월).
 
-## 완료 (커밋·푸시됨 — 상세는 각 archive/report.md, 아래는 한 줄 요약만)
+## 완료 (커밋·푸시됨 — 상세는 각 커밋, 아래는 한 줄 요약만)
+
+> `docs/archive/`의 상세 파일들은 2026-09-15 정리됨(git 이력엔 그대로
+> 있음, `git log --diff-filter=D -- docs/archive` 로 찾을 수 있음).
+> 아래 커밋 해시로 `git show <해시>` 하면 각 슬라이스 diff를 볼 수 있다.
 
 - 전역 드롭다운 슬라이스 1(연/월 select 5파일→`CalendarDateSelect`)
   `[x]` — react-app `9df06e2`, CI 초록·보리 최종 승인(2026-09-15).
-  상세 `docs/archive/dropdown-slice1-calendar-date-select-2026-09-15.md`.
 - §2(차량 관리) 전체 `[x]` — 기사연동 전환 버그 + 신규등록 connectMode
   기본값 버그 포함, react-app `f4de520`/`bc25009`/`dd54ca3`/`028af8e`,
-  전부 CI 초록·보리 최종 승인(2026-09-15). 상세
-  `docs/archive/2-2-car-driver-link-and-connectmode-bugs-2026-09-15.md`.
+  전부 CI 초록·보리 최종 승인(2026-09-15).
 - §2-1-C 차량관리 전용 CSS 분리 `[x]` — react-app `2e1fcac`, CI
-  초록·보리 실검증·최종 승인(2026-09-14). 상세
-  `docs/archive/2-1-c-car-management-css-split-2026-09-14.md`.
+  초록·보리 실검증·최종 승인(2026-09-14).
 - §2-1-B 수정/삭제 아이콘 공용화(5곳) + 일일운행 세로쌓임 회귀 수정
   `[x]` — react-app `489e9fd`/`a0f6d6a`, CI 초록·보리 실검증·최종
   승인(2026-09-14). 검증 중 발견한 CSS 블라스트 반경 문제로 `AGENTS.md`
-  §5에 리뷰 항목 6(공용 CSS 클래스 영향범위) 신규 추가. 상세
-  `docs/archive/2-1-b-card-action-icons-2026-09-14.md`.
+  §5에 리뷰 항목 6(공용 CSS 클래스 영향범위) 신규 추가.
 - §2-1-A 차량 카드 라벨칩/정산정보 복원 + 칩 조건 버그 수정 `[x]` —
   react-app `8641be3`/`032e807`/`15bfc43`, CI 초록·보리 실검증·최종
-  승인(2026-09-14). 상세 `docs/archive/2-1-a-car-card-label-chips-2026-09-14.md`.
+  승인(2026-09-14).
 - D-0~D-3·E-1·F-1~F-3·디자인 토큰 통합(시간입력 위젯 전체+정비/주유/기타
   공용 스타일+콜상세 아이콘/별표 SVG+CSS 변수 1곳화) `[x]` — react-app
   `e65b2c0`/`b14fcd8`/`c395ab3`/`93a4f2c`/`9e6f93d`/`8ced672`/`ed83703`/
-  `83de8e9`/`ef82306`, 전부 CI 초록·확인 완료(2026-09-14). 상세
-  `docs/archive/d0-`~`d3-`·`e1-`·`f1-`~`f3-`·
-  `design-tokens-consolidation-2026-09-14.md`.
+  `83de8e9`/`ef82306`, 전부 CI 초록·확인 완료(2026-09-14).
 - 일일운행 아코디언 슬라이드 1~6차·"부가세 해제" 16px→fs-2 `[x]` —
-  react-app `67762ff`~`6c5ba8d`/`3ae7db9`. 상세
-  `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`.
+  react-app `67762ff`~`6c5ba8d`/`3ae7db9`.
 - 연동 기사·거래처 스코프 3건(종결 확인·스코프 수정+교차검증·게스트 데이터
-  유실 근본 수정) `[x]` — react-app `76d9829`/`0b9358d`. 상세
-  `docs/archive/guest-data-loss-and-client-scope-2026-09-11.md`.
+  유실 근본 수정) `[x]` — react-app `76d9829`/`0b9358d`.
 - B그룹 ①산재보험료·②즐겨찾기 칩·콜상세 "거래처+추가" `[x]`(③원안은 폐기) —
-  react-app `1de2537`/`6b4a9b7`/`0db5bde`. 상세 `docs/archive/b-group-report-2026-09-11.md`.
-- Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업·알림·PDF·온보딩·고객센터 등,
-  상세 `docs/archive/audit.md`·`status-snapshot-2026-09-10.md`) · Step 11
-  200줄 강제·JS→TS(JSDoc) 프로덕션 전체 `[x]`(잔여는 위 "보류" 참고).
+  react-app `1de2537`/`6b4a9b7`/`0db5bde`.
+- Step 0~10 전부 `[x]`(매출제/월급제·기사연동·백업·알림·PDF·온보딩·고객센터 등) ·
+  Step 11 200줄 강제·JS→TS(JSDoc) 프로덕션 전체 `[x]`(잔여는 위 "보류" 참고).
 - 미연동 서브차량 데이터 분리 4단계 `[x]`(도메인 정의 `docs/sot.md` §0) ·
   사이드메뉴 UI 정리(§1-1) 1·3번 `[x]`(2번은 위 "후속 nit").
 - `PageHeader` 통일(22개 화면) `[x]`·`side-menu.css` 다이어트 `[x]`·
-  `main-calendar.css` 책임 분리 1~10차 `[x]` — 상세 각 archive 동명 파일.
+  `main-calendar.css` 책임 분리 1~10차 `[x]`.
 - `ui-comparison-report.md` §2 마이페이지·§3 매출·§1-A 일일운행(CSS 4건)·
-  일일운행 2부(2중스크롤+카드이탈)·홈 캘린더 ②③ 전부 `[x]` — 상세
-  `docs/archive/report-snapshot-2026-09-10.md`·`day-log-part2-scroll-card-bugs.md`·
-  `status-snapshot-2026-09-10.md`.
+  일일운행 2부(2중스크롤+카드이탈)·홈 캘린더 ②③ 전부 `[x]`.
 
 ## 알려진 이슈 (안 고쳐도 되지만 잊으면 안 됨)
 
@@ -174,14 +165,12 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
   `*.jsx` grep 0건. `car-daylog-preview`+`li`(461~479행, 19줄): 마찬가지
   0건이고, `CarDriverConnectPanel.test.js`가 오히려 "이 클래스로
   렌더된 요소가 0개"임을 검증하는 대상. **보리 결정: 지금 안 건드림,
-  이관 완료 후 처리.** 상세는
-  `docs/archive/2-1-c-car-management-css-split-2026-09-14.md`.
+  이관 완료 후 처리.**
 - **`react-app/src/components/mypage.css`에 죽은 CSS 규칙 2개 보존돼 있음**
   (`.mypage-header-spacer`, `.mypage-role-pill` — 둘 다 JSX 소비처 0,
   `grep` 확인됨). 출처: 2026-09-10 §2 마이페이지 CSS 분리 때
   `side-menu.css` 1387~1605줄을 그대로 옮기며 "삭제 안 하고 보존 이동"
-  관례에 따라 죽은 채로 같이 옮김(상세
-  `docs/archive/report-snapshot-2026-09-10.md`). 보리 개인 메모로 이미
+  관례에 따라 죽은 채로 같이 옮김. 보리 개인 메모로 이미
   추적 중, 여기 동기화만.
 - **`ModalShell` 공용 컴포넌트 미추출** — 바깥 클릭 닫힘+`stopPropagation`
   JSX 래퍼가 9개 파일 중 8개에 동일 복붙(`ExpenseFormModal`만 다름).
@@ -200,11 +189,12 @@ connectMode 기본값 버그(`028af8e`) 전부 CI 초록·보리 브라우저
 
 ## 저장소 상태
 
-- **react-app**: `main` = `9df06e2`(드롭다운 슬라이스 1) — push됨,
-  origin과 동일. §2·드롭다운 슬라이스 1 관련 CI "verify" 전부
-  초록·보리 최종 `[x]` 승인 완료(2026-09-15).
-- **ubiquitous-parakeet**: 이번 갱신분(드롭다운 슬라이스 1 archive +
-  검수 결과) 커밋 예정. **AI는 push 안 함.**
+- **react-app**: `main` = `4e3aeea`(드롭다운 슬라이스 2 회귀 수정, 슬라이스
+  1·2 둘 다 포함) — push됨, origin과 동일. §2·드롭다운 슬라이스 1·2 관련
+  CI "verify" 전부 초록·보리 최종 `[x]` 승인 완료(2026-09-15).
+- **ubiquitous-parakeet**: local `main`이 origin보다 1커밋 앞섬(`4aaf963`,
+  아직 미푸시). 지금 세션의 문서 정리(archive 정책 변경 등)는 아직
+  워킹카피 미커밋 상태. **AI는 push 안 함.**
 - 정확한 HEAD·미커밋 범위는 매 세션 시작 시 재확인 (AGENTS §0-6).
 
 ## 승인의 기준 (사용자가 `[x]` 확정 전에 확인할 것)
