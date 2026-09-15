@@ -1,128 +1,113 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-> 직전 완료 슬라이스(아코디언 인라인 시트 애니메이션 1~6차 `[x]`, 부가세
-> 레이블 크기 `[x]`, 거래처 스코프 종결 `[x]`) 상세는
-> `docs/archive/accordion-inline-sheet-and-misc-2026-09-11.md`로 옮김(동결).
-> F-1(`[x]`, react-app `8ced672`) 상세는
-> `docs/archive/f1-vat-label-font-weight-2026-09-14.md`로 옮김(동결).
-> F-2(`[x]`, react-app `ed83703`) 상세는
-> `docs/archive/f2-autofill-dark-mode-2026-09-14.md`로 옮김(동결).
-> D-0~D-3(`[x]` 전체, react-app `e65b2c0`/`b14fcd8`/`c395ab3`/`93a4f2c`)
-> 상세는 `docs/archive/d0-`~`d3-` 동일 접두 파일로 옮김(동결).
-> E-1(`[x]`, react-app `9e6f93d`) 상세는
-> `docs/archive/e1-expense-form-shared-style-2026-09-14.md`로 옮김(동결).
-> F-3(`[x]`, react-app `83de8e9`) 상세는
-> `docs/archive/f3-call-detail-icons-star-2026-09-14.md`로 옮김(동결).
-> 디자인 토큰 통합(`[x]`, react-app `ef82306`) 상세는
-> `docs/archive/design-tokens-consolidation-2026-09-14.md`로 옮김(동결).
-> §2-1-A(`[x]` 전체 — 라벨칩/정산정보 복원 + 칩 조건 버그 수정,
-> react-app `8641be3`/`032e807`/`15bfc43`) 상세는
-> `docs/archive/2-1-a-car-card-label-chips-2026-09-14.md`로 옮김(동결).
-> §2-1-B(`[x]` 전체 — 수정/삭제 아이콘 공용화 5곳 + 일일운행 세로쌓임
-> 버그 수정, react-app `489e9fd`/`a0f6d6a`) 상세는
-> `docs/archive/2-1-b-card-action-icons-2026-09-14.md`로 옮김(동결).
-> §2-1-C(`[x]` — 차량관리 전용 CSS 분리, react-app `2e1fcac`) 상세는
-> `docs/archive/2-1-c-car-management-css-split-2026-09-14.md`로
-> 옮김(동결).
+> §2(차량 관리) 전체 완료(§2-1-A/B/C + 기사연동 전환 버그 + 신규등록
+> 기본값 버그, 전부 `[x]`) 상세는
+> `docs/archive/2-2-car-driver-link-and-connectmode-bugs-2026-09-15.md`로
+> 옮김(동결). 그 이전 슬라이스들(§2-1-A/B/C 이전 것 포함)도 전부
+> `docs/archive/`에 동결돼 있음 — 폴더 목록에서 주제별로 찾는다.
 
 ---
 
-## 기사 정보 "운행일지"↔"기사연동" 전환 버그 `[~]`
+## 전역 드롭다운(`<select>`) 통일 — 슬라이스 1: 연/월 select → `CalendarDateSelect` 재사용
 
-### 1차 (`f4de520`) — log 유지 수정 시 초대 스킵
+> 보리 지시(2026-09-14): "라이트/다크 스타일 전역 통일 필요, 착수 전
+> 계획 필요." `STATUS.md` "다음 할 일" 항목 2. 오늘(2026-09-15) grep
+> 재확인 결과로 아래 확정.
 
-`skipInvite = connectMode === 'log'` (신규·수정 공통).
+### 현재 상태 (grep 재확인, `src/**/*.jsx`)
 
-### 2차 후속 (`bc25009`) — link→log 전환 시 연동 해제
+원본 STATUS.md엔 "10파일/14곳"으로 적혀 있었으나, 오늘 다시 grep한
+결과 **10파일/15곳**이 맞음(아래 근거). 이전 집계가 1곳 누락됐던
+것으로 보임 — 이 문서로 정정.
 
-**원인**: 배지/모달은 `drivers` 존재 여부로만 판정. log로 바꿔 저장해도
-기존 연결 레코드를 지우는 호출이 차량 폼에 없었음.
+- **연/월 `<select className="date-select">` 쌍 — 5파일 × 2곳 = 10곳**
+  (전부 `date-select-group` 안에 연/월 select 2개씩):
+  `MaintFuelPage.jsx`(126,129행) · `SettlementSummaryCard.jsx`(32,35행) ·
+  `ReportPage.jsx`(168,171행) · `RevenueNav.jsx`(24,28행) ·
+  `TaxInvoiceToolbar.jsx`(28,31행).
+  → **이번 슬라이스 대상.**
+- **개별 native `<select>` — 5파일 × 1곳 = 5곳**: `CustomerCenterPage.jsx`
+  (81행, 문의유형) · `ClientFormModal.jsx`(71행, 결제조건) ·
+  `BillingSettingsPage.jsx`(52행, 정산기준) · `ReportDetailView.jsx`
+  (42행, 거래처 선택) · `OwnerRevenueView.jsx`(131행, 기사 선택).
+  → **다음 슬라이스(아래 참고), 이번엔 손 안 댐.**
 
-**구현 정정(§9)**: 신규 DELETE/마이그레이션 불필요 —
-`requestDriverDeletion` → `deleteDriverLinkOnSupabase`가 이미
-기사연동관리 삭제·`directMutationActions.test.js`로 존재. 차량 폼에서
-그 경로를 재사용.
+**이미 검증된 대체 패턴 존재**: `CalendarHeader.jsx`가 이미 똑같은
+연/월 `date-select-group` 구조를 `CalendarDateSelect.jsx`(버튼+listbox,
+`app-dropdown app-date-dropdown` 클래스, 다크모드 대응 완료 —
+`calendar-date-select.css`)로 교체해 쓰고 있음. 이번 슬라이스는 **그
+컴포넌트를 나머지 5파일에 그대로 재사용**하는 것 — 신규 컴포넌트
+설계 없음.
 
-**동작**:
-1. 수정에서 "기사 연동"→"운행 일지" 저장 → ConfirmModal
-   ("이 차량의 기사 연동을 해제하시겠습니까? …").
-2. 확인 → `requestDriverDeletion` 후 차량 저장 + skipInvite.
-3. 취소 → 저장 안 함, 수정 모달 유지.
+### 목표 상태
 
-건드릴 파일: `CarListPage.jsx`만(231줄, §6 응집·화면 오케스트레이션
-주석). `npm test` 통과.
+5개 파일의 `<select className="date-select" ...>` 연/월 쌍을
+`<CalendarDateSelect label=... value=... options=... onChange=... />`
+호출로 교체. `CalendarHeader.jsx`(60~71행)와 동일한 형태로:
+`options`는 `{ value: String(x), label: '...' }` 배열, `onChange`는
+기존 핸들러의 `Number(e.target.value)` 부분만 `Number(next)`로 변경.
+시각적으로 네이티브 OS select → 앱 통일 버튼+listbox 드롭다운으로
+바뀌고, 다크모드에서 라이트모드처럼 보이는 문제도 함께 해소(F-2와
+같은 부류).
 
-### 검증 — AI 브라우저 실검증(2026-09-14, 보리 요청으로 대행)
+### 건드릴 파일 (5개)
 
-테스트 차량 `77가7777` 새로 등록해 4가지 경로 전부 직접 클릭·확인:
+| 파일 | 현재 줄 수 | 변경 내용 |
+|---|---|---|
+| `src/components/MaintFuelPage.jsx` | 206 | 126~131행 select 2개 → `CalendarDateSelect` 2개 + import 추가 |
+| `src/components/drivers/SettlementSummaryCard.jsx` | 50 | 32~37행 동일 |
+| `src/components/ReportPage.jsx` | 237 | 168~173행 동일 |
+| `src/components/revenue/RevenueNav.jsx` | 38 | 24~30행 동일(월 select는 `!yearly` 조건부 — 조건 유지) |
+| `src/components/TaxInvoiceToolbar.jsx` | 54 | 28~33행 동일 |
 
-1. 기사연동 신규 등록 → 저장 → 배지 「기사연동」 정상.
-2. 수정 → 「운행 일지」로 전환 → 저장 → 경고 팝업 **"이 차량의 기사
-   연동을 해제하시겠습니까? 해제하면 되돌릴 수 없습니다."** 노출 →
-   **취소** → 모달 닫고 목록 확인 → 배지 **「기사연동」 그대로 유지**
-   (회귀 없음).
-3. 같은 차량 다시 수정 → 「운행 일지」 전환 → 저장 → 경고 팝업
-   **확인** → 토스트 "차량을 수정했습니다." → 배지 **「운행일지」로
-   전환**. 다시 수정 모달을 열어 "기사 연동"이 아니라 "운행 일지"가
-   선택돼 있는 것까지 재확인(연결 레코드가 실제로 삭제됐음 — 단순
-   화면 재렌더 아님).
-4. 같은 차량을 다시 「기사 연동」으로 전환(신규 초대코드 자동생성) →
-   저장 → 배지 **「기사연동」으로 재연결** 정상.
-5. 기존 차량 회귀: `11가1111`(기사연동)·`22가2222`(1차 수정으로
-   이미 운행일지 전환된 것) 둘 다 이번 검증 동안 영향 없음.
+**§6 200줄 체크**: `MaintFuelPage.jsx`(206)·`ReportPage.jsx`(237)는
+이미 200줄 초과 상태(이번 슬라이스가 만든 게 아님). 이번 변경은 select
+마크업을 컴포넌트 호출 1줄로 줄이는 것이라 **양쪽 다 줄어들면 줄었지
+늘지 않음** — 실제 교체 후 `wc -l`로 재확인해 여전히 200줄 초과면
+그 사실만 §5 리뷰에 정직하게 기록(신규 분리설계 요구 아님, 기존
+초과분 그대로 승계).
 
-콘솔에 이번 조작으로 인한 새 에러 없음(기존에 떠 있던
-`[requestVehicleDeletion]` 에러 1건은 이전 세션 테스트 잔여, 이번
-검증과 무관).
+### 안 건드릴 것
 
-**결론: 브라우저 동작 5개 전부 통과.** 단, push 후 CI 확인 결과
-**"CI"(typecheck) 워크플로우 실패** — 아래 3차로 이어짐. `[x]` 보류.
-(ahead: `f4de520`+`bc25009`)
+- 나머지 5개 개별 select(문의유형·결제조건·정산기준·거래처선택·
+  기사선택) — 다음 슬라이스, 공용화 여부 미정.
+- `shared-controls.css`의 `.date-select`/`.date-select-group` 규칙 —
+  이 슬라이스로 5곳 다 옮겨도 `.date-select-group`은 레이아웃
+  래퍼로 계속 쓰이므로 유지. `.date-select`(네이티브 select 전용
+  스타일)는 이 슬라이스 후 사용처가 0이 될 가능성 있으나, 죽은 CSS
+  제거는 별도 후속 nit로만 기록(이번엔 안 지움).
+- `CalendarDateSelect.jsx`/`calendar-date-select.css` 자체 — 이미
+  검증된 컴포넌트, 무변경.
 
-### 3차 — CI 타입체크 실패 수정 (`dd54ca3`)
+### 실패 시 처리
 
-**원인**: `commitLocalOnly`가 `DomainValue` 유니언만 반환 →
-`del.drivers.some` 타입 에러.
+새 상태 저장소·큐·fallback 없음(§7 해당 없음) — 순수 마크업 교체.
+동작이 기존과 다르면(연/월 선택이 안 먹거나 스타일이 깨지면) 해당
+파일만 되돌리고 나머지는 유지, 사용자에게 어느 파일에서 문제가
+났는지 보고 후 재시도.
 
-**구현**:
-1. `outboxCommit.js` — `@template {DomainValue} T`로 `value: T` /
-   반환 `value: T|undefined`.
-2. `directMutationActions.js` — `requestDriverDeletion`에 `@returns`
-   + `failed || value === undefined`로 좁힘.
+### 검증 방법 (브라우저, 5파일 각각)
 
-`CarListPage.jsx` 무변경. 로컬 `npm run typecheck`·`npm test` 통과.
-런타임 동작 변경 없음.
-
-**CI 재확인(2026-09-14, `gh run view` 직접 열람)**: "verify" 잡의
-3단계(테스트·타입검사·빌드) 전부 초록 — 겉으로만 초록이 아니라 실제로
-세 단계 다 통과한 것 확인함.
-
-**단, 검증 중 발견**: `commitLocalOnly` 호출부가 이 저장소에 4곳인데
-이번엔 `requestDriverDeletion` 1곳만 근본 수정. 나머지
-`requestClientDeletion`·`requestDriverStatusChange`
-(둘 다 `directMutationActions.js`)·`requestDriverInviteSave`
-(`requestDriverInviteSave.js:58`, 타입 단언 포함)는 같은 패턴 잔존 —
-지금은 아무도 그 반환값에 배열 메서드를 안 써서 CI가 안 잡을 뿐.
-**보리 결정(2026-09-14): 지금 안 고침, `STATUS.md` 후속 nit로만 기록.**
-
-**보리 결정(2026-09-14): 위 CI 확인에도 불구하고 최종 `[x]` 승인은
-보류.** 이유 미상 — 다음 세션에서 직접 확인 예정으로 보임. 이 슬라이스
-전체(1~3차) `[~]` 유지, archive 안 함.
-
-### §5 리뷰 (CI 초록 후 확정)
-
-| # | 결과 |
-|---|---|
-| 1 범위 | `CarListPage.jsx`만, 기존 삭제 API 재사용 |
-| 2 몰래 증설 | 신규 큐/마이그레이션 없음 |
-| 3 타입 꼼수 | 없음 |
-| 4 200줄 | 231줄 — 응집 유지(주석), 분리설계 불필요(~250) |
-| 5 테스트 | 기존 삭제 테스트 유지, 약화 없음 |
-| 7 요구사항 | 양쪽 전환 경로 구현 |
+1. 정비/주유/기타 내역(`MaintFuelPage`) — 연/월 드롭다운 클릭 →
+   버튼+리스트박스로 열리는지, 값 선택 시 월별 데이터 갱신되는지.
+2. 기사연동관리 정산 요약(`SettlementSummaryCard`) — 동일.
+3. 운송비 내역서(`ReportPage`) — 동일.
+4. 매출 화면(`RevenueNav`, 연도별/월별 토글) — 연도별 모드에서 월
+   select가 안 보이는 것까지 확인(`!yearly` 조건 유지 확인).
+5. 세금계산서 화면(`TaxInvoiceToolbar`) — 동일.
+6. 다크모드 토글 후 5곳 전부 스타일이 통일돼 보이는지(라이트모드
+   잔재 없는지) 육안 확인.
 
 ---
 
 ## 다음 슬라이스 (착수 전 대기)
+
+**전역 드롭다운 슬라이스 2 — 개별 select 5곳 공용화 여부**: 문의유형·
+결제조건·정산기준·거래처선택·기사선택. `CalendarDateSelect`는 연/월
+전용 이름이라 그대로 재사용 불가 — 범용 `AppSelect`류 신규 공용
+컴포넌트를 새로 만들지, 5곳 각자 그대로(네이티브 select에 다크모드
+색상만 보정) 둘지 **보리 결정 필요**(질문 1회로 확정 예정). 슬라이스
+1 완료·승인 후 착수.
 
 **§9 기사연동관리 전체 대조** — `docs/ui-comparison-report.md` §9.
 착수지시서 별도 작성 필요.
