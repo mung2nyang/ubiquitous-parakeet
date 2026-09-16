@@ -80,6 +80,50 @@
   등 코드로 교차검증 후 기록(브라우저 도구 자체의 캡처 확대 때문에 실제로는
   문제없는 경우가 있었음 — 방법 검증 과정에서 확인).
 
+## 공용 버그 — `.toggle-btn` 라운드 처리 불일치 `[x]` 완료(2026-09-16, `eba8eb1`)
+
+**보리 지시**: 알약 모양(24px, 완전히 둥긂)으로 나오면 안 되는 자리인데
+나오고 있음 — 앱 안에서 "어떤 칩은 알약, 어떤 칩은 살짝 둥근 사각형"으로
+섞여 보이는 게 문제. 알약 모양이 맞는 건 `<년 월>` 날짜 선택 칩류뿐이고,
+아래 탭/토글류는 전부 살짝 둥근 사각형(§8 정비/주유/기타처럼)이어야 함.
+
+**원인**: 공용 기본값 `shared-controls.css:159` `.toggle-btn { border-radius: 24px; }`.
+§8(정비/주유/기타)만 `MaintFuelPage.jsx:214`에서 `maint-fuel-tabs`와
+`maint-management-tabs` 클래스를 **같이** 붙여서
+`maint-fuel.css:76-80` `.maint-management-tabs .toggle-btn { border-radius: 12px; }`
+오버라이드를 적용받는데, 아래 화면들은 `maint-fuel-tabs`만(또는
+`settings-segmented-control`만) 붙어 있어서 오버라이드가 안 걸리고 기본
+24px(알약)로 남음 — §8 마크업을 복사하면서 클래스 하나씩 빠뜨린 것으로
+추정.
+
+**동일 원인으로 확인된 위치(2026-09-16 `grep` 전수조사)**:
+- `TaxInvoiceToolbar.jsx:48`(§9, 매출발행/기사매입/수수료발행 탭)
+- `TaxInvoicePage.jsx:163`(§9, 작성 전/발급 완료 토글)
+- `OwnerRevenueView.jsx:114`(§3, 년 매출/월 매출 — **§3은 이미 `[x]`
+  완료 처리된 화면인데 이 버그가 남아있었음**)
+- `DriverRevenueView.jsx:62`(§3, 년 매출/월 매출, 기사용 뷰)
+- `CarDriverConnectPanel.jsx:19`(§5, 기사 연동 탭 — **§5도 이미 `[x]`
+  완료 처리된 화면**, 자체 클래스 `car-driver-connect-tabs`엔
+  radius 오버라이드 없음)
+- `AppSettingsPage.jsx:133`(§13, 달력 일일 표시 방식 횟수/금액 —
+  `settings-segmented-control`만 있고 `maint-fuel-tabs`/
+  `maint-management-tabs` 둘 다 없어 역시 기본 24px)
+
+**처리 방침(2026-09-16 재확인, 착수 승인 완료 — `docs/report.md` 착수지시서
+참고)**: 처음엔 6곳 전부에 `maint-management-tabs`를 붙이는 안을
+생각했으나, 그 클래스 자체가 `display:grid; grid-template-columns: 1fr 1fr 1fr;`
+(`maint-fuel.css:69-74`)라서 버튼이 3개인 §9 매출발행 탭에만 맞고,
+나머지 5곳(작성전/발급완료·년매출/월매출×2·기사연동 탭·횟수/금액)은
+전부 **버튼 2개**라 그대로 붙이면 그리드 3칸 중 1칸이 비어 레이아웃이
+깨짐 — 폐기.
+
+대신 6곳 전부가 공통으로 걸고 있는 `settings-segmented-control` 클래스가
+정확히 이 6곳에서만 쓰인다는 걸 확인(`grep -rn "settings-segmented-control" src`
+결과, 다른 소비처 없음) → **`side-menu.css:603-606`
+`.settings-segmented-control .toggle-btn` 규칙에 `border-radius: 12px`
+한 줄만 추가**하면 JSX 변경 없이 6곳 전부 안전하게 고쳐짐(§8은
+`settings-segmented-control` 클래스가 없어 무영향).
+
 ## 발견 사항 (차주, 라이트, 모바일)
 
 ### 1. 홈(캘린더) — 보리 직접 검토·확정·완료`[x]` (2026-09-08)
@@ -447,6 +491,33 @@
   좁은 flex 행 안에서 최소너비까지 눌려 깨짐. 단순 스타일 통일이 아니라
   실제 렌더링 버그로 분류.
 
+#### 슬라이스 1·2 이후 후속 재작업 대기 항목(2026-09-16 보리 스크린샷 재확인)
+
+- **활성 탭/토글의 숫자 뱃지 색이 원본과 다름** — 탭 배경 자체는 이미
+  같은 토큰(`var(--primary-color)`, `side-menu.css:608`
+  `.toggle-btn.active-work`와 `receivables.css:30`
+  `.receivable-tab.active`가 동일)이라 통일돼 있지만, 슬라이스 1이 만든
+  `.tab-count-badge`(`tax-invoice.css:64`)가 활성/비활성 상태 구분 없이
+  항상 `background: var(--input-bg); color: var(--sub-text-color)`
+  고정이라 파란 활성 탭 위에서 흐릿하게 보임. 원본은 활성 탭 위 숫자가
+  밝게 대비됨(정확한 원본 색상값은 미확인, 후속 슬라이스 착수 시 확인
+  필요). "매출 발행/기사 매입/수수료 발행" 탭과 "작성 전/발급 완료"
+  토글 둘 다 해당.
+- **"작성 전"/"발급 완료" 토글을 §7(미수금) 스타일로 통일**(보리 지시,
+  2026-09-16) — 현재 §9는 §8(정비/주유/기타)과 공유하는
+  `.settings-segmented-control.maint-fuel-tabs`+`.toggle-btn` 조합을
+  쓰는데, 보리가 원하는 모양은 §7 `ReceivablesListPage.jsx`의
+  `.receivable-tabs`/`.receivable-tab`(그리드 2열, 둥근 바깥 테두리 +
+  안쪽 필 버튼, 활성 시 `var(--primary-color)` 채움 — `receivables.css:4-34`)
+  스타일. `.receivable-tab`은 현재 `.receivables-page` 스코프 + §7
+  전용(다른 화면 미사용, `grep -rn "receivable-tab" src` 결과 2파일뿐)이라
+  §9에서 그대로 재사용하려면 공유 클래스로 승격하거나 §9 전용 동일
+  스타일 클래스를 새로 만들어야 함 — 둘 다 §7 무영향, 방식은 다음
+  착수지시서에서 결정.
+- 그 외 카드 전체 레이아웃(간격·정렬 등)이 원본과 전체적으로 달라
+  보인다는 지적(2026-09-16) — 항목별로 말로 정리하기 어려운 수준이라,
+  후속 슬라이스 착수 시 두 화면을 나란히 놓고 항목별로 다시 짚을 예정.
+
 ### 10. 운송비 내역서 (요약) `[ ]`
 - **CSS 분리는 이미 완료됨**(`components/report/report.css`, `cf54899`,
   2026-09-15 — 위 상단 "완료 화면 + CSS 분리 현황"·"`side-menu.css` 잔여
@@ -490,6 +561,14 @@
 - 테마 선택의 다크모드 칩 앞에 달 아이콘이 없음(원본은 라이트모드일 땐
   해 아이콘으로 바뀜).
 - 달력 일일 표시 방식에서 횟수/금액이 그리드 방식이 아님 — 원본은 그리드.
+- **앱 통일성(원본 이관 아님, 2026-09-16 보리 지시, 미착수)** — 달력
+  일일 표시 방식의 "횟수/금액" 버튼을 정비내역추가(§8)의 "결제 방식"
+  버튼([ExpenseFormModal.jsx:142](react-app/src/components/ExpenseFormModal.jsx:142)
+  `.segment-control`/`.segment-btn`, `expense-form.css:31-56` — 너비
+  140px 고정폭·8px 라운드 테두리·활성 시 원색 채움)과 같은 스타일로
+  통일. 현재 "횟수/금액"은 `settings-segmented-control`+`.toggle-btn`
+  조합(위 "공용 버그" 24px 알약 이슈까지 겹쳐 있음)이라 모양이 아예
+  다름. 지금 처리 안 함 — 착수 시 착수지시서 별도 작성.
 - (게스트모드) 데이터 관리가 제일 하단에 위치해 있고 상세 UI도 다름.
 - 기사차량 운행일지 설정이 원본의 앱 설정엔 없음(원본 기준으로 **불필요
   — 제거 대상**).
