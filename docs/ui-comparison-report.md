@@ -645,21 +645,75 @@
 ### 13. 앱 설정 `[ ]`
 - 테마 선택의 다크모드 칩 앞에 달 아이콘이 없음(원본은 라이트모드일 땐
   해 아이콘으로 바뀜).
-- 달력 일일 표시 방식에서 횟수/금액이 그리드 방식이 아님 — 원본은 그리드.
-- **앱 통일성(원본 이관 아님, 2026-09-16 보리 지시, 미착수)** — 달력
-  일일 표시 방식의 "횟수/금액" 버튼을 정비내역추가(§8)의 "결제 방식"
-  버튼([ExpenseFormModal.jsx:142](react-app/src/components/ExpenseFormModal.jsx:142)
-  `.segment-control`/`.segment-btn`, `expense-form.css:31-56` — 너비
-  140px 고정폭·8px 라운드 테두리·활성 시 원색 채움)과 같은 스타일로
-  통일. 현재 "횟수/금액"은 `settings-segmented-control`+`.toggle-btn`
-  조합(위 "공용 버그" 24px 알약 이슈까지 겹쳐 있음)이라 모양이 아예
-  다름. 지금 처리 안 함 — 착수 시 착수지시서 별도 작성.
+- ~~달력 일일 표시 방식에서 횟수/금액이 그리드 방식이 아님 — 원본은
+  그리드.~~ **정정(2026-09-17, 코드 확인 결과 문제 아님)** — 원본
+  [style.css:3943](ubiquitous-parakeet/style.css:3943)
+  `.settings-segmented-control { display: flex; }`도 그리드가 아니라
+  flex. react-app [side-menu.css:558](react-app/src/side-menu.css:558)와
+  동일 구조 — 애초에 틀린 항목이었음.
+- **정정(2026-09-17, 보리 지적)** — "횟수/금액"↔"결제 방식(§8)" 통일
+  지시를 "원본 이관 아님(=새 방향)"으로 잘못 분류했었음. 코드로 재확인한
+  결과:
+  - 원본 [style.css:3952-3961](ubiquitous-parakeet/style.css:3952)
+    `:is(#settingsPage, #subCarSettingsPage) .settings-main-card .toggle-btn`
+    (횟수/금액) = `border-radius: 8px`.
+  - 원본 [style.css:4602-4610](ubiquitous-parakeet/style.css:4602)
+    `.segment-control`/`.segment-btn`(§8 결제 방식) = `border-radius: 8px`,
+    너비 140px 고정.
+  - **즉 원본 자체에서 이미 두 버튼이 둘 다 8px 사각 라운드로 같은
+    모양이었다** — "결제 방식 스타일이 원본 UI와 같다"는 보리 설명이
+    맞고, 통일 지시는 "새 방향"이 아니라 "원본이 원래 갖고 있던 일관성을
+    복원"하는 것이었음. `docs/report.md`의 잘못된 "원본 이관 아님" 분류
+    표현이 원인.
+  - **남은 정밀 차이**: react-app 현재값은 2026-09-16 "공용 버그"
+    수정(`eba8eb1`)으로 `.settings-segmented-control .toggle-btn`
+    ([side-menu.css:563-567](react-app/src/side-menu.css:563)) =
+    `border-radius: 12px`, `min-width: 64px`, `padding: 8px 10px`—
+    24px 알약은 없앴지만 원본 정확값(8px·최소폭 52px·`padding: 5px 10px`)과는
+    아직 다름. 육안상 큰 차이는 아니라 §13 착수지시서에 포함할지 여부는
+    보리 확인 필요(아래 대화 참고).
 - (게스트모드) 데이터 관리가 제일 하단에 위치해 있고 상세 UI도 다름.
-- 기사차량 운행일지 설정이 원본의 앱 설정엔 없음(원본 기준으로 **불필요
-  — 제거 대상**).
+- ~~기사차량 운행일지 설정이 원본의 앱 설정엔 없음(원본 기준으로 불필요
+  — 제거 대상)~~ **정정(2026-09-17, 보리 지시로 방향 변경, §15로 이동)**
+  — "제거 대상"이 아니라 "위치 재구성 대상"으로 재분류. 상세는 아래 §15.
 
 ### 14. 고객센터 `[ ]`
 - "자주 묻는 질문" 문구가 왼쪽으로 쏠려 있음 — 중앙으로.
+
+### 15. 기사차량(미연동 서브차량) 운행일지 설정 위치 재구성 `[ ]` (보리 지시, 2026-09-17, §14 다음 순서로 미착수)
+
+> §13에 있던 "기사차량 운행일지 설정이 원본의 앱 설정엔 없음 — 제거
+> 대상" 항목을 대체. "제거"가 아니라 "원본처럼 화면을 나누고 진입
+> 경로를 톱니바퀴로 되돌리기"가 맞는 방향이라 보리가 정정, §13이 아니라
+> §14 다음 순서(§15)로 이월. **지금(§13) 착수 범위 아님.**
+
+- **원본 동작**: 사이드메뉴에서 서브(기사)차량 항목 옆
+  [index.html:1389](ubiquitous-parakeet/index.html:1389) 톱니바퀴(빠른
+  설정) 버튼 → `showSubCarSettings()` → `subCarSettingsPage`로 진입.
+  이 화면은 메인 앱 설정(`settingsPage`)과 **거의 동일한 구조**를
+  공유하되(같은 `.settings-main-card`/`.settings-segmented-control`
+  스타일 — 위 §13 정정 항목 참고) 그 서브차량 전용 값(`sub*` 접두
+  설정, `docs/research.md` §1.2 "기사차량 일지 토글" 참고)만 다르게
+  보여준다.
+- **현재 react-app 상태**: 이 톱니바퀴 버튼 자체가 없다(§1-1 항목2에서
+  이미 확인·완료 처리된 지적과 동일 뿌리). 서브차량 전용 설정값은
+  `AppSettingsPage.jsx`(메인 앱 설정 화면) 맨 아래로 옮겨가 있어,
+  차량을 선택하는 진입 경로 없이 한 화면에 다 뭉쳐 있다.
+- **새 방향(보리 지시, 2026-09-17)**: 그 사이 미연동 서브차량 전용
+  관리 화면이 생겼다 — 사이드메뉴 "{기사이름/번호} 기사 관리"
+  드롭다운 항목([SideMenu.jsx:177-183](react-app/src/components/SideMenu.jsx:177))이
+  여는 `/app/logs/:logId/manage`
+  ([AppShellRoutes.jsx:71](react-app/src/app/AppShellRoutes.jsx:71),
+  `LinkedDriverManagementPage`를 `mode:'unlinked'`로 공유 사용 —
+  `domain/driverManagementContext.js`). **이 화면 안에 톱니바퀴
+  아이콘을 추가하고, 누르면 그 차량 전용 설정(현재 `AppSettingsPage.jsx`
+  하단에 있는 서브차량 설정 블록)으로 들어가는 구조로 재편**한다 —
+  원본의 "톱니바퀴 → 전용 설정 화면" 진입 방식을 미연동기사 관리 화면
+  기준으로 되살리는 것.
+- **범위 확정은 착수 시점에**: 화면 분리(메인 앱 설정과 서브차량
+  설정을 완전히 별도 라우트/컴포넌트로 나눌지, 아니면 같은
+  `AppSettingsPage`를 파라미터로 재사용할지)는 §15 착수지시서 작성
+  시점에 코드 재확인 후 결정.
 
 ### (보리 직접 대조예정) 미확인한 화면 
 미연동 서브 차량화면,연동서브 차량 관리화면
