@@ -31,7 +31,55 @@
 
 ---
 
-## 고정노선 운송료가 기사 정산액 계산에서 누락되는 버그 `[ ]` (착수지시서)
+## 고정노선 운송료가 기사 정산액 계산에서 누락되는 버그 `[~]`
+
+착수 승인(2026-09-17, "1번다같이 고치자/2번 그렇게해줘" — 드릴다운 포함,
+분리설계 제안 승인) 후 코드·테스트 완료. **브라우저 실검증 대기.**
+
+**참고**: 원본 vanilla(`driver-link.js:538-545`)도 똑같은 한계가 있었음
+(migration 버그 아니라 원본에도 있던 버그) — grep으로 확인, 이번에
+원본보다 개선.
+
+### 구현 요약
+
+| # | 기대 동작 | 상태 |
+|---|---|---|
+| 1 | `getMonthlyDriverTotals`가 고정노선(fixedCount)도 단가×횟수로 계산 | 코드 완료 |
+| 2 | 소속기사 본인 정산액에 반영(`driverSelfRevenue.js`) | 코드 완료 |
+| 3 | 차주 쪽 "기사 급여" 지출에 반영(`driverRevenueShareExpense.js`) | 코드 완료 |
+| 4 | 세금계산서 원천 그룹 계산에 반영(`financeTaxInvoiceGroups.js` 2곳) | 코드 완료 |
+| 5 | 세금계산서 운행 드릴다운의 "고정" 트립 금액도 반영(`flattenLinkedDriverTrips`) | 코드 완료 |
+
+`clients.js`에 새 순수 함수 `computeFixedRouteFare(record, opts)` 추가
+(§6 예외로 여기 배치, `resolveFixedUnitPrice` 옆) — `getMonthlyDriverTotals`·
+`flattenLinkedDriverTrips` 둘 다 재사용. `getMonthlyDriverTotals`/
+`flattenLinkedDriverTrips`/`getLinkedDriverSettlementDetail` 시그니처에
+`settings`(기본값 `{}`) 추가 — 생략하면 예전과 동일하게 동작(하위호환),
+호출부(`LinkedDriverManagementPage.jsx` 2곳 포함) 전부 갱신.
+
+**새 테스트**: 실제 day record 모양(`fare` 필드 없이 `fixedCount`만)으로
+검증 — `clients.test.js`(`computeFixedRouteFare` 4개 케이스),
+`finance.test.js`(`getMonthlyDriverTotals` settings 유무 비교),
+`driverSelfRevenue.test.js`(고정노선만 뛴 기사 정산액이 0이 아님을
+전체 흐름으로 확인). 기존 픽스처(`FIXTURE_WORK['서울12가3456']`)는
+`fare:250000`이 같이 박혀 있어(레거시 모양) 이 버그를 못 잡았던 것도
+확인·기록.
+
+`npm test` 172개 통과·`tsc --noEmit` 0에러. §6 초과 파일 3곳
+(`financeCore.js` 215줄·`clients.js` 224줄·`financeTaxInvoiceGroups.js`
+204줄) 전부 ~250 한도 내, 헤더에 사유 1줄 남김.
+
+### 브라우저 실검증 (보리)
+
+1. 고정노선으로만 뛴 매출제(%) 기사 계정 → 매출 화면에서 "이번 달
+   정산액"이 0이 아니고 %가 붙어 나오는지(위 커밋된 라벨 기능도 이때
+   같이 최종 확인)
+2. 차주 계정에서 그 기사의 세금계산서/정산 화면 — 고정노선 트립도
+   운행 목록·금액에 잡히는지
+3. 콜상세(개별 운송)만 뛰는 다른 기사는 숫자가 그대로인지(회귀 없음)
+
+통과 시 커밋 초안:
+`fix: 고정노선 운송료가 기사 정산액·세금계산서 계산에서 누락되던 버그 수정`
 
 ### 현재 상태
 
