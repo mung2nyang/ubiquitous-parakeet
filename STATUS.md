@@ -8,7 +8,7 @@
 > `AGENTS.md` §0-2). 지난 내용은 `git log -p -- docs/report.md` 또는 아래
 > 커밋 해시로 `git show`.
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
-> 최종 갱신: 2026-09-17 (소속기사 개인정보 차주이름 덮어쓰기 버그 전체 승인)
+> 최종 갱신: 2026-09-17 (§12 잔여 CSS 분리로 §12 전체 완전 종료)
 
 ---
 
@@ -26,21 +26,26 @@
 
 ## 지금 하는 일
 
-**소속기사 개인정보(이름/연락처) 차주 이름으로 덮어써지는 버그 `[x]` 완료**
-(2026-09-17, react-app `54881c3`) — 기사 로그인 시 `hydrateEmployedDriver.js`의
-`buildEmployedDriverSnapshot`이 개인정보 이름/전화번호를 연동된 차주 것으로
-채우던 이관 누락(원본은 기사 개인정보를 연동으로 손대지 않음) 수정, 기사 본인
-profiles 행에서 채우도록 변경. 회귀 테스트 추가. npm test 전체(unit 629+app
-170) 통과·typecheck 0에러·CI·Deploy 초록·보리 브라우저 실검증(테스트기사
-계정, 개인정보 화면) 완료. §12(기사연동관리) 자체는 이전 라운드에 `[x]`
-완료됨(react-app `b88a5f0`+`2f050f0`).
+**§12(기사연동관리) 잔여 CSS 분리로 §12 전체 완전 종료 `[x]`** (2026-09-17,
+react-app `3201308`) — `side-menu.css` 잔여 경계 지도 J 블록 중 §12 몫
+`driver-code-row`(초대코드 입력 줄)를 `linked-driver.css`로 이동(스타일
+변경 없음), 소비처 2곳(`CarDriverConnectPanel.jsx`/`DriverFormModal.jsx`)에
+직접 import 추가. npm test 전체 통과·typecheck 0에러·CI·Deploy 초록·보리
+브라우저 실검증(기사연동 서브폼+초대 모달 레이아웃 그대로) 완료.
+`docs/ui-comparison-report.md` §12를 `[x]`로 정리(UI 대조·버그 2건·CSS
+분리까지 §12 전 범위 완료 근거 기록). §12 관련 작업은 이걸로 전부 마무리:
+슬라이스 1+2(`e079822`/`b88a5f0`) + 이름/전화번호 소실 버그(`2f050f0`) +
+소속기사 개인정보 덮어쓰기 버그(`54881c3`) + 잔여 CSS 분리(`3201308`).
 
 ## 다음 할 일
 
-1. §12 관련 버그 두 건 다 끝났으니 다음 UI 대조 화면은 보리가 지정.
+1. §12 전부 끝났으니 다음 UI 대조 화면은 보리가 지정.
 
 ### 후속 nit (확인된 것만)
 
+- **`linked-driver.css` 343줄로 §6 200줄 제한(응집도 예외 ~250줄) 초과**
+  [확인 2026-09-17, §12 CSS 분리 작업 중 발견] — §12 슬라이스 1+2 때 §5
+  리뷰에서 놓쳤던 부분. 분리설계안 필요, 이번 라운드 범위 밖이라 보류만.
 - **§12 차량번호(`drvCar`) 필드 삼각 아이콘 CSS로 안 없어짐**[확인 2026-09-17,
   보리 "안 중요하니 기록만" 결정] — `::-webkit-calendar-picker-indicator` 숨김
   시도로도 안 없어짐. 원인 재조사 미정.
@@ -87,11 +92,11 @@ profiles 행에서 채우도록 변경. 회귀 테스트 추가. npm test 전체
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
-- 소속기사 개인정보(이름/연락처) 차주 이름 덮어쓰기 버그 `[x]` — `54881c3`.
-  npm test 전체 통과·typecheck 0에러·CI·Deploy 초록·보리 브라우저 실검증 완료.
-- §12(기사연동관리) 슬라이스 1+2 + 이름/전화번호 소실 버그 전체 `[x]` —
-  `e079822`/`b88a5f0`(화면 이관)+`2f050f0`(버그 수정). CI·Deploy 초록·
-  `npm test` 170개 통과·typecheck 0에러·보리 브라우저 실검증 완료.
+- §12(기사연동관리) 전체 `[x]` — 슬라이스 1+2(`e079822`/`b88a5f0`) + 이름/
+  전화번호 소실 버그(`2f050f0`) + 소속기사 개인정보 차주이름 덮어쓰기 버그
+  (`54881c3`) + 잔여 CSS(`driver-code-row`) 분리(`3201308`). CI·Deploy
+  초록·npm test 전체 통과·typecheck 0에러·보리 브라우저 실검증 전부 완료.
+  `docs/ui-comparison-report.md` §12 `[x]` 반영.
 
 > `docs/archive/`의 상세 파일들은 2026-09-15 정리됨(git 이력엔 그대로
 > 있음, `git log --diff-filter=D -- docs/archive` 로 찾을 수 있음).
@@ -161,6 +166,10 @@ profiles 행에서 채우도록 변경. 회귀 테스트 추가. npm test 전체
 
 ### 이관 완료 시 처리할 숙제 (§1~§14 UI 대조·이관 전부 끝난 뒤 한꺼번에)
 
+- **`side-menu.css`의 `.action-text-btn` 죽은 CSS**(§9에서 만들었지만
+  §12가 결국 안 쓰고 `driver-card-action-btn`을 새로 만들어 씀, 2026-09-17
+  확인) — `side-menu.css:224-231`, JSX 소비처 0곳(`docs/ui-comparison-report.md`
+  §12 섹션 참고). 이관 완료 후 처리.
 - **`side-menu.css` 죽은 CSS 2개**(§2-1-C 조사 중 발견, 2026-09-14) —
   `car-commission-heading`+`strong`+`span`(336~353행)·
   `car-daylog-preview`+`li`(461~479행), 둘 다 `*.jsx` grep 0건. 보리
@@ -184,8 +193,8 @@ profiles 행에서 채우도록 변경. 회귀 테스트 추가. npm test 전체
 
 ## 저장소 상태
 
-- **react-app**: `main` = `54881c3`(소속기사 개인정보 버그 수정 완료, origin
-  동일, 보리 직접 push). CI·Deploy 초록·보리 실검증 전부 완료.
+- **react-app**: `main` = `3201308`(§12 전체 완전 종료, origin 동일, 보리
+  직접 push). CI·Deploy 초록·보리 실검증 전부 완료.
 - **ubiquitous-parakeet**: local이 origin보다 앞섬(이번 문서 정리
   커밋 포함). **AI는 push 안 함.** 정확한 HEAD는 매 세션 시작 시
   재확인(AGENTS §0-6).
