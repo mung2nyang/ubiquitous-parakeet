@@ -9,7 +9,7 @@
 > 커밋 해시로 `git show`.
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
 > 최종 갱신: 2026-09-17 (side-menu.css L블록(고객센터) 분리 `[x]`
-> 완전 종료, 보리 push 대기. §14는 push·CI·Deploy 초록 확인 완료)
+> push·CI·Deploy 초록·보리 최종 승인까지 전부 완료)
 
 ---
 
@@ -27,18 +27,12 @@
 
 ## 지금 하는 일
 
-다음 슬라이스는 보리 지정 대기. **side-menu.css L블록(고객센터) 분리
-`[x]`**(2026-09-17) — `customer-center.css`/`notice.css` 신설(공유
-클래스는 두 lazy 청크에 각각 복제, §9 전례와 동일 방식). `npm test`
-172개·`tsc` 0에러·보리 브라우저 실검증·최종 승인 전부 완료, react-app
-커밋(`37772c3`). **보리 push 필요.**
+다음 슬라이스는 보리 지정 대기(§1~14 전부 완료, §15만 남음 —
+`docs/ui-comparison-report.md` 참고).
 
 ## 다음 할 일
 
-1. **보리 push**(`37772c3`) → CI "verify" 초록 확인
-2. CI 초록 확인되면 아래로 옮기고 정리
-3. 그 후 다음 UI 대조 화면·작업은 보리 지정 대기(§1~14 전부 완료,
-   §15만 남음 — `docs/ui-comparison-report.md` 참고).
+다음 UI 대조 화면·작업은 보리 지정 대기.
 
 > 후속 nit·보류 항목·이관 완료 후 진행사항은 `docs/roadmap.md`로 이동
 > (2026-09-17 분리). 이관 완료 후 순서(사이드메뉴/모달 버그 → 빌드
@@ -46,6 +40,10 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
+- side-menu.css L블록(고객센터) 분리 `[x]` — `37772c3`.
+  `customer-center.css`/`notice.css` 신설(공유 클래스는 두 lazy
+  청크에 각각 복제, §9 전례와 동일 방식). `npm test` 172개·`tsc`
+  0에러·CI·Deploy 초록·보리 브라우저 실검증·최종 승인 전부 완료.
 - §14(고객센터) 전체 `[x]` — `136efd1`. 카드 라벨(FAQ/1:1 SUPPORT/
   MY INQUIRIES) 삭제·"문의 유형" 드롭다운 글자 굵기 통일.
   `docs/ui-comparison-report.md` §14 `[x]` 반영. CI·Deploy 초록·
@@ -167,9 +165,8 @@
 
 ## 저장소 상태
 
-- **react-app**: local이 origin보다 1커밋 앞섬 — `37772c3`(side-menu.css
-  L블록 분리, 보리 브라우저 실검증 완료) 로컬 커밋만 됨. **보리 push
-  필요.** origin은 `136efd1`까지(CI·Deploy 초록 확인됨).
+- **react-app**: local·origin 동기, `37772c3`까지(side-menu.css L블록
+  분리, CI·Deploy 초록·보리 최종 승인 완료).
 - **ubiquitous-parakeet**: local이 origin보다 앞섬(이번 문서 정리
   커밋 포함). **AI는 push 안 함.** 정확한 HEAD는 매 세션 시작 시
   재확인(AGENTS §0-6).
