@@ -8,8 +8,9 @@
 > `AGENTS.md` §0-2). 지난 내용은 `git log -p -- docs/report.md` 또는 아래
 > 커밋 해시로 `git show`.
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
-> 최종 갱신: 2026-09-17 (side-menu.css L블록(고객센터) 분리 `[x]`
-> push·CI·Deploy 초록·보리 최종 승인까지 전부 완료)
+> 최종 갱신: 2026-09-17 (§15 슬라이스 A(기사정산·거래처 세금계산서
+> 배경카드+왼쪽정렬) `[x]` push·CI·Deploy 초록·보리 최종 승인까지
+> 전부 완료)
 
 ---
 
@@ -27,12 +28,13 @@
 
 ## 지금 하는 일
 
-다음 슬라이스는 보리 지정 대기(§1~14 전부 완료, §15만 남음 —
-`docs/ui-comparison-report.md` 참고).
+§15 슬라이스 A(기사정산·거래처 세금계산서 배경카드+왼쪽정렬) `[x]`
+완료. §15 나머지(B~E, 항목9) 및 §16은 보리 지정 대기 —
+`docs/report.md` 슬라이스 순서 제안표 참고.
 
 ## 다음 할 일
 
-다음 UI 대조 화면·작업은 보리 지정 대기.
+다음 슬라이스(§15 B~E/항목9 중 어느 것부터)는 보리 지정 대기.
 
 > 후속 nit·보류 항목·이관 완료 후 진행사항은 `docs/roadmap.md`로 이동
 > (2026-09-17 분리). 이관 완료 후 순서(사이드메뉴/모달 버그 → 빌드
@@ -40,6 +42,15 @@
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
+- §15 슬라이스 A(기사정산·거래처 세금계산서 배경카드+왼쪽정렬) `[x]` —
+  `94e4471`/`f7e7582`. `.tax-invoice-summary`/`.driver-list-section`
+  이관 누락 CSS 복원 + `.driver-section-heading` 왼쪽정렬(부수로 §12
+  DriverConnectionPage도 개선) + "N건·차량번호" 굵기 통일. §6:
+  200줄 넘었던 `linked-driver.css`(343줄)를 `linked-driver.css`
+  (180)/`driver-connection.css`(133)/`billing-settings.css`(60) 3개로
+  분리. `npm test` 172개·`tsc` 0에러·CI·Deploy 초록·보리 브라우저
+  실검증(1차 지적 반영한 재검증 포함)·최종 승인 전부 완료.
+  `docs/ui-comparison-report.md` §15 해당 항목 `[x]` 반영.
 - side-menu.css L블록(고객센터) 분리 `[x]` — `37772c3`.
   `customer-center.css`/`notice.css` 신설(공유 클래스는 두 lazy
   청크에 각각 복제, §9 전례와 동일 방식). `npm test` 172개·`tsc`
@@ -165,8 +176,8 @@
 
 ## 저장소 상태
 
-- **react-app**: local·origin 동기, `37772c3`까지(side-menu.css L블록
-  분리, CI·Deploy 초록·보리 최종 승인 완료).
+- **react-app**: local·origin 동기, `f7e7582`까지(§15 슬라이스 A,
+  CI·Deploy 초록·보리 최종 승인 완료).
 - **ubiquitous-parakeet**: local이 origin보다 앞섬(이번 문서 정리
   커밋 포함). **AI는 push 안 함.** 정확한 HEAD는 매 세션 시작 시
   재확인(AGENTS §0-6).
