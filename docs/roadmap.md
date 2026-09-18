@@ -89,6 +89,19 @@
   안 되는 죽은 UI로 남아있음. 이관 완료 후 이 토글·"공제 전" 옵션 자체를
   화면에서 제거.
 - `driver_direct` 죽은 코드 정리 / 다중 배정 차량 집계(`upsertDriver`가 막아 사실상 닫힘, 참고용).
+  [정정 2026-09-18] "죽은 코드"만은 아니었음 — `LinkedDriverClientsPage.jsx`의
+  `isDriverDirect` 분기가 실제로 화면 렌더링을 바꾸는 살아있는 코드였고,
+  §15 슬라이스 E 브라우저 검증 실패의 원인 중 하나였음(제거함, 미커밋).
+  상세는 `docs/report.md` 참고.
+- **§15 슬라이스 E 잔여: `OwnerScopedClientsView.jsx`(연동기사 본인 로그인
+  화면)에 고정노선 입력 노출**[2026-09-18 발견, 추후 예정 — 지금 착수
+  안 함] — `LinkedDriverClientsPage.jsx`(차주가 보는 화면)는 이번에
+  고쳤지만, 보리가 실제 테스트한 연동기사 본인 계정 쪽 화면
+  `OwnerScopedClientsView.jsx`는 아직 그대로다: `openEdit`/`save`에서
+  `fixedRouteLinked`를 강제로 `false`로 덮어쓰고(23·66·73행),
+  `hideFixedRoute={true}`로 토글 자체를 숨김(144행) — 같은 패턴, 아직
+  미수정. 착수 시 `LinkedDriverClientsPage.jsx`에 적용한 것과 같은 방식
+  적용. 상세는 `docs/report.md`.
 - 미룸("이관 후 UI 정리"): 테마 저장 위치, 서브차량 설정 배치, 차량관리 라벨, 기사연동관리 UI 패턴.
 - **`InlineSheet` 전환 리팩토링**(보리 지시, 2026-09-14, **결정: 이벤트
   기반 확정, 다시 고민 불필요**) — `useExpenseForm.js`의 매직넘버
