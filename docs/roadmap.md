@@ -171,11 +171,13 @@
     이 요구를 기준으로 설계.
   - **§16 진행 방식 확정(보리 지시, 2026-09-18)**: A(톱니바퀴 버튼+
     프로필 카드 이름/전화번호 표시)/B(설정화면 뼈대)/C(차량별 설정값
-    실제 배선) 3슬라이스. **A `[x]` 완료**(react-app `9de8a69`, CI·
-    보리 브라우저 실검증·최종 승인 완료) — 상세는
-    `docs/ui-comparison-report.md` §15 마지막 항목.
-  - **B 방향 확정**: `AppSettingsPage.jsx`를 **재사용**(완전 새 컴포넌트
-    안 만듦). scope/차량 구분 값만 추가로 받는 형태.
+    실제 배선) 3슬라이스. **A `[x]` 완료**(react-app `9de8a69`) ·
+    **B `[x]` 완료**(react-app `a8115c4`, `logs/:logId/settings` 라우트
+    신설 + `AppSettingsPage.jsx` 재사용, 무수정으로 그대로 렌더됨) —
+    둘 다 CI·보리 브라우저 실검증·최종 승인 완료, 상세는
+    `docs/ui-comparison-report.md` §15 마지막 항목·§16.
+  - **C 설계**: 아래 "C 설계 조사 완료" 참고 — `AppSettingsPage.jsx`에
+    차량별(`logId`) 인지 능력을 추가하는 게 C의 일.
   - **C 설계 조사 완료(2026-09-18)**: 설정은 `profiles` 테이블의
     `settings` **jsonb 컬럼 1개**에 통째 저장돼서(`profileCloudCommit.js:14-26`)
     DB 스키마 변경 없이 `settings.subCarSettings = { [차량번호]: {...} }`
