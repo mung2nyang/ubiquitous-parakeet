@@ -710,7 +710,14 @@
   1개 파일에 누락된 정의만 추가(기존 `management-list-card`/
   `management-card-copy`와 동일 값), JSX는 안 건드림. `npm test`
   172개·`tsc` 0에러·CI·보리 브라우저 실검증·최종 승인 완료.
-- 연동·미연동 거래처 고정노선추가 
+- 연동·미연동 거래처 고정노선추가 — **슬라이스 D `[x]`**(2026-09-18, `10cba09`)
+  계산 엔진(차주 본인·연동기사 각자 스코프로 고정노선 "1곳 제한" 분리,
+  `getFixedRouteClient`/`resolveFixedUnitPrice`/`upsertClient`/
+  `getMonthlyDriverTotals`/`flattenLinkedDriverTrips`/`DayLogPage`)만
+  완료 — 화면 변화 없음(하위호환, 새 테스트 8개로 검증). **슬라이스 E
+  `[ ]`**(연동기사 거래처 화면에 고정노선 입력 UI 노출) 남음. 미연동은
+  원본처럼 고정노선 자체를 계속 숨김 유지(보리 결정, 2026-09-18).
+  자세한 배경은 `10cba09`/`54f9a3b` 이후 대화 참고.
 - ~~연동·미연동 정비/주유/기타 진입시 기사 이름 정비/주유/기타 이어야하나 차량번호 정비/주유/기타로 바뀜~~
   **슬라이스 B `[x]`**(2026-09-18) — `2a9d249`. `domain/driverManagementContext.js`에
   `resolveDriverOrPlateLabel` 신설(연동기사 이름 → 서브차량 기사 이름 →
