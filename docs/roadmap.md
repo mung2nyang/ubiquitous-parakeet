@@ -148,47 +148,39 @@
 - **리포트 화면이 메인 차량 전용**[확인 2026-09-07] — 서브차량 리포트·
   수수료 줄 없음, 범위 커서 별도 상의 필요.
 - **`receivables/*` 뒤로가기 `?back=` 유실**[문서화 2026-09-07].
-- **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 분리**[확인
-  2026-09-09, 상세 조사 2026-09-18(`docs/ui-comparison-report.md`
-  §15 마지막 항목·§16 착수 전 조사)] — 미연동 서브차량 일지 작업 때
-  처리.
-  - **"고정 노선" 절반은 이미 완성돼 있고 안 쓰이고 있음** —
-    `FixedRouteBlock.jsx`가 이미 `scope: 'main'|'sub'` prop을 받게
-    설계돼 있고, `financeTypes.js`에 `subFixedOn`/`subFixedRouteOn`/
-    `subRunCountToggle` 필드도 이미 있음. 그런데 코드 전체에서
-    `<FixedRouteBlock scope="sub" .../>`로 실제 렌더링하는 곳이
-    한 곳도 없음(현재 `AppSettingsPage.jsx`의 `scope="main"` 호출
-    1곳뿐) — 화면에 꽂기만 하면 되는 상태.
-  - **"운행 일지 세부 입력" 6종 토글(callDetail/paymentOn/timeOn/
-    platformOn/distanceOn/cargoTonnageOn)은 sub 버전 필드 자체가
-    없음**(메인 전용 1벌뿐) — `subFixedOn` 등과 같은 패턴으로 6개
-    신설 필요(보리 확인, 2026-09-18).
-  - **정정(보리 지시, 2026-09-18): 설정을 "미연동 서브차량 전체가
-    공유하는 1벌"이 아니라 차량별(각 서브차량마다 독립된 값) 스코프로
-    만든다.** 기존 `subFixedOn` 방식(문자열 접두사로 main/sub만
-    구분)은 이 요구를 못 만족 — 저장 구조 자체를 차량 단위로 다시
-    설계해야 함(단순 필드 추가보다 큰 작업). §16 착수지시서 작성 시
-    이 요구를 기준으로 설계.
-  - **§16 진행 방식 확정(보리 지시, 2026-09-18)**: A(톱니바퀴 버튼+
-    프로필 카드 이름/전화번호 표시)/B(설정화면 뼈대)/C(차량별 설정값
-    실제 배선) 3슬라이스. **A `[x]` 완료**(react-app `9de8a69`) ·
-    **B `[x]` 완료**(react-app `a8115c4`, `logs/:logId/settings` 라우트
-    신설 + `AppSettingsPage.jsx` 재사용, 무수정으로 그대로 렌더됨) —
-    둘 다 CI·보리 브라우저 실검증·최종 승인 완료, 상세는
-    `docs/ui-comparison-report.md` §15 마지막 항목·§16.
-  - **C 설계**: 아래 "C 설계 조사 완료" 참고 — `AppSettingsPage.jsx`에
-    차량별(`logId`) 인지 능력을 추가하는 게 C의 일.
-  - **C 설계 조사 완료(2026-09-18)**: 설정은 `profiles` 테이블의
-    `settings` **jsonb 컬럼 1개**에 통째 저장돼서(`profileCloudCommit.js:14-26`)
-    DB 스키마 변경 없이 `settings.subCarSettings = { [차량번호]: {...} }`
-    형태로 차량별 값을 넣을 수 있음. `FixedRouteBlock`/`RoutePresetEditor`/
-    `RunCountChips`는 부모가 이미 잘라서 넘겨준 값+`onPatch`만 받으면 되므로
-    거의 안 고쳐도 됨(차량 식별은 새 ID 체계 없이 기존에도 쓰는
-    `car.number`를 그대로 키로 사용). **기존 공용 `subFixedOn` 등 값은
-    이관 안 하고 버림, 새 차량은 기존 메인 설정과 동일한
-    `defaults`(`domain/practiceSettings.js:14-35`) 값으로 시작**(보리 결정,
-    2026-09-18 — "달력 표시 방식" 기본값 `'count'`만 저 객체 밖에 따로
-    있으니 같이 챙길 것).
+- **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 분리** — §16(A/B/C)
+  `[x]` 전부 완료(react-app `9de8a69`/`a8115c4`/`b94eb30`, 상세는
+  `docs/ui-comparison-report.md` §15 마지막 항목·§16). 톱니바퀴 버튼·
+  설정화면 라우트·"세부입력 5종+달력 표시방식" 차량별 배선까지 끝남.
+  **남은 일(다음 세션, 보리 지시 2026-09-18 — 아래 두 개를 꼭 같이
+  묶어서 처리):**
+  1. **"결제 및 수금 입력" 토글을 서브차량 설정화면에 신설.** 지금은
+     화면에서 아예 뺀 상태(2026-09-18, §16 C 구현 중 발견) — 이미
+     있는 공용 `subPaymentOn` 필드가 저장 파이프라인(`domain/
+     practiceSettings.js`의 `normalizeSettings`)에 연결이 안 돼 있어서
+     그대로 썼다간 저장이 안 되는 가짜 토글이 될 뻔함. `defaults`/
+     `normalizeSettings`에 `subPaymentOn` 정식 추가부터 필요.
+  2. **"고정 노선 사용" 블록도 차량별로.** `FixedRouteBlock.jsx`가
+     이미 `scope: 'main'|'sub'` prop을 받게 설계돼 있고
+     `financeTypes.js`에 `subFixedOn`/`subFixedRouteOn`/
+     `subRunCountToggle` 필드도 있어서 화면(`AppSettingsPage.jsx`의
+     `<FixedRouteBlock scope="sub" .../>`, §16 C에서 이미 연결함)엔
+     이미 뜨고 있지만, 지금은 "서브차량 전체 공용 1개 값"이다.
+  - **왜 이 둘을 §16 C에서 안 하고 미뤘나**: 이 두 값(`subPaymentOn`/
+    `subFixedOn` 계열)은 화면 표시만이 아니라 실제 매출/정산 계산에도
+    쓰임 — `domain/clients.js`(파렛트 요금)·`domain/financeCore.js`·
+    `domain/financeOwnerDetail.js`·`domain/financeTaxInvoiceGroups.js`·
+    `domain/financeReceivables.js`(미수금 항목 포함 여부)·
+    `components/calendar/CalendarPage.jsx`까지 최소 7개 파일이 "서브
+    차량이면 이 값 하나"라고 가정하고 돈 계산에 쓰고 있어서, 차량별로
+    바꾸려면 계산 엔진 여러 곳을 같이 고쳐야 함(2026-09-18 전수조사,
+    §16 C 착수지시서 참고). 화면만 고치는 §16 C보다 훨씬 위험하고 커서
+    별도 세션으로 분리.
+  - **참고(설계 방향, 안 바뀜)**: 설정은 `profiles.settings` jsonb
+    컬럼 1개에 저장되므로 DB 스키마 변경은 필요 없음. §16 C가 이미
+    만든 `settings.subCarSettings = { [차량번호]: {...} }` 구조를
+    그대로 확장(위 두 필드를 그 안에 추가)하면 될 것으로 보이나, 계산
+    엔진 쪽 호출부를 다 찾아 고치는 작업이 핵심이라 착수 시 재조사 필요.
 
 ## 보류 (보리 결정 대기, 급하지 않음)
 
