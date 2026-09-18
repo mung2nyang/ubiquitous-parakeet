@@ -149,7 +149,44 @@
   수수료 줄 없음, 범위 커서 별도 상의 필요.
 - **`receivables/*` 뒤로가기 `?back=` 유실**[문서화 2026-09-07].
 - **사이드메뉴 "{번호} 관리" 톱니바퀴/세부입력 토글 분리**[확인
-  2026-09-09] — 미연동 서브차량 일지 작업 때.
+  2026-09-09, 상세 조사 2026-09-18(`docs/ui-comparison-report.md`
+  §15 마지막 항목·§16 착수 전 조사)] — 미연동 서브차량 일지 작업 때
+  처리.
+  - **"고정 노선" 절반은 이미 완성돼 있고 안 쓰이고 있음** —
+    `FixedRouteBlock.jsx`가 이미 `scope: 'main'|'sub'` prop을 받게
+    설계돼 있고, `financeTypes.js`에 `subFixedOn`/`subFixedRouteOn`/
+    `subRunCountToggle` 필드도 이미 있음. 그런데 코드 전체에서
+    `<FixedRouteBlock scope="sub" .../>`로 실제 렌더링하는 곳이
+    한 곳도 없음(현재 `AppSettingsPage.jsx`의 `scope="main"` 호출
+    1곳뿐) — 화면에 꽂기만 하면 되는 상태.
+  - **"운행 일지 세부 입력" 6종 토글(callDetail/paymentOn/timeOn/
+    platformOn/distanceOn/cargoTonnageOn)은 sub 버전 필드 자체가
+    없음**(메인 전용 1벌뿐) — `subFixedOn` 등과 같은 패턴으로 6개
+    신설 필요(보리 확인, 2026-09-18).
+  - **정정(보리 지시, 2026-09-18): 설정을 "미연동 서브차량 전체가
+    공유하는 1벌"이 아니라 차량별(각 서브차량마다 독립된 값) 스코프로
+    만든다.** 기존 `subFixedOn` 방식(문자열 접두사로 main/sub만
+    구분)은 이 요구를 못 만족 — 저장 구조 자체를 차량 단위로 다시
+    설계해야 함(단순 필드 추가보다 큰 작업). §16 착수지시서 작성 시
+    이 요구를 기준으로 설계.
+  - **§16 진행 방식 확정(보리 지시, 2026-09-18)**: A(톱니바퀴 버튼+
+    프로필 카드 이름/전화번호 표시)/B(설정화면 뼈대)/C(차량별 설정값
+    실제 배선) 3슬라이스. **A `[x]` 완료**(react-app `9de8a69`, CI·
+    보리 브라우저 실검증·최종 승인 완료) — 상세는
+    `docs/ui-comparison-report.md` §15 마지막 항목.
+  - **B 방향 확정**: `AppSettingsPage.jsx`를 **재사용**(완전 새 컴포넌트
+    안 만듦). scope/차량 구분 값만 추가로 받는 형태.
+  - **C 설계 조사 완료(2026-09-18)**: 설정은 `profiles` 테이블의
+    `settings` **jsonb 컬럼 1개**에 통째 저장돼서(`profileCloudCommit.js:14-26`)
+    DB 스키마 변경 없이 `settings.subCarSettings = { [차량번호]: {...} }`
+    형태로 차량별 값을 넣을 수 있음. `FixedRouteBlock`/`RoutePresetEditor`/
+    `RunCountChips`는 부모가 이미 잘라서 넘겨준 값+`onPatch`만 받으면 되므로
+    거의 안 고쳐도 됨(차량 식별은 새 ID 체계 없이 기존에도 쓰는
+    `car.number`를 그대로 키로 사용). **기존 공용 `subFixedOn` 등 값은
+    이관 안 하고 버림, 새 차량은 기존 메인 설정과 동일한
+    `defaults`(`domain/practiceSettings.js:14-35`) 값으로 시작**(보리 결정,
+    2026-09-18 — "달력 표시 방식" 기본값 `'count'`만 저 객체 밖에 따로
+    있으니 같이 챙길 것).
 
 ## 보류 (보리 결정 대기, 급하지 않음)
 
