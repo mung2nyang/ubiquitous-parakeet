@@ -136,6 +136,32 @@
 >   머리말 주석 1줄 정정(2파일). `side-menu.css` 471→456줄, CI 초록·보리
 >   브라우저 실검증·최종 승인 완료. **① + ② 완료 — `side-menu.css` 771→456줄.**
 >   남은 것: ③ 공용 블록 분리(보리 지정 대기).
+>
+> **③ 공용 블록 분리 설계안(보리 승인 2026-09-19)** — 착수지시서는 슬라이스별로 따로.
+> - **재조사 정정(단어 경계 대조)**: `.tree-line-group`(설정 화면 전용, `AppSettingsPage`·
+>   `FixedRouteBlock`)과 `.pill-group/.pill-btn`(비용 입력 모달 `ExpenseFormModal` 전용)은 위 표에서
+>   공용으로 잘못 분류돼 있었음(이전 조사는 부분문자열 대조 — `active` 등에 오탐). 나머지 ~280줄은
+>   실제 공용.
+> - **목표 구조**: `side-menu.css`(사이드메뉴 본체만, ~130줄) / 신규 `management-common.css`(관리형
+>   화면 공용: 화면 셸·카드·액션 아이콘 버튼·배지·빈 화면·FAB, ~164줄) / 신규 `controls-common.css`
+>   (폼·컨트롤 공용: 모달 토글·힌트문·개인정보 폼 조각·설정 행·구간 토글·테마 토글·탭·헤더 아이콘
+>   hover, ~118줄) / `expense-form.css`에 pill 이동 / `app-settings.css`에 트리선 이동.
+> - **로드 순서 보장 원칙**: (1) `App.jsx:23`의 `import '../side-menu.css'`를 같은 자리에서 3줄로
+>   교체(다른 CSS와 상대 순서 보존), (2) 신규 2파일은 원래 순서를 유지한 연속 조각 → 빌드 결과
+>   `index-*.css` 분리 전후 동일성 비교가 1차 증거, (3) 순서가 바뀌는 이동은 개별 증명. **빌드 결과에서
+>   `expense-form.css`의 pill 규칙이 `side-menu.css`의 `.pill-btn.active`보다 앞**임을 확인 — 둘의
+>   우선순위가 같아(0,2,0) 지금은 뒤의 `.pill-btn.active`(파란 배경)가 이긴다 → pill을 옮길 때
+>   `expense-form.css` 기존 pill 규칙보다 **뒤**에 놓아야 화면 불변. "컴포넌트 CSS는 항상 side-menu
+>   뒤"라는 가정은 틀림.
+> - **슬라이스**: ③-A(pill→`expense-form.css`, 트리선→`app-settings.css`, `span + span` 규칙을
+>   형제 규칙 옆으로 재배치 = 3파일) → ③-B(신규 2파일 분리 + `App.jsx` import 3줄 = 4파일, 빌드 CSS
+>   동일성 비교).
+> - ③-A `[x]` **완료(2026-09-19, react-app `700ed8e`)** — pill→`expense-form.css`(기존 pill 규칙 뒤),
+>   트리선→`app-settings.css`(199줄), `span + span` 재배치. `side-menu.css` 456→414줄, 값 무변경.
+>   빌드 CSS 전후 비교: index 규칙 476→474(사라진 것 트리선 2개뿐·추가 0), `AppSettingsPage` CSS
+>   19→21, `.pill-btn.active`는 여전히 `.expense-form-content .pill-btn` 뒤. CI 초록·보리 브라우저
+>   실검증·최종 승인 완료. **위 조사 표의 `.tree-line-group`·`.pill-*` 공용 분류는 정정됨(단일 화면).**
+>   남은 것: ③-B(보리 지정 대기).
 
 
 ## 방법
