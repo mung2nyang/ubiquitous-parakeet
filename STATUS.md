@@ -10,10 +10,11 @@
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
 > 최종 갱신: 2026-09-19 (**UI 이관 §1~§16 전부 완료**(보리 확정).
 > 이관 후 `side-menu.css` 정리 ① 전체(A·B·C) `[x]` push·CI 초록·보리
-> 최종 승인 완료, ② 죽은 CSS 2건 삭제·③-A 단일 화면 잔여 이동도 `[x]`
-> 완료. 남은 정리 트랙은 ③-B 공용 분리(설계안 승인됨, 착수 시점은 보리
-> 지정 대기). 기능 작업으로 분류된 §15 슬라이스 E·§16 후속은
-> `docs/roadmap.md`로 이관)
+> 최종 승인 완료, ② 죽은 CSS 2건 삭제·③(③-A 단일 화면 잔여 이동 +
+> ③-B 공용 분리)도 `[x]` 완료 — **`side-menu.css` 정리 트랙 전체 완료**
+> (771→129줄, 사이드메뉴 클래스만 남음). 기능 작업으로 분류된 §15
+> 슬라이스 E·§16 후속은 `docs/roadmap.md`로 이관. 진행 중인 슬라이스
+> 없음, 다음은 보리가 새 세션에서 지정)
 
 ---
 
@@ -43,25 +44,19 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 - §16 후속 — "결제 및 수금 입력" 토글 신설·"고정 노선" 차량별 분리
   (매출/정산 계산 엔진을 같이 고쳐야 함).
 
-이관 후 정리 트랙 `side-menu.css`(사이드메뉴 규칙만 남기기) — 정밀 조사·
-분할안은 `docs/ui-comparison-report.md` "`side-menu.css` 정밀 조사
-(2026-09-19)". 보리 지정: ① 단일 화면 블록 이동부터, 분할안 A/B/C 확정.
-① 전체 `[x]` — ①-A(`fd00727`)·①-B(`6a9b860`)·①-C(`2d35b06`, 초대코드·
-메시지설정·캘린더 알림 버튼/배지 → 각 화면 전용 CSS 3개). `side-menu.css`
-771→471줄. ② 죽은 CSS 2건 삭제 `[x]`(`48c8a79`) — `side-menu.css`
-471→456줄. ③ 공용 블록 분리는 설계안을 먼저 보고해 **보리 승인
-(2026-09-19)** — 설계 내용은 `docs/ui-comparison-report.md` "③ 공용 블록
-분리 설계안". ③-A `[x]`(`700ed8e`, `.pill-*`→`expense-form.css`·
-`.tree-line-group`→`app-settings.css`·규칙 1개 재배치) — `side-menu.css`
-456→414줄. **남은 것: ③-B**(신규 `management-common.css`·
-`controls-common.css` 분리 + `App.jsx` import 1줄→3줄, 4파일, 빌드 CSS
-전후 동일성 비교) — 착수 시점은 보리 지정.
+이관 후 정리 트랙 `side-menu.css`(사이드메뉴 규칙만 남기기) **전체 완료**
+(2026-09-19) — 정밀 조사·설계는 `docs/ui-comparison-report.md`
+"`side-menu.css` 정밀 조사"·"③ 공용 블록 분리 설계안". ① 단일 화면 블록 이동
+A(`fd00727`)·B(`6a9b860`)·C(`2d35b06`), ② 죽은 CSS 삭제(`48c8a79`),
+③ 공용 분리 A(`700ed8e`)·B(`b7bae84`). 최종 구조: `side-menu.css`(129줄,
+사이드메뉴만) + `management-common.css`(관리형 공용) + `controls-common.css`
+(폼·컨트롤 공용), `App.jsx`가 같은 자리에서 3줄로 import. 771→129줄.
 
 ## 다음 할 일
 
-다음 슬라이스는 보리 지정 대기. 이관 완료 후 순서(사이드메뉴/모달
-버그 → 빌드 최적화 → 새 기능 → 일상점검표)는 `docs/roadmap.md` "순서"
-참고(2026-09-17 확정).
+진행 중인 슬라이스 없음 — 다음은 보리가 새 세션에서 지정. 이관 완료 후
+순서(사이드메뉴/모달 버그 → 빌드 최적화 → 새 기능 → 일상점검표)는
+`docs/roadmap.md` "순서" 참고(2026-09-17 확정).
 
 > 후속 nit·보류 항목·이관 완료 후 진행사항은 `docs/roadmap.md`로 이동
 > (2026-09-17 분리). 이관 완료 후 순서(사이드메뉴/모달 버그 → 빌드
@@ -69,6 +64,14 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
+- `side-menu.css` 정리 ③-B(공용 규칙을 원래 순서 그대로 연속 조각 2개로 분리:
+  신규 `management-common.css` 166줄·`controls-common.css` 121줄, `App.jsx`
+  import 1줄→3줄 같은 자리, 낡은 "side-menu.css에 둠" 주석 3곳 정정 = 7파일)
+  `[x]` — react-app `b7bae84`. 값·서식·순서 무변경(삭제 247줄=추가 247줄
+  일치), `side-menu.css` 414→129줄(사이드메뉴 클래스만). **빌드 CSS 17개
+  파일 전후 바이트 동일**(해시 파일명까지 동일)로 로드 순서 불변 증명.
+  `npm test` 817개·`tsc` 0에러·build·CI 초록·보리 브라우저 실검증·§5 리뷰
+  7항목·최종 승인 전부 완료. 이로써 `side-menu.css` 정리 트랙 전체 완료.
 - `side-menu.css` 정리 ③-A(단일 화면 잔여 2블록 이동: `.pill-group/.pill-btn`→
   `expense-form.css`(기존 pill 규칙 뒤에 배치)·`.tree-line-group`→
   `app-settings.css` 끝(199줄), + `.car-sub-text span + span` 규칙을 같은
@@ -307,7 +310,7 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 저장소 상태
 
-- **react-app**: `700ed8e`까지(`side-menu.css` 정리 ③-A, push·CI 초록·
+- **react-app**: `b7bae84`까지(`side-menu.css` 정리 ③-B, push·CI 초록·
   보리 최종 승인 완료). 미커밋: §15-E 조사 잔여물 4건(`LinkedDriverClientsPage.jsx`
   수정, `LinkedDriverDirectClientsList.jsx`·`fetchDriverOwnClients.js`·
   `.test.js` 삭제) — 신뢰 안 함, 위 "지금 하는 일" 참고.
