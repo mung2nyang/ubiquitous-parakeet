@@ -9,8 +9,8 @@
 > 커밋 해시로 `git show`.
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
 > 최종 갱신: 2026-09-19 (**UI 이관 §1~§16 전부 완료**(보리 확정).
-> 이관 후 `side-menu.css` 정리 ①-A `[x]` push·CI 초록·보리 최종 승인
-> 완료(①-B/①-C는 분할안 확정, 착수 대기). 기능 작업으로 분류된 §15
+> 이관 후 `side-menu.css` 정리 ①-A·①-B `[x]` push·CI 초록·보리 최종
+> 승인 완료(①-C는 분할안 확정, 착수 대기). 기능 작업으로 분류된 §15
 > 슬라이스 E·§16 후속은 `docs/roadmap.md`로 이관. 다음 슬라이스는 보리
 > 지정 대기)
 
@@ -45,9 +45,10 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 이관 후 정리 트랙 `side-menu.css`(사이드메뉴 규칙만 남기기) — 정밀 조사·
 분할안은 `docs/ui-comparison-report.md` "`side-menu.css` 정밀 조사
 (2026-09-19)". 보리 지정: ① 단일 화면 블록 이동부터, 분할안 A/B/C 확정.
-①-A `[x]`(react-app `fd00727`). 남은 것: ①-B(알림 패널→신규 CSS)·
-①-C(초대코드·메시지설정→신규 CSS 2개) — 착수 시점은 보리 지정. ② 죽은
-CSS 2건 삭제·③ 공용 블록 분리는 ① 이후 별도 지정.
+①-A `[x]`(react-app `fd00727`)·①-B `[x]`(`6a9b860`). 남은 것: ①-C(초대코드·
+메시지설정→신규 CSS 2개 + 캘린더 전용 알림 버튼·배지 ~21줄 — 보리 확정
+2026-09-19) — 착수 시점은 보리 지정. ② 죽은 CSS 2건 삭제·③ 공용 블록
+분리는 ① 이후 별도 지정.
 
 ## 다음 할 일
 
@@ -61,6 +62,13 @@ CSS 2건 삭제·③ 공용 블록 분리는 ① 이후 별도 지정.
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
+- `side-menu.css` 정리 ①-B(알림 패널 규칙 10개를 신규
+  `notification-panel.css`로 이동 + `NotificationPanel.jsx` import 1줄)
+  `[x]` — react-app `6a9b860`. 규칙 값 무변경(삭제 75줄=추가 75줄 일치),
+  `side-menu.css` 623→538줄. `npm test` 817개·`tsc` 0에러(`@ts-check`
+  파일 CSS import 확인)·build·CI 초록·보리 브라우저 실검증·§5 리뷰
+  7항목·최종 승인 전부 완료. 리뷰 중 문서 오류 1건 발견·정정(알림
+  버튼·배지는 준공용이 아니라 캘린더 전용 — ①-C로 이관).
 - `side-menu.css` 정리 ①-A(한 화면만 쓰는 규칙 3블록을 그 화면 CSS로
   이동: `.car-option-copy`→`client-management.css`·`.car-commission-*`→
   `car-management.css`·일지 비용 위젯→`day-log-expenses.css`) `[x]` —
@@ -270,7 +278,7 @@ CSS 2건 삭제·③ 공용 블록 분리는 ① 이후 별도 지정.
 
 ## 저장소 상태
 
-- **react-app**: `fd00727`까지(`side-menu.css` 정리 ①-A, push·CI 초록·
+- **react-app**: `6a9b860`까지(`side-menu.css` 정리 ①-B, push·CI 초록·
   보리 최종 승인 완료). 미커밋: §15-E 조사 잔여물 4건(`LinkedDriverClientsPage.jsx`
   수정, `LinkedDriverDirectClientsList.jsx`·`fetchDriverOwnClients.js`·
   `.test.js` 삭제) — 신뢰 안 함, 위 "지금 하는 일" 참고.

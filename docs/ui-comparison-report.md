@@ -96,7 +96,7 @@
 > | 557~594 | `maint-fuel-tabs/nav`·`pill-*` | 정비주유·리포트·세금계산서·비용폼·일지 | 공용 |
 > | 596~601 | `.work-log-expense-head` | **소비처 0곳** | **죽은 CSS** |
 > | 603~645 | `compact-add-btn`·`work-log-expense-group`·`maint-fuel-item/head/info/total`·`expense-kind-pick` | `day-log/` 4개 컴포넌트(모두 `DayLogPage` 안)만 | 단일 화면(~43줄) |
-> | 647~673 | 알림 버튼·배지 | 캘린더·`PageHeader` 등 | 준공용 |
+> | 647~673 | 알림 버튼·배지(`.top-notification-btn`·`.notification-count-badge`, ~21줄) + hover 규칙 | 버튼·배지 2규칙은 `CalendarHeader.jsx`**만**. hover 규칙(`.top-notification-btn.icon-btn:hover, .top-menu-btn.icon-btn:hover`)만 `PageHeader`도 쓰는 `.top-menu-btn`과 묶여 공용 | 버튼·배지 = **단일 화면**, hover = 공용 *(2026-09-19 정정: 처음엔 전체를 "준공용"으로 잘못 분류 — 묶음 hover 규칙에 끌려 오판, ①-B 리뷰 중 발견)* |
 > | 675~758 | `.notification-panel*` | `NotificationPanel.jsx`만 | 단일 화면(~84줄) |
 > | 760~771 | `.message-settings-*` | `MessageSettingsPage.jsx`만 | 단일 화면(12줄) |
 >
@@ -119,11 +119,16 @@
 >   = 4파일). `side-menu.css` 771→623줄, 규칙 값 무변경(삭제 130줄=추가 130줄),
 >   CI 초록·보리 브라우저 실검증·최종 승인 완료. 위 줄 번호 표는 771줄 기준
 >   이라 이 이동 이후 어긋남.
-> - ①-B `.notification-panel*`→신규 `notification-panel.css`
->   (+`NotificationPanel.jsx` import 1줄, `side-menu.css`)
-> - ①-C `.personal-intro*`→신규 `InviteRedeemPage.css`, `.message-settings-*`→
->   신규 `message-settings.css`(각 JSX import 1줄, `side-menu.css`, `PersonalInfoPage.css`
->   머리말 정정)
+> - ①-B `[x]` **완료(2026-09-19, react-app `6a9b860`)** — `.notification-panel*`
+>   10규칙→신규 `notification-panel.css`(+`NotificationPanel.jsx` import 1줄,
+>   `side-menu.css` = 3파일). `side-menu.css` 623→538줄, 규칙 값 무변경(삭제
+>   75줄=추가 75줄), CI 초록·보리 브라우저 실검증·최종 승인 완료.
+> - ①-C(남음, 착수 시점 보리 지정) `.personal-intro*`→신규 `InviteRedeemPage.css`,
+>   `.message-settings-*`→신규 `message-settings.css`(각 JSX import 1줄,
+>   `side-menu.css`, `PersonalInfoPage.css` 머리말 정정) **+ 캘린더 전용
+>   `.top-notification-btn`·`.notification-count-badge`(~21줄, `CalendarHeader.jsx`만
+>   사용)도 ①-C에서 처리(보리 확정 2026-09-19)** — 목적지 CSS·파일 수는 ①-C
+>   착수지시서에서 확정(파일 수가 §3 기준을 넘으면 그때 경계 재확인).
 
 
 ## 방법
