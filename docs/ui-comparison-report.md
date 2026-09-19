@@ -60,7 +60,7 @@
 > | A | 사이드메뉴 자체 | 사이드메뉴(공용, 1-1 완료분과 별개 CSS) | 보류 |
 > | B | 관리화면 공용 배지/카드 | 여러 화면 공유 — 진짜 공용 | 보류(공용 파일 필요) |
 > | C | 차량 커미션 잔재 | §5 차량관리 | 죽은 CSS 2개(`car-commission-heading`·`car-daylog-preview`)는 삭제 완료(`8fe5269`, 2026-09-19). 나머지 `car-commission-*` 규칙은 `side-menu.css`에 유지 |
-> | D | 개인정보 일부 | §11 개인정보 | **완료**(전용 클래스만 `PersonalInfoPage.css`로 이동, 2026-09-17). 공유 클래스(`.personal-intro`·`.personal-inline-fields`·`.personal-account-btn`)는 다른 화면과 공유돼 `side-menu.css`에 유지 |
+> | D | 개인정보 일부 | §11 개인정보 | **완료**(전용 클래스만 `PersonalInfoPage.css`로 이동, 2026-09-17). `.personal-inline-fields`·`.personal-account-btn`은 다른 화면과 공유돼 `side-menu.css`에 유지(`.personal-intro`는 2026-09-19 조사에서 `InviteRedeemPage.jsx` 전용으로 확인 — 아래 정밀 조사 참고) |
 > | E | 설정 공용 | 여러 화면 공유 — 진짜 공용 | 보류 |
 > | F | 정비/주유/기타 위젯 | 12개 파일 공유 확인 → 진짜 공용 | **제외 확정**(§8 전용 아님, 2026-09-15) |
 > | G | 리포트/운송비내역서 | §10 | **완료** — CSS 분리 `cf54899`(2026-09-15) + §10 UI 대조 `[x]`(2026-09-17) |
@@ -76,6 +76,54 @@
 > H·J(§9 몫)는 2026-09-16, D(§11)·K(§13)·L(§14)는 2026-09-17 각 화면
 > 차례에 완료. 남은 A·B·E·I·M은 §순서와 무관하게 이관 완료 후 별도 시점에
 > 정리(B·E는 진짜 공용 블록, 보리 결정 2026-09-16).
+>
+> **`side-menu.css` 정밀 조사(2026-09-19, 보리 지시 — "사이드메뉴 CSS면 사이드메뉴만
+> 있어야 한다")**: 죽은 CSS 5건 삭제(`8fe5269`) 직후 771줄·규칙 114개를
+> 규칙 단위로 "어느 소스 파일이 쓰는가"와 대조(클래스명 문자열 검색 —
+> "한 화면만 씀"은 확실, "공용"은 짧은 클래스명 때문에 과대 집계 가능).
+> 위 A~M 지도는 2026-09-15 기준이라 아래가 최신 정본.
+>
+> | 줄 범위(771줄 기준) | 내용 | 실제 소비처 | 성격 |
+> |---|---|---|---|
+> | 1~129 | 오버레이·사이드메뉴 본체·배너·섹션·드롭다운 | `SideMenu.jsx` | **진짜 사이드메뉴(~130줄, 17%)** |
+> | 131~290 | 관리화면 공용(카드·액션버튼·배지·빈화면·추가버튼) | 차량·거래처·기사·미수금·정비주유·일지·알림 | 공용(~160줄) |
+> | 292~309 | `.car-option-copy` | `ClientTradeFields.jsx`(거래처)만 | 단일 화면 |
+> | 311~317 | `.car-commission-panel` | **소비처 0곳** | **죽은 CSS** |
+> | 319~402 | `.car-commission-type/value/input` | `CarFormModal.jsx`(차량관리)만 | 단일 화면(~84줄) |
+> | 404~418 | 모달 토글·`car-type-hint`·`car-sub-text` | 여러 화면 | 공용 |
+> | 420~450 | `.personal-intro*` | `InviteRedeemPage.jsx`만 | 단일 화면(~31줄) — 개인정보 화면 것이 아님 |
+> | 452~568 | 개인정보 공용 필드·설정 공용(`setting-*`·세그먼트·테마토글·`tree-line`) | 설정·개인정보·거래처·기사폼 등 | 공용(~115줄) |
+> | 557~594 | `maint-fuel-tabs/nav`·`pill-*` | 정비주유·리포트·세금계산서·비용폼·일지 | 공용 |
+> | 596~601 | `.work-log-expense-head` | **소비처 0곳** | **죽은 CSS** |
+> | 603~645 | `compact-add-btn`·`work-log-expense-group`·`maint-fuel-item/head/info/total`·`expense-kind-pick` | `day-log/` 4개 컴포넌트(모두 `DayLogPage` 안)만 | 단일 화면(~43줄) |
+> | 647~673 | 알림 버튼·배지 | 캘린더·`PageHeader` 등 | 준공용 |
+> | 675~758 | `.notification-panel*` | `NotificationPanel.jsx`만 | 단일 화면(~84줄) |
+> | 760~771 | `.message-settings-*` | `MessageSettingsPage.jsx`만 | 단일 화면(12줄) |
+>
+> **발견 요약**: ① 한 화면만 쓰는 규칙이 ~310줄(40%) — 각 화면 전용 CSS로 이동
+> 가능. ② 죽은 CSS 2건 추가 발견(`.car-commission-panel`·`.work-log-expense-head`).
+> ③ `side-menu.css`가 `App.jsx:23`에서 전역 import돼 사이드메뉴와 무관한 화면
+> 규칙까지 항상 로드됨. ④ 위 D행 "`.personal-intro` 공유" 기록은 낡음 —
+> 현재 `InviteRedeemPage.jsx` 전용(`PersonalInfoPage.css` 머리말의 언급은 주석뿐).
+> ⑤ 이동 시 캐스케이드 확인 결과: `compact-add-btn`·`maint-fuel-item/info/total`·
+> `expense-kind-pick`은 `day-log-shell.css`/`day-log-expenses.css`에 `.work-log-page …`
+> 범위 규칙이 이미 있으나 명시도가 더 높아(0,2,0↑) 기본 규칙이 뒤로 가도 결과
+> 불변.
+>
+> **정리 방향(보리 지정: ① 단일 화면 블록 이동부터, 2026-09-19)** — ② 죽은 CSS
+> 2건 삭제, ③ 남는 공용 ~330줄을 별도 공용 CSS로 분리는 ① 이후 별도 지정.
+> **①의 슬라이스 분할안**(AGENTS §3 "1~3개 파일" 기준, **보리 확정 2026-09-19**):
+> - ①-A `[x]` **완료(2026-09-19, react-app `fd00727`)** — 기존 CSS로 이동 3블록:
+>   `.car-option-copy`→`client-management.css`, `.car-commission-*`→
+>   `car-management.css`, 일지 비용 위젯→`day-log-expenses.css`(+`side-menu.css`
+>   = 4파일). `side-menu.css` 771→623줄, 규칙 값 무변경(삭제 130줄=추가 130줄),
+>   CI 초록·보리 브라우저 실검증·최종 승인 완료. 위 줄 번호 표는 771줄 기준
+>   이라 이 이동 이후 어긋남.
+> - ①-B `.notification-panel*`→신규 `notification-panel.css`
+>   (+`NotificationPanel.jsx` import 1줄, `side-menu.css`)
+> - ①-C `.personal-intro*`→신규 `InviteRedeemPage.css`, `.message-settings-*`→
+>   신규 `message-settings.css`(각 JSX import 1줄, `side-menu.css`, `PersonalInfoPage.css`
+>   머리말 정정)
 
 
 ## 방법

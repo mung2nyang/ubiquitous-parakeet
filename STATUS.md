@@ -9,9 +9,9 @@
 > 커밋 해시로 `git show`.
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
 > 최종 갱신: 2026-09-19 (**UI 이관 §1~§16 전부 완료**(보리 확정).
-> 죽은 CSS 5건 삭제 `[x]` push·CI 초록·보리 최종 승인 완료. 기능 작업으로
-> 분류된 §15 슬라이스 E(거래처 고정노선)·§16 후속(결제/고정노선 차량별
-> 분리)은 이관 후 할 일로 `docs/roadmap.md`에 이관. 다음 슬라이스는 보리
+> 이관 후 `side-menu.css` 정리 ①-A `[x]` push·CI 초록·보리 최종 승인
+> 완료(①-B/①-C는 분할안 확정, 착수 대기). 기능 작업으로 분류된 §15
+> 슬라이스 E·§16 후속은 `docs/roadmap.md`로 이관. 다음 슬라이스는 보리
 > 지정 대기)
 
 ---
@@ -42,6 +42,13 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 - §16 후속 — "결제 및 수금 입력" 토글 신설·"고정 노선" 차량별 분리
   (매출/정산 계산 엔진을 같이 고쳐야 함).
 
+이관 후 정리 트랙 `side-menu.css`(사이드메뉴 규칙만 남기기) — 정밀 조사·
+분할안은 `docs/ui-comparison-report.md` "`side-menu.css` 정밀 조사
+(2026-09-19)". 보리 지정: ① 단일 화면 블록 이동부터, 분할안 A/B/C 확정.
+①-A `[x]`(react-app `fd00727`). 남은 것: ①-B(알림 패널→신규 CSS)·
+①-C(초대코드·메시지설정→신규 CSS 2개) — 착수 시점은 보리 지정. ② 죽은
+CSS 2건 삭제·③ 공용 블록 분리는 ① 이후 별도 지정.
+
 ## 다음 할 일
 
 다음 슬라이스는 보리 지정 대기. 이관 완료 후 순서(사이드메뉴/모달
@@ -54,6 +61,13 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
+- `side-menu.css` 정리 ①-A(한 화면만 쓰는 규칙 3블록을 그 화면 CSS로
+  이동: `.car-option-copy`→`client-management.css`·`.car-commission-*`→
+  `car-management.css`·일지 비용 위젯→`day-log-expenses.css`) `[x]` —
+  react-app `fd00727`. 규칙 값 무변경 복사 이동(삭제 130줄=추가 130줄
+  일치 확인), `side-menu.css` 771→623줄. `npm test` 817개·`tsc` 0에러·
+  build·CI 초록·보리 브라우저 실검증(라이트/다크)·§5 리뷰 7항목·최종
+  승인 전부 완료.
 - 죽은 CSS 5건 삭제(`side-menu.css` 3곳: `.action-text-btn` 복합 선택자·
   `.car-commission-heading`·`.car-daylog-preview` / `mypage.css` 2곳:
   `.mypage-header-spacer`·`.mypage-role-pill`) `[x]` — react-app
@@ -256,8 +270,8 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 저장소 상태
 
-- **react-app**: `8fe5269`까지(죽은 CSS 5건 삭제, push·CI 초록·보리
-  최종 승인 완료). 미커밋: §15-E 조사 잔여물 4건(`LinkedDriverClientsPage.jsx`
+- **react-app**: `fd00727`까지(`side-menu.css` 정리 ①-A, push·CI 초록·
+  보리 최종 승인 완료). 미커밋: §15-E 조사 잔여물 4건(`LinkedDriverClientsPage.jsx`
   수정, `LinkedDriverDirectClientsList.jsx`·`fetchDriverOwnClients.js`·
   `.test.js` 삭제) — 신뢰 안 함, 위 "지금 하는 일" 참고.
 - **ubiquitous-parakeet**: local이 origin보다 앞섬(이번 문서 정리
