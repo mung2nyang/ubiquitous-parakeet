@@ -816,8 +816,8 @@
   `[x]`**(2026-09-19, react-app `8c2bf61`) — 연동기사 거래처 화면(기사
   본인 `OwnerScopedClientsView`·차주가 보는 `LinkedDriverClientsPage`)에
   고정노선 토글·단가 입력 노출. 미연동 거래처의 고정노선은 `docs/sot.md`
-  §4-4c 표 기준(그 운행일지 안에서 1곳, 보리 확인 2026-09-19) — 이번엔
-  임시로 숨김 유지, 별도 슬라이스로 `docs/roadmap.md`에 등재.
+  §4-4c 표 기준(그 운행일지 안에서 1곳, 보리 확인 2026-09-19) — 별도
+  슬라이스로 `[x]` 완료(react-app `c8939c2`, 차주 집계 서브차량 스코프 포함).
 - ~~연동·미연동 정비/주유/기타 진입시 기사 이름 정비/주유/기타 이어야하나 차량번호 정비/주유/기타로 바뀜~~
   **슬라이스 B `[x]`**(2026-09-18) — `2a9d249`. `domain/driverManagementContext.js`에
   `resolveDriverOrPlateLabel` 신설(연동기사 이름 → 서브차량 기사 이름 →

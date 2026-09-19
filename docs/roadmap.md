@@ -97,20 +97,20 @@
 - ~~§15 슬라이스 E: 연동기사·차주 각 계정에서 거래처 고정노선 설정~~
   `[x]` — react-app `8c2bf61`(2026-09-19). 기사 본인 화면
   `OwnerScopedClientsView.jsx`와 차주가 보는 `LinkedDriverClientsPage.jsx`
-  모두 토글·단가 입력 노출. **남은 것: 미연동 기사 거래처 고정노선**(아래).
-- **미연동 기사 거래처 고정노선 사용 가능하게** `[확인: 2026-09-19 보리]` —
-  `docs/sot.md` §4-4c 표대로 "그 운행일지 안에서 1곳". 보리 지시: 슬라이스 E
-  다음 별도 슬라이스로. 지금은 `LinkedDriverClientsPage.jsx`가 미연동이면
-  토글을 숨기고 강제 false(`hideFixedRoute={unlinked}`) — 임시 상태.
-  화면만으론 안 끝나는 이유: 차주 매출·달력 집계가 서브차량(미연동 포함)
-  일지도 스코프 없이 `resolveFixedUnitPrice(settings)`로 계산해서
-  ([financeCore.js:156-162](react-app/src/domain/financeCore.js:156),
-  [financeOwnerDetail.js:48,65](react-app/src/domain/financeOwnerDetail.js:48),
-  `getFixedRouteClient({ clients })` 무스코프 호출:
-  `CalendarPage.jsx:61,65`·`reportSummary.js:66-67`·`ownerFinance.js:117`)
-  미연동 거래처에 고정노선을 켜도 그 단가를 안 본다 — 슬라이스 D가 연동기사
-  경로(`financeCore.js:105`, `financeTaxInvoiceGroups.js:128`)에 한 것처럼
-  일지(소스)별 스코프 적용이 필요.
+  모두 토글·단가 입력 노출.
+- ~~미연동 기사 거래처 고정노선 사용 가능하게~~ `[x]` — react-app `c8939c2`
+  (2026-09-19). sot §4-4c "그 운행일지 안에서 1곳". 미연동 숨김 제거 + 차주 월
+  매출·상세 손익·세금계산서 매출·서브차량 달력을 서브차량별 스코프 고정노선
+  우선(없으면 차주 것)으로 변경.
+- **고정노선 무스코프 호출부 전수 조사(읽기 전용)** `[확인: 2026-09-19 보리]` —
+  "1곳 규칙 삭제 + 자유 추가"보다 먼저. `getFixedRouteClient`/
+  `resolveFixedUnitPrice`/`fixedRouteLinked` 호출부를 실행 맥락(차주 메인·차주가
+  서브차량 볼 때·기사 본인·게스트)별로 분류해 "스코프 맞음 / 필요 / 판단 보류"로
+  표시. 코드는 안 고침 — 고칠 곳은 보리가 골라 지정. 조사 결과의 "버그" 판단은
+  미확인 관찰로만 적고 보리 확인분만 확정. 조사가 끝나 규칙이 확정되면 그 규칙을
+  `docs/sot.md`에 기록(보리 지시). 계기: 연동기사 본인 계정 달력·매출 화면이 무스코프
+  호출(`CalendarPage.jsx:61,65`, `driverRevenueScope.js`가 같은 집계 함수 사용)일 수
+  있다는 미확인 관찰.
 - **고정노선 "1곳 규칙" 삭제 + 고정노선 자유 추가** `[확인: 2026-09-19 보리]`
   — 이관이 끝났으므로 "일지 1개당 고정노선 1개" 규칙을 없애고 고정노선을
   자유롭게 추가할 수 있게 하는 기능을 넣을 예정. 지금은 고정노선 토글을 켜면
