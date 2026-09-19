@@ -10,8 +10,9 @@
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
 > 최종 갱신: 2026-09-19 (**UI 이관 §1~§16 전부 완료**(보리 확정).
 > 이관 후 `side-menu.css` 정리 ① 전체(A·B·C) `[x]` push·CI 초록·보리
-> 최종 승인 완료. 다음은 ② 죽은 CSS 2건 삭제(보리 지정, 착수지시서 단계).
-> 기능 작업으로 분류된 §15 슬라이스 E·§16 후속은 `docs/roadmap.md`로 이관)
+> 최종 승인 완료, ② 죽은 CSS 2건 삭제도 `[x]` 완료. 남은 정리 트랙은
+> ③ 공용 블록 분리(보리 지정 대기). 기능 작업으로 분류된 §15 슬라이스
+> E·§16 후속은 `docs/roadmap.md`로 이관)
 
 ---
 
@@ -46,9 +47,10 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 (2026-09-19)". 보리 지정: ① 단일 화면 블록 이동부터, 분할안 A/B/C 확정.
 ① 전체 `[x]` — ①-A(`fd00727`)·①-B(`6a9b860`)·①-C(`2d35b06`, 초대코드·
 메시지설정·캘린더 알림 버튼/배지 → 각 화면 전용 CSS 3개). `side-menu.css`
-771→471줄. **다음: ② 죽은 CSS 2건 삭제**(`.car-commission-panel`·
-`.work-log-expense-head`, 보리 지정 2026-09-19 — `docs/report.md` 착수지시서
-단계). ③ 공용 블록 분리는 ② 이후 별도 지정.
+771→471줄. ② 죽은 CSS 2건 삭제 `[x]`(`48c8a79`) — `side-menu.css`
+471→456줄. 남은 것: ③ 공용 블록(사이드메뉴와 무관하게 여러 화면이 같이
+쓰는 규칙 ~330줄)을 별도 공용 CSS로 분리 — 착수 시점은 보리 지정(공용이라
+위험이 커서 착수지시서 전에 분리설계안을 먼저 보고).
 
 ## 다음 할 일
 
@@ -62,6 +64,12 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
+- `side-menu.css` 정리 ②(죽은 CSS 2건 삭제: `.car-commission-panel`·
+  `.work-log-expense-head` + `client-management.css` 머리말 주석 1줄 정정)
+  `[x]` — react-app `48c8a79`. 소비처 0곳을 src 전체 grep·동적 클래스
+  조합 배제까지 확인 후 삭제(화면 변화 없음), `side-menu.css` 471→456줄.
+  `npm test` 817개·`tsc` 0에러·build·CI 초록·보리 브라우저 실검증·§5
+  리뷰 7항목·최종 승인 전부 완료.
 - `side-menu.css` 정리 ①-C(초대코드 `.personal-intro*`→`InviteRedeemPage.css`·
   `.message-settings-*`→`message-settings.css`·캘린더 알림 버튼/배지→
   `calendar/calendar-header.css`, 신규 CSS 3개 + JSX import 3줄 +
@@ -285,7 +293,7 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 저장소 상태
 
-- **react-app**: `2d35b06`까지(`side-menu.css` 정리 ①-C, push·CI 초록·
+- **react-app**: `48c8a79`까지(`side-menu.css` 정리 ②, push·CI 초록·
   보리 최종 승인 완료). 미커밋: §15-E 조사 잔여물 4건(`LinkedDriverClientsPage.jsx`
   수정, `LinkedDriverDirectClientsList.jsx`·`fetchDriverOwnClients.js`·
   `.test.js` 삭제) — 신뢰 안 함, 위 "지금 하는 일" 참고.

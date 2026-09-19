@@ -130,7 +130,12 @@
 >   각 JSX import 1줄, `PersonalInfoPage.css` 머리말 정정 = 8파일). `side-menu.css`
 >   538→471줄, 규칙 값 무변경(삭제 60줄=추가 60줄), CI 초록·보리 브라우저
 >   실검증·최종 승인 완료. **① 전체(A·B·C) 완료** — `side-menu.css` 771→471줄.
->   다음은 ② 죽은 CSS 2건 삭제(보리 지정 2026-09-19).
+> - ② `[x]` **완료(2026-09-19, react-app `48c8a79`)** — 죽은 CSS 2건 삭제
+>   (`.car-commission-panel`·`.work-log-expense-head`, 위 표의 "죽은 CSS" 두
+>   행). 소비처 0곳 + 동적 클래스 조합 배제 확인, `client-management.css`
+>   머리말 주석 1줄 정정(2파일). `side-menu.css` 471→456줄, CI 초록·보리
+>   브라우저 실검증·최종 승인 완료. **① + ② 완료 — `side-menu.css` 771→456줄.**
+>   남은 것: ③ 공용 블록 분리(보리 지정 대기).
 
 
 ## 방법
