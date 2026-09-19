@@ -93,22 +93,37 @@
 - `driver_direct` 죽은 코드 정리 / 다중 배정 차량 집계(`upsertDriver`가 막아 사실상 닫힘, 참고용).
   [정정 2026-09-18] "죽은 코드"만은 아니었음 — `LinkedDriverClientsPage.jsx`의
   `isDriverDirect` 분기가 실제로 화면 렌더링을 바꾸는 살아있는 코드였고,
-  §15 슬라이스 E 브라우저 검증 실패의 원인 중 하나였음(제거함, 미커밋).
-  상세는 `docs/report.md` 참고.
-- **§15 슬라이스 E: 연동기사·차주 각 계정에서 거래처 고정노선 설정**
-  (원본엔 있던 기능이라 완벽 이관 대상이지만 UI가 아닌 기능 작업 —
-  이관 후 할 일로 분류, 보리 확정 2026-09-19). 브라우저 검증 때마다
-  고정노선 버튼이 안 보여 원인 추정→수정을 3차례 반복했으나 **매번
-  빗나감** → 착수 시 하루 잡고 **처음부터 재조사**, 아래 기존 추정은
-  신뢰하지 말 것.
-  ↓ 기존 추정(미확인) — `OwnerScopedClientsView.jsx`(연동기사 본인 로그인
-  화면)에 고정노선 입력 노출[2026-09-18 발견] — `LinkedDriverClientsPage.jsx`
-  (차주가 보는 화면)는 이번에 고쳤지만(미커밋), 보리가 실제 테스트한
-  연동기사 본인 계정 쪽 화면 `OwnerScopedClientsView.jsx`는 아직 그대로다: `openEdit`/`save`에서
-  `fixedRouteLinked`를 강제로 `false`로 덮어쓰고(23·66·73행),
-  `hideFixedRoute={true}`로 토글 자체를 숨김(144행) — 같은 패턴, 아직
-  미수정. 착수 시 `LinkedDriverClientsPage.jsx`에 적용한 것과 같은 방식
-  적용. 상세는 `docs/report.md`.
+  §15 슬라이스 E 브라우저 검증 실패의 원인 중 하나였음(제거 완료, `8c2bf61`).
+- ~~§15 슬라이스 E: 연동기사·차주 각 계정에서 거래처 고정노선 설정~~
+  `[x]` — react-app `8c2bf61`(2026-09-19). 기사 본인 화면
+  `OwnerScopedClientsView.jsx`와 차주가 보는 `LinkedDriverClientsPage.jsx`
+  모두 토글·단가 입력 노출. **남은 것: 미연동 기사 거래처 고정노선**(아래).
+- **미연동 기사 거래처 고정노선 사용 가능하게** `[확인: 2026-09-19 보리]` —
+  `docs/sot.md` §4-4c 표대로 "그 운행일지 안에서 1곳". 보리 지시: 슬라이스 E
+  다음 별도 슬라이스로. 지금은 `LinkedDriverClientsPage.jsx`가 미연동이면
+  토글을 숨기고 강제 false(`hideFixedRoute={unlinked}`) — 임시 상태.
+  화면만으론 안 끝나는 이유: 차주 매출·달력 집계가 서브차량(미연동 포함)
+  일지도 스코프 없이 `resolveFixedUnitPrice(settings)`로 계산해서
+  ([financeCore.js:156-162](react-app/src/domain/financeCore.js:156),
+  [financeOwnerDetail.js:48,65](react-app/src/domain/financeOwnerDetail.js:48),
+  `getFixedRouteClient({ clients })` 무스코프 호출:
+  `CalendarPage.jsx:61,65`·`reportSummary.js:66-67`·`ownerFinance.js:117`)
+  미연동 거래처에 고정노선을 켜도 그 단가를 안 본다 — 슬라이스 D가 연동기사
+  경로(`financeCore.js:105`, `financeTaxInvoiceGroups.js:128`)에 한 것처럼
+  일지(소스)별 스코프 적용이 필요.
+- **고정노선 "1곳 규칙" 삭제 + 고정노선 자유 추가** `[확인: 2026-09-19 보리]`
+  — 이관이 끝났으므로 "일지 1개당 고정노선 1개" 규칙을 없애고 고정노선을
+  자유롭게 추가할 수 있게 하는 기능을 넣을 예정. 지금은 고정노선 토글을 켜면
+  같은 범위의 다른 거래처가 자동으로 꺼지는데(`clients.js` `upsertClient`),
+  이 동작도 그때 함께 사라진다. 아래 발견 사항도 **그때 같이 처리**.
+  - 발견 사항(AI관찰, 코드 읽기만 함·재현 안 함, 보리가 본 증상과 일치하는
+    것으로 확인 2026-09-19): `requestClientSave`가 클라우드 저장 시
+    `changedIds`를 방금 저장한 거래처 1건으로만 제한한다
+    ([clientMutations.js:65](react-app/src/lib/clientMutations.js:65)).
+    "1곳 제한"으로 같은 범위의 **다른** 거래처가 자동 해제되면 그 변경은
+    화면(메모리)에만 반영되고 서버에는 안 올라가서, 새로고침·다른 기기
+    로그인 후 서버 값이 다시 불려오면 두 거래처가 모두 켜진 것처럼 되돌아올
+    수 있다. 슬라이스 D 이전부터 있던 구조.
 - **§16 후속: "결제 및 수금 입력" 토글 신설 + "고정 노선" 차량별
   분리**(UI가 아니라 매출/정산 계산 엔진을 같이 고치는 기능 작업 — 이관
   후 할 일로 분류, 보리 확정 2026-09-19). 상세 설계·위험 범위는 아래
