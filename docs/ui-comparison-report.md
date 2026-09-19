@@ -123,12 +123,14 @@
 >   10규칙→신규 `notification-panel.css`(+`NotificationPanel.jsx` import 1줄,
 >   `side-menu.css` = 3파일). `side-menu.css` 623→538줄, 규칙 값 무변경(삭제
 >   75줄=추가 75줄), CI 초록·보리 브라우저 실검증·최종 승인 완료.
-> - ①-C(남음, 착수 시점 보리 지정) `.personal-intro*`→신규 `InviteRedeemPage.css`,
->   `.message-settings-*`→신규 `message-settings.css`(각 JSX import 1줄,
->   `side-menu.css`, `PersonalInfoPage.css` 머리말 정정) **+ 캘린더 전용
->   `.top-notification-btn`·`.notification-count-badge`(~21줄, `CalendarHeader.jsx`만
->   사용)도 ①-C에서 처리(보리 확정 2026-09-19)** — 목적지 CSS·파일 수는 ①-C
->   착수지시서에서 확정(파일 수가 §3 기준을 넘으면 그때 경계 재확인).
+> - ①-C `[x]` **완료(2026-09-19, react-app `2d35b06`)** — `.personal-intro*`→신규
+>   `InviteRedeemPage.css`, `.message-settings-*`→신규 `message-settings.css`,
+>   캘린더 전용 `.top-notification-btn`·`.notification-count-badge`(~21줄)→신규
+>   `calendar/calendar-header.css`(`calendar.css`가 이미 246줄이라 신규 파일로;
+>   각 JSX import 1줄, `PersonalInfoPage.css` 머리말 정정 = 8파일). `side-menu.css`
+>   538→471줄, 규칙 값 무변경(삭제 60줄=추가 60줄), CI 초록·보리 브라우저
+>   실검증·최종 승인 완료. **① 전체(A·B·C) 완료** — `side-menu.css` 771→471줄.
+>   다음은 ② 죽은 CSS 2건 삭제(보리 지정 2026-09-19).
 
 
 ## 방법

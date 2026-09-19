@@ -9,10 +9,9 @@
 > 커밋 해시로 `git show`.
 > 이 파일이 150줄을 넘으면 오래된 "완료" 항목을 요약만 남기고 줄인다.
 > 최종 갱신: 2026-09-19 (**UI 이관 §1~§16 전부 완료**(보리 확정).
-> 이관 후 `side-menu.css` 정리 ①-A·①-B `[x]` push·CI 초록·보리 최종
-> 승인 완료(①-C는 분할안 확정, 착수 대기). 기능 작업으로 분류된 §15
-> 슬라이스 E·§16 후속은 `docs/roadmap.md`로 이관. 다음 슬라이스는 보리
-> 지정 대기)
+> 이관 후 `side-menu.css` 정리 ① 전체(A·B·C) `[x]` push·CI 초록·보리
+> 최종 승인 완료. 다음은 ② 죽은 CSS 2건 삭제(보리 지정, 착수지시서 단계).
+> 기능 작업으로 분류된 §15 슬라이스 E·§16 후속은 `docs/roadmap.md`로 이관)
 
 ---
 
@@ -45,10 +44,11 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 이관 후 정리 트랙 `side-menu.css`(사이드메뉴 규칙만 남기기) — 정밀 조사·
 분할안은 `docs/ui-comparison-report.md` "`side-menu.css` 정밀 조사
 (2026-09-19)". 보리 지정: ① 단일 화면 블록 이동부터, 분할안 A/B/C 확정.
-①-A `[x]`(react-app `fd00727`)·①-B `[x]`(`6a9b860`). 남은 것: ①-C(초대코드·
-메시지설정→신규 CSS 2개 + 캘린더 전용 알림 버튼·배지 ~21줄 — 보리 확정
-2026-09-19) — 착수 시점은 보리 지정. ② 죽은 CSS 2건 삭제·③ 공용 블록
-분리는 ① 이후 별도 지정.
+① 전체 `[x]` — ①-A(`fd00727`)·①-B(`6a9b860`)·①-C(`2d35b06`, 초대코드·
+메시지설정·캘린더 알림 버튼/배지 → 각 화면 전용 CSS 3개). `side-menu.css`
+771→471줄. **다음: ② 죽은 CSS 2건 삭제**(`.car-commission-panel`·
+`.work-log-expense-head`, 보리 지정 2026-09-19 — `docs/report.md` 착수지시서
+단계). ③ 공용 블록 분리는 ② 이후 별도 지정.
 
 ## 다음 할 일
 
@@ -62,6 +62,13 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 완료 (커밋·푸시됨 — 상세는 각 커밋 diff/메시지 참고, git log -- docs/report.md)
 
+- `side-menu.css` 정리 ①-C(초대코드 `.personal-intro*`→`InviteRedeemPage.css`·
+  `.message-settings-*`→`message-settings.css`·캘린더 알림 버튼/배지→
+  `calendar/calendar-header.css`, 신규 CSS 3개 + JSX import 3줄 +
+  `PersonalInfoPage.css` 머리말 정정 = 8파일) `[x]` — react-app `2d35b06`.
+  규칙 값·서식 무변경(삭제 60줄=추가 60줄 일치), `side-menu.css`
+  538→471줄. `npm test` 817개·`tsc` 0에러·build·CI 초록·보리 브라우저
+  실검증·§5 리뷰 7항목·최종 승인 전부 완료. 이로써 ① 전체 완료.
 - `side-menu.css` 정리 ①-B(알림 패널 규칙 10개를 신규
   `notification-panel.css`로 이동 + `NotificationPanel.jsx` import 1줄)
   `[x]` — react-app `6a9b860`. 규칙 값 무변경(삭제 75줄=추가 75줄 일치),
@@ -278,7 +285,7 @@ UI가 아닌 기능 작업이라 이관 범위에서 뺀 것(명시적 제외·A
 
 ## 저장소 상태
 
-- **react-app**: `6a9b860`까지(`side-menu.css` 정리 ①-B, push·CI 초록·
+- **react-app**: `2d35b06`까지(`side-menu.css` 정리 ①-C, push·CI 초록·
   보리 최종 승인 완료). 미커밋: §15-E 조사 잔여물 4건(`LinkedDriverClientsPage.jsx`
   수정, `LinkedDriverDirectClientsList.jsx`·`fetchDriverOwnClients.js`·
   `.test.js` 삭제) — 신뢰 안 함, 위 "지금 하는 일" 참고.
