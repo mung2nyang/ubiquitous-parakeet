@@ -21,6 +21,12 @@
 | Q5 달력 단가 수정 경로 | ➖ 스코프 무관 | `requestClientFixedUnitPrice`를 부르는 프로덕션 화면이 없다. 함수 자체는 스코프를 고르지 않고 전달받은 `clientId` 한 건만 바꾸지만, 현재 달력에서는 호출되지 않는다. 실제 거래처 단가 편집은 거래처 폼 저장 경로다. | `react-app/src/lib/clientMutations.js:103-116`; `react-app/src/domain/clients.js:156-158`; `react-app/src/components/calendar/CalendarPage.jsx:44-75`; `react-app/src/components/clients/ClientListPage.jsx:48-75` |
 | Q6 게스트 스코프 필요 여부 | ✅ 스코프 맞음 | 필요하다. 게스트는 기사 초대는 쓰지 않지만, 메인 차량 뒤에 **미연동 서브차량**을 추가할 수 있고 그 일지·거래처 화면은 차량번호 스코프를 쓴다. 달력·일지는 맞고, 서브 내역서는 Q3의 🔧 관찰을 함께 받는다. | `docs/sot.md:463-466`; `react-app/src/components/cars/CarListPage.jsx:53-75`; `react-app/src/app/AppShell.jsx:77-80`; `react-app/src/app/subLogMenuItems.js:14-35`; `react-app/src/app/AppShellRoutes.jsx:70-76` |
 
+### 조치 현황 (2026-09-21 갱신)
+
+- **Q1 연동기사 본인 달력·월 정산 카드 / Q2 기사 본인 매출:** 조치 완료 — react-app `1413e8e`(스코프 수정 묶음 1, 보리 브라우저 확인·최종 승인). 달력에 `clientScopeKey`를 넘기고, 매출 운송료가 배정 차량 스코프 단가를 쓰게 함.
+- **Q3 운송비 내역서 / Q3 관련 🔧(reportSummary):** 미조치 — 스코프 수정 묶음 2(roadmap). `finance-parity.md` F-06(서브차량 내역서 합계 원본 100,000원 vs react 110,000원)과 같은 코드 영역이라 함께 조사.
+- 위 표·§3~§5의 판정은 **조사 시점(2026-09-21 오전) 기준**이며 그대로 두었다.
+
 ## 2. 요약 개수
 
 검색식은 지시서 그대로 `getFixedRouteClient|resolveFixedUnitPrice|fixedRouteLinked|fixedUnitPrice|palletOn|palletPrice|scopedToVehicleNumber`를 사용했다. 테스트·테스트 지원·테스트 fixture 125줄은 아래 본표에서 제외했고, 프로덕션 142줄은 한 줄도 빼지 않고 한 행씩 실었다.
