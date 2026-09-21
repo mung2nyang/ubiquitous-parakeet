@@ -86,15 +86,22 @@
 
 아래는 🟡 차이와 ❓ 보류만 모은 목록이다. 모두 **미확인 관찰**이며, 수정 여부를 뜻하지 않는다.
 
-| ID | 판정 | 확인이 필요한 내용 | 원본 증거 | React 증거 |
-|---|---|---|---|---|
-| F-01 | 🟡 차이 | 소유주 월 상세의 `salary` 필드 추가와 `detailIndex`→`detailId` 구조를 현재 계약으로 볼지 | `finance.js:932-1085` | `react-app/src/domain/financeOwnerDetail.js:35-162` |
-| F-02 | 🟡 차이 | 상세 ID가 없는 과거 미수 자료도 표시해야 하는지 | `finance.js:1202-1257` | `react-app/src/domain/financeReceivables.js:40-96` |
-| F-03 | 🟡 차이 | 휴무일에 운행 자료가 함께 남아 있을 때 합산할지 제외할지 | `script.js:3321-3435` | `react-app/src/domain/monthSettlement.js:80-85` |
-| F-04 | 🟡 차이 | 음수 운송료 표시를 그대로 둘지 0원으로 제한할지 | `script.js:255-262` | `react-app/src/domain/calendarBadges.js:37-40` |
-| F-05 | 🟡 차이 | 빈 값·잘못된 지급기한의 D-day 표시 기준 | `script.js:5542-5554` | `react-app/src/domain/receivables.js:54-61`, `react-app/src/domain/receivables.js:97-103` |
-| F-06 | 🟡 차이 | 보조차량 보고서 합계에 차량 수수료를 반영하는 현재 기준 | `script.js:5020-5031`, `script.js:5279-5292` | `react-app/src/lib/reportSummary.js:64-79`, `react-app/src/lib/reportDetail.js:73-130` |
-| F-07 | ❓ 보류 | 동일한 Supabase 시험 환경에서 세금계산서 초기 적재·저장·삭제 동기화 검증이 필요한지 | `finance-sync.js:35-130` | `react-app/src/domain/taxInvoices.js:72-112`, `react-app/src/lib/syncTaxInvoicesTable.js:21-66` |
+| ID | 판정 | 확인이 필요한 내용 | 원본 증거 | React 증거 | 보리 결정 (2026-09-21) |
+|---|---|---|---|---|---|
+| F-01 | 🟡 차이 | 소유주 월 상세의 `salary` 필드 추가와 `detailIndex`→`detailId` 구조를 현재 계약으로 볼지 | `finance.js:932-1085` | `react-app/src/domain/financeOwnerDetail.js:35-162` | ⚪ 현재 유지(원칙 확인) `[확인: 2026-09-21 보리 설명]` — 운송내역서는 회사에 제출하는 서류(기사가 벌어온 돈을 차주가 회사에 지급 요청하는 영수증)라 **기사 급여·수수료 항목을 넣지 않는다.** 이미 운송내역서 경로에는 `salary`가 없음(`reportSummary.js`·`reportDetail.js`). 매출 화면의 월급제 기사 급여 줄(`OwnerMonthlyCards.jsx:132-133`)은 차주·기사 본인 돈 흐름이라 유지 — AI 해석(보리의 업무 흐름 설명에서 도출, 다르면 정정) |
+| F-02 | 🟡 차이 | 상세 ID가 없는 과거 미수 자료도 표시해야 하는지 | `finance.js:1202-1257` | `react-app/src/domain/financeReceivables.js:40-96` | 🔧 원본 방식으로 변경 `[확인: 2026-09-21 보리]` — 상세 ID 없는 옛 미수 자료도 표시 |
+| F-03 | 🟡 차이 | 휴무일에 운행 자료가 함께 남아 있을 때 합산할지 제외할지 | `script.js:3321-3435` | `react-app/src/domain/monthSettlement.js:80-85` | 🔧 원본 방식으로 변경 `[확인: 2026-09-21 보리]` — 휴무 표시와 운행 자료가 함께 남은 날도 합산 |
+| F-04 | 🟡 차이 | 음수 운송료 표시를 그대로 둘지 0원으로 제한할지 | `script.js:255-262` | `react-app/src/domain/calendarBadges.js:37-40` | 🔧 원본 방식으로 변경 `[확인: 2026-09-21 보리]` — 음수 운송료도 그대로 표시(예: -5원) |
+| F-05 | 🟡 차이 | 빈 값·잘못된 지급기한의 D-day 표시 기준 | `script.js:5542-5554` | `react-app/src/domain/receivables.js:54-61`, `react-app/src/domain/receivables.js:97-103` | ⚪ 현재 방식 유지 `[확인: 2026-09-21 보리]` — 빈 값·잘못된 지급기한의 D-day는 빈 문자열 |
+| F-06 | 🟡 차이 | 보조차량 보고서 합계에 차량 수수료를 반영하는 현재 기준 | `script.js:5020-5031`, `script.js:5279-5292` | `react-app/src/lib/reportSummary.js:64-79`, `react-app/src/lib/reportDetail.js:73-130` | ⚪ 현재 방식 유지 `[확인: 2026-09-21 보리 설명]` — 기사차량 수수료는 차주가 기사에게 지급하는 월급/매출 몫이라 회사 제출용 운송내역서에서 차감하지 않는다(= 원본 메인차량 방식을 서브차량에도 적용). 원본이 서브차량 내역서에서만 기사차량 수수료를 차감한 것(`script.js:5018-5031`)은 채택하지 않음 — 합계 원본 100,000원 vs react-app 110,000원 차이는 이 때문이며 react-app이 맞다. 스코프 수정 묶음 2는 스코프 문제만 고친다 |
+| F-07 | ❓ 보류 | 동일한 Supabase 시험 환경에서 세금계산서 초기 적재·저장·삭제 동기화 검증이 필요한지 | `finance-sync.js:35-130` | `react-app/src/domain/taxInvoices.js:72-112`, `react-app/src/lib/syncTaxInvoicesTable.js:21-66` | ⚪ 패스(추가 조사 안 함) `[확인: 2026-09-21 보리]` — 서버 동기화는 모바일 실사용 테스트 중 이상이 보이면 그때 고친다. 순수 계산 부분(`resolveTaxInvoiceVehicleId`)은 ✅ |
+
+### 결정 요약 (2026-09-21, 진행 중)
+
+- 🔧 원본 방식으로 변경 3건: **F-02**(상세 ID 없는 옛 미수 표시), **F-03**(휴무일 운행 자료 합산), **F-04**(음수 운송료 표시) — `docs/roadmap.md`
+- ⚪ 현재 방식 유지 3건: F-01(운송내역서에 기사 급여 미포함 원칙), F-05, F-06(운송내역서에서 기사차량 수수료 미차감 — react-app이 맞음)
+- ⚪ 패스 1건: F-07(세금계산서 서버 동기화 — 실사용 중 이상이 보이면 수정)
+
 
 ## 5. 판정 요약
 
