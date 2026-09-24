@@ -1,55 +1,116 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 이관 마무리 ② — 세금계산서 작성 모달 세무정보 복원 + 거래처 "작성 완료" 힌트 (이관 감사 5-5)
+## 이관 마무리 ③ 11-5 차량별 사업자정보 + 11-6 정산 계좌 — 착수지시서 (작성 2026-09-24, **보리 확정 2026-09-24 — §9 제안대로 진행**)
 
-**근거:** `docs/migration-audit.md` 5-5(🟡 차이 → 보리 "원본 복원 필요" — `docs/roadmap.md` "이관 마무리 범위" ②).
-원본 계산서 작성 모달(`index.html:2334-2370`)은 상호·사업자등록번호·대표자·**이메일**·**사업장 주소**·**업태**·**종목**·작성일자·품목·금액·비고를 편집한다.
-react-app `TaxInvoiceDraftModal.jsx`(58줄)는 상호(읽기전용)·사업자등록번호·대표자·품목·작성일자·금액·비고만 있고 **이메일·주소·업태·종목 입력 UI가 없다.**
+> **수정 착수지시서 (2026-09-24, 보리 검증 중 지적)** — 1차 구현(계좌 3칸은 스위치와 무관한 항상 입력칸)을 보리가 써 보니
+> "차주 사업자와 동일을 켜 뒀는데 은행·계좌만 비어 있다"가 어색하다는 지적. 보리 결정: **계좌는 항상 사업자 명의자의 계좌**로 간다
+> (사업자는 차주와 같은데 계좌만 기사 것인 경우는 없음 `[확인: 2026-09-24 보리]`). 아래 §2~§4·§8·§9는 이 수정 반영본이다.
+> 1차 구현(코드·테스트 이미 작성, 미커밋)에서 바뀌는 부분만 §3 표에 "수정" 표시. **재승인 전에는 코드를 건드리지 않는다.**
 
-### 1. 현재 상태 (증거 병기)
-- **데이터·저장 경로는 이미 다 있다(새 필드·새 레이어 없음):**
-  - 타입: `InvoiceLike`에 `clientAddress`·`clientBizType`·`clientBizItem`·`clientEmail`이 이미 선언됨(`financeTaxInvoiceEntries.js:44-49`).
-  - 초기값: 거래처 발행이면 `client.taxAddress`/`taxBizType`/`taxBizItem`/`taxEmail`에서, 기사 매입이면 `car.personalInfo`에서 이미 채워 옴(`financeTaxInvoiceEntries.js:75-101` `getTaxInvoicePartyInfo`).
-  - 저장: 거래처 발행 저장 시 이미 이 4개 필드를 거래처 레코드로 되돌려 쓴다(`taxInvoiceActions.js:36-43` `requestClientTaxInfo` patch에 `taxEmail`·`taxAddress`·`taxBizType`·`taxBizItem` 포함). 기사 매입은 지금도 `clientBizNumber`/`clientRepresentative`처럼 계산서 레코드 자체에만 저장되고 차량으로 되돌리지 않음(기존 동작, 이번에 안 바꿈).
-  - **품목 기본값도 이미 있음** — 원본처럼 "화물운송료"를 하드코딩하지 않고 흐름별로 다르게 자동 세팅됨(`financeTaxInvoiceEntries.js:55-57` `getTaxInvoiceFlowMeta`, `TaxInvoicePage.jsx:85`). **이번 작업 범위 아님.**
-- **없는 건 모달의 입력칸 4개뿐.** `TaxInvoiceDraftModal.jsx`에서 `clientEmail`/`clientAddress`/`clientBizType`/`clientBizItem`을 렌더하는 JSX 없음(파일 전체 grep 결과 0건).
-- **"작성 완료" 힌트는 원본에 없던 신규 기능**(원본 `index.html`·`*.js`에 "작성 완료"·"정보 작성" 문자열 검색 0건 — 보리가 이번에 새로 요청).
-  거래처의 세무정보(`bizNumber`·`taxRepresentative`·`taxAddress`·`taxBizType`·`taxBizItem`·`taxEmail`)는 이미 거래처 등록 폼(`ClientFormModal.jsx:31-70`)에서 전부 입력 가능하다 — 그런데 다 채웠는지 거래처 목록에서 확인할 방법이 없다.
+지난 슬라이스 5-5 착수지시서는 `git show 606fbec -- docs/report.md`.
 
-### 2. 목표 상태
-- 세금계산서 작성 모달(매출·매입·수수료 공통)에서 이메일·사업장 주소·업태·종목을 직접 입력·수정할 수 있다(원본과 동일한 3그룹 배치: 대표자+이메일 한 줄, 업태+종목 한 줄, 주소 단독 줄).
-- 거래처 목록 카드에서, 그 거래처의 세무정보 6칸(사업자번호·대표자·주소·업태·종목·이메일 — 계산서 작성에 실제로 쓰이는 세트와 동일)이 전부 채워져 있으면 "정보 작성 완료" 배지가 보인다. 하나라도 비어 있으면 안 보인다.
+### 1. 현재 상태 (원인)
 
-### 3. 건드릴 파일 (수정 2 + 테스트 2)
-1. `react-app/src/components/TaxInvoiceDraftModal.jsx`(58줄) — `personal-inline-fields` 재사용해 대표자 옆 이메일, 업태+종목 묶음, 주소 단독 `form-group` 추가.
-   기존 `clientBizNumber`/`clientRepresentative`와 같은 `onChange={(e) => onChange({ ...modalItem, clientXxx: e.target.value })}` 패턴 그대로. 증가 약 25줄 → ~83줄(200 이내).
-2. `react-app/src/components/clients/ClientListItem.jsx`(60줄) — 파일 내 지역 함수 `hasCompleteTaxInfo(client)`(6개 필드 전부 비어있지 않은지만 확인하는 순수 boolean 체크, export 안 함 — 이 화면 전용)를 추가하고, 회사명 옆 `기존 client.fixedRouteLinked` 배지와 같은 자리에
-   `{hasCompleteTaxInfo(client) && <span className="management-badge tax-invoice">정보 작성 완료</span>}` 추가. 증가 약 8줄 → ~68줄(200 이내). **`domain/clients.js`에 안 넣는 이유:** 그 파일은 이미 §6 예외로 243줄(승인 한도 ~250)까지 차 있어 새 함수를 더 넣을 여유가 빠듯하고, 이 체크는 이 카드 표시 전용이라 재사용처가 없음.
-3. 신규 테스트 `react-app/src/components/TaxInvoiceDraftModal.test.js` — `ExpenseFormModal.test.js`와 같은 직접 렌더 패턴으로 이메일·주소·업태·종목 입력이 렌더되는지, 입력 시 `onChange`가 해당 필드만 바꿔 호출되는지 확인.
-4. 신규 테스트 `react-app/src/components/clients/ClientListItem.test.js` — 6칸 모두 채운 거래처는 배지가 보이고, 하나라도 비면 안 보이는 것을 확인.
+- **계산·저장 쪽은 이미 준비돼 있고, 입력하는 화면만 없다.**
+  - 읽는 쪽: `domain/cars.js:187-210` `getCarBusinessInfo`·`:220~` `getVehicleSupplierIdentity`가 `car.businessInfo`를 읽어
+    세금계산서(매출) 공급자를 정한다(`financeTaxInvoiceGroups.js:58,190`). 값이 없으면 항상 "차주와 동일"로 처리된다.
+  - 기사 매입 계산서 상대방 정보는 `financeTaxInvoiceEntries.js:91` `getTaxInvoicePartyInfo`가 `car.personalInfo`에서 읽는다.
+  - 저장: 차량은 서버 `vehicles.raw`에 통째로 들어가고(`lib/cloudStorage.js:96` `raw: car`), 불러올 때
+    `hydrateMergeCars.js:104-109`가 `businessInfo`·`personalInfo`를 검증 후 복원한다. 허용 키도 이미 등록돼 있다
+    (`store/persistDomainRecords.js:33-42`, `bank`·`account`·`accountHolder` 포함).
+  - 입력 화면: react-app 어디에도 `businessInfo`·`bank`·`accountHolder`를 쓰는 입력이 없다(src 전체 grep, 쓰는 곳 0건).
+- **원본 동작**(`car-management.js:300-345`, `script.js:4803-4815`):
+  - 기사차량마다 "내 사업자 정보와 동일" 스위치(기본 켜짐). 끄면 상호·사업자번호·대표자·주소·업태·종목·이메일 입력.
+    켜져 있으면 값을 복사해 두지 않고 표시만 한다(차주 정보가 바뀌면 자동으로 따라감).
+  - 저장할 때 사업자정보의 대표자·사업자번호를 `personalInfo`에도 복사해 기사 매입 계산서가 그대로 쓰게 한다.
+  - 정산 계좌(은행·계좌번호·예금주)는 `personalInfo`에 저장하고, 그 차량 운송비 내역서의 계좌 칸에 차주 계좌 대신 표시한다.
 
-### 4. 안 건드릴 것 (근거 병기)
-- `financeTaxInvoiceEntries.js`·`taxInvoiceActions.js`·`financeTaxInvoiceGroups.js` — 이미 4개 필드를 채우고 저장한다(위 1번 근거). 로직 변경 없음, 모달에 입력칸만 새로 연결.
-- 품목(`itemName`) 기본값 — 이미 흐름별 자동 세팅됨(`TaxInvoicePage.jsx:85`), 원본의 하드코딩 방식으로 되돌리지 않음.
-- 기사 매입 계산서의 사업자정보 저장 방식(차량으로 되돌려쓰지 않음) — 기존 동작 그대로, 11-5(차량별 사업자정보 입력 UI, 다음 슬라이스 후보)와 합쳐지는 부분이라 이번엔 손대지 않음.
-- `ClientFormModal.jsx` — 세무정보 입력은 이미 다 있다(§1 근거). 손댈 이유 없음.
+### 2. 목표 (기대 동작)
 
-### 5. 실패 시 처리
-새 필드·저장소·레이어 없음 — 이미 있는 `clientEmail`/`clientAddress`/`clientBizType`/`clientBizItem`을 모달에서 입력만 가능하게 한다. 문제가 생기면 `TaxInvoiceDraftModal.jsx`를 되돌리면 "입력칸 없음" 상태로 복귀하고 이미 저장된 값은 그대로 남는다. 배지는 순수 표시 로직이라 되돌려도 다른 화면에 영향 없음.
-플레이북: `domain/finance*` 근처지만 이번엔 `financeTaxInvoiceEntries.js`/`taxInvoiceActions.js` 자체는 안 바꾸고 모달 UI만 바꾼다 — 그래도 저장 흐름과 맞닿아 있어 착수 전 `docs/testing-playbook.md` 열람.
+보리 결정(2026-09-21): **입력 위치는 "기사 관리" 화면 하단, 계좌는 사업자정보 아래**, 원본의 "기존/새 정보" 선택은 없앤다.
 
-### 6. §6 200줄 확인
-`TaxInvoiceDraftModal.jsx` 58 → ~83, `ClientListItem.jsx` 60 → ~68 모두 200줄 이내로 예외 불필요.
+1. "기사 관리" 화면(`LinkedDriverManagementPage` — 연동·미연동 둘 다) 맨 아래에 **"사업자·정산 계좌 정보"** 카드를 둔다.
+   - "내 사업자 정보와 동일" 스위치(기본 켜짐) **하나가 사업자정보와 계좌를 함께 정한다.**
+   - **켜짐:** 입력칸 없이 차주 정보를 읽어 두 줄로 보여 준다 — ① 상호·사업자번호 ② 은행·계좌번호·예금주.
+     차주 사업자정보가 비어 있으면 "마이페이지 개인정보에 사업자정보를 먼저 입력해 주세요.", 차주 계좌가 비어 있으면
+     "마이페이지 개인정보에 정산 계좌를 먼저 입력해 주세요."(차주 정보가 바뀌면 자동으로 따라감).
+   - **꺼짐:** 입력칸 10개 — 상호·사업자번호·대표자·사업장 주소·업태·종목·이메일 + 은행·계좌번호·예금주(그 사업자 명의 계좌).
+   - "저장" 버튼. 성공하면 "저장했습니다." 토스트, 실패하면 기존 차량 저장과 같은 실패 토스트이고 값은 바뀌지 않는다.
+   - 화면을 다시 열면 저장한 값이 그대로 채워진다.
+2. 저장 규칙(원본 기준, 다른 점 1개는 §9):
+   - `businessInfo`: 스위치 켜짐이면 `{ sameAsOwner: true }`와 빈 칸만 저장(복사 안 함), 꺼짐이면 입력값 7개 저장.
+   - `personalInfo`: 스위치가 **꺼져 있을 때만** 대표자→`name`, 사업자번호·주소·업태·종목·이메일과 은행·계좌번호·예금주를 저장
+     (앞 6개는 기사 매입 계산서 상대방 정보용). **켜져 있으면 이 9칸 전부 비운다**(차주 것을 따라가므로 복사본을 남기지 않음).
+     그 밖의 `personalInfo` 기존 값(driverName·phone)은 보존한다.
+3. **운송비 내역서**(`lib/reportSummary.js`): 기사차량 내역서의 계좌 칸은 **그 차량이 스위치 꺼짐이고 계좌가 입력돼 있을 때만**
+   차량 값(세 칸 묶음)으로 보여 준다. 스위치 켜짐이면 `personalInfo`에 옛 계좌값이 남아 있어도 무시하고 항상 차주 계좌.
+   메인 차량 내역서는 변화 없음.
+4. 결과로 달라지는 금액 계산: **없음.** 바뀌는 것은 세금계산서의 공급자·상대방 이름·번호 표시와 묶음(사업자가 다른 기사차량은
+   원본처럼 별도 공급자로 따로 묶임 — `getVehicleSupplierIdentity` 기존 로직), 내역서 계좌 칸뿐.
 
-### 기대 동작 (브라우저 검증 — 차주 계정, `npm run dev`)
-1. 매출/기사 매입/수수료 계산서 작성 모달을 열면 대표자 옆에 이메일, 그 아래 업태·종목, 그 아래 사업장 주소 입력칸이 보인다.
-2. 값을 입력하고 저장 → 같은 계산서를 다시 열면 값이 유지된다. 거래처 발행 건은 거래처 등록 폼에서도 같은 값이 보인다(되돌려 저장 확인).
-3. 거래처 관리 화면에서: 사업자번호·대표자·주소·업태·종목·이메일을 전부 채운 거래처 카드에 "정보 작성 완료" 배지가 보인다. 하나라도 비운 거래처는 배지가 없다.
-4. **회귀:** 기존 상호·사업자번호·대표자·품목·작성일자·금액·비고 입력/표시가 그대로 동작한다. 고정노선 연동 배지 등 기존 거래처 카드 배지들도 그대로 보인다.
+### 3. 건드릴 파일
 
-### 진행 상태 `[x]` (2026-09-24)
-코드 완료, 보리 브라우저 검증 통과 → react-app `550bca5` 커밋·push·CI 초록·§5 리뷰 7항목 이상 없음·보리 최종 승인. 모달 58→78줄, 카드 60→71줄. `npm test`(unit 661+화면 179)·`tsc` 0에러.
-수정 코드를 되돌리면 새 테스트 3개 FAIL 확인(나머지 1개는 "배지 없음" 확인이라 원래도 통과). CSS 변경 없음(기존 `personal-inline-fields`·`management-badge tax-invoice` 재사용).
+| 파일 | 내용 | 줄 수(현재→예상) |
+|---|---|---|
+| `src/domain/carBusinessInfo.js` (신규, 1차 작성됨) | 차량 → 입력폼 값 변환, 입력폼 → `businessInfo`·`personalInfo` 적용(순수 함수). **수정:** 스위치 켜짐이면 계좌 3칸도 비움, 폼 복원도 켜짐이면 계좌 빈 값 | 84 (변화 ±5) |
+| `src/lib/vehicleMutations.js` | `requestCarBusinessInfoSave` 추가 — 기존 `requestVehicleSave`와 같은 순서(차단 사유 확인 → 로그인 시 서버 먼저 `upsertVehicleFromList` → 성공 후 `commitBatch`, 게스트는 `commitBatch`만). **수정 없음**(1차 그대로) | 191 |
+| `src/components/drivers/CarBusinessInfoSection.jsx` (신규, 1차 작성됨) | 위 카드 화면. **수정:** 켜짐일 때 계좌 줄 추가·계좌 입력칸 3개를 꺼짐 블록 안으로 이동, 받는 `profile`에 은행·계좌·예금주 추가 | 111→약 120 |
+| `src/components/drivers/LinkedDriverManagementPage.jsx` | import 1줄 + 카드 1곳 배치. **수정 없음**(1차 그대로) | 200 |
+| `src/lib/reportSummary.js` | 기사차량이면 계좌 3칸을 차량 값 우선으로. **수정:** 스위치 켜짐(`businessInfo`가 없거나 `sameAsOwner`)이면 차량 값 무시 | 117→약 120 |
+| 테스트 | `carBusinessInfo.test.js`·`CarBusinessInfoSection.test.js`·`reportSummary.test.js` 수정, `vehicleMutations.businessInfo.test.js`는 계좌가 켜짐에서 비워지는 기대값만 조정 | — |
 
-### 문서 반영 (승인 후 문서 커밋)
-`docs/roadmap.md`: 5-5 `[x]`, `docs/migration-audit.md`: 5-5 조치 완료, `STATUS.md` `[x]`.
+CSS는 기존 공용 클래스(`input-box` 등)를 재사용하고, 부족하면 신규 `car-business-info.css`에만 추가한다
+(`linked-driver.css`는 180줄이라 늘리지 않음).
+
+### 4. 안 건드릴 것 (근거)
+
+- `domain/cars.js`(240줄, §6 초과 파일) — 읽는 쪽은 이미 `businessInfo`를 처리함(`cars.js:187-210`). 저장은 새 함수가 하므로 수정 불필요.
+- `financeTaxInvoiceGroups.js`·`financeTaxInvoiceEntries.js` — 이미 `businessInfo`·`personalInfo`를 읽음(`:58,190`·`:91`). 계산 코드 무수정.
+- `hydrateMergeCars.js`·`persistDomainRecords.js`·`cloudStorage.js` — 복원·허용 키·서버 저장이 이미 두 필드를 다룸(`:104-109`·`:33-42`·`:96`).
+- `CarFormModal.jsx`·`CarListPage.jsx` — 보리 결정대로 입력 위치는 기사 관리 화면(roadmap "이관 마무리 범위").
+- DB 스키마 — `vehicles.raw`에 이미 저장되므로 변경 없음.
+- **범위 밖(기록만):** ① 기사 본인 계정 화면은 서버 요약 함수에 이 값들이 없어 안 보임(roadmap 4번 산재보험 건과 같은 원인).
+  ② 원본의 "연동 시 차주 사업자정보를 기사 쪽에 자동 입력"(`driver-link.js:1031-1067`)은 이번에 안 다룸.
+
+### 5. §8 확인 5문
+
+1. 구독: 화면은 `useOwnerCars`로 구독 — 저장 후 자동 갱신.
+2. 값 출처: Store의 `cars`(로그인이면 서버 `vehicles.raw` 복원값).
+3. 쓰기 창구: 새 `requestCarBusinessInfoSave`(request*) — 배럴 `save*` 우회 없음.
+4. 겹칠 때: `runOwnerSaveSerialized`로 같은 차주의 다른 저장과 줄 세움. 차량 수정 화면과 동시에 저장하면 나중 저장이 이김(기존 차량 저장과 동일).
+5. 권한: 차주만 자기 `vehicles` 행을 씀(기존 정책 그대로). 기사는 읽지 못함 — 원본도 기사 쪽에서 이 입력을 하지 않음.
+
+### 6. 실패 시 처리 — 신규 레이어 없음
+
+기존 차량 저장과 같은 방식만 쓴다: 차단 사유가 있으면 서버 호출 0회·값 무변경. 서버 저장 실패·세션 바뀜이면 Store·localStorage 무변경 +
+실패 토스트. 새 큐·재시도·임시 저장소 추가 없음(§7).
+
+### 7. §6 200줄
+
+바뀌는 파일 전부 200줄 이하 유지(위 표). 200줄 넘는 `cars.js`·`ReportPage.jsx`(250)는 건드리지 않는다.
+
+### 8. 검증
+
+- 로컬 `npm test` 통과 + 새 테스트는 수정 코드를 되돌리면 FAIL하는지 확인(플레이북 §6).
+- 테스트 항목: 스위치 켜짐 저장 시 사업자·계좌 모두 복사 안 함(비움) / 꺼짐 저장 시 `personalInfo`에 사업자·계좌 복사 /
+  기존 `personalInfo` 다른 값 보존 / 켜짐 화면에 차주 상호·번호와 차주 은행·계좌·예금주가 표시되고 입력칸은 없음 /
+  차단 상태에서 서버 호출 0회·값 무변경 / 서버 실패 시 값 무변경 / 내역서: 꺼짐+차량 계좌면 차량 값, 켜짐이면 옛 계좌값이
+  남아 있어도 차주 값, 비면 차주 값.
+- **브라우저 검증(보리):** ① 미연동 기사 관리 화면 맨 아래 카드 확인 — 스위치 켜짐일 때 차주 사업자·계좌가 두 줄로 보이고
+  입력칸이 없는지. ② 스위치를 끄고 사업자정보·계좌 입력·저장 → 새로고침 후 값 유지.
+  ③ 세금계산서 화면에서 그 차량이 별도 공급자로 따로 묶이는지. ④ 그 차량 운송비 내역서 계좌 칸이 입력한 계좌인지.
+  ⑤ 스위치를 다시 켜고 저장하면 세금계산서가 원래대로(차주와 한 묶음) 돌아오고 내역서 계좌도 차주 계좌로 돌아오는지.
+  ⑥ 연동 기사 관리 화면에서도 카드가 보이는지.
+
+### 9. 확인이 필요했던 것 (1개) — 결정: 제안대로(스위치 꺼짐일 때만 채움) `[확인: 2026-09-24 보리]`
+
+- 위 2-2의 "스위치가 꺼져 있을 때만 기사 매입 계산서 상대방 정보를 채움" 규칙은 **원본과 조금 다르다.** 원본은
+  "새 정보"를 고르면 스위치가 켜져 있어도 차주 본인의 대표자·사업자번호를 기사 매입 계산서 상대방에 복사했다(차주가
+  자기 자신에게 계산서를 받는 모양). react-app은 "기존/새 정보" 선택을 없애므로, 켜져 있으면 비워 두는 쪽이 지금 화면과
+  같은 결과라 안전하다고 판단했다. 금액은 어느 쪽이든 같고 상대방 이름·번호 표시만 다르다. 이대로 진행할지 확인 부탁드린다.
+- **추가 결정 2026-09-24 `[확인: 보리]`:** 계좌는 항상 사업자 명의자의 것 — 스위치 켜짐=차주 계좌(자동 표시·복사 안 함),
+  꺼짐=그 사업자 명의 계좌 직접 입력. "사업자는 차주와 같은데 계좌만 기사 것"인 경우는 없음(원본의 계좌 별도 선택은 두지 않음).
+  기존 `personalInfo`에 옛 방식으로 저장된 계좌값(켜짐인데 계좌가 있는 경우)은 내역서에서 무시되고, 다음 저장 때 비워진다.
+- **범위 밖(별건, 미확인 관찰):** 차주 개인정보의 대표자명·예금주가 서버(`profiles`)에 저장·복원되는지는 별도 확인 중
+  (`profileCloudCommit.js`·`hydrateMerge.js`에 두 칸이 없어 보임). 이번 슬라이스와 무관하게 다루지 않는다. 다만 켜짐 화면이 보여 주는
+  차주 예금주는 Store의 프로필 값이라, 그 별건이 고쳐지기 전엔 새로고침 후 빈칸일 수 있다.
