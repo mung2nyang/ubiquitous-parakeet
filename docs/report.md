@@ -1,65 +1,63 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 스코프 수정 묶음 2 — 운송비 내역서가 그 차량의 고정노선 단가를 쓰게
+## 이관 마무리 ① — 기사차량 폼에 "산재보험 적용" 토글 복원 (이관 감사 11-7) `[x]`
 
-**근거:** `docs/scope-audit.md` Q3(🔧 관찰: `reportSummary.js:36,66-68`, 서브차량 내역서 라우트), 보리가 브라우저로 확인(2026-09-21).
-묶음 1(`1413e8e`)의 짝이다. **범위는 스코프 문제 하나뿐**이다 — 운송내역서는 회사에 제출하는 영수증이라 기사차량 수수료·기사 급여를 넣지 않는다는
-결정(`docs/finance-parity.md` F-06, `docs/sot.md` §0 "업무 흐름")에 따라 **수수료 계산은 지금 방식 그대로** 둔다.
+**완료:** react-app `fc4ec83`. `npm test`(unit 661+화면 175)·`tsc` 0에러·strict 진단 418 불변·revert-and-confirm-fail(새 테스트 4개 FAIL 확인)·
+CI 초록·보리 브라우저 실검증·§5 리뷰·최종 승인 완료(2026-09-24). 확인 필요 ①②는 보리가 "1번승인,2번 동의"로 답변 완료 — 200줄 초과 두 파일
+소량 추가 허용, 기사 본인 세션 반영은 별도 DB 슬라이스로 분리(`docs/roadmap.md` 등재).
+
+**근거:** `docs/migration-audit.md` 11-7(❌ 없음 → 보리 "복원 필요", 정산 금액에 영향이라 이관 마무리 1순위 — `docs/roadmap.md` "이관 마무리 범위").
+원본은 기사차량(서브)에만 이 토글이 있었다: "산재보험 적용 — 기사차량의 산재보험 정산에 반영합니다."(`index.html:2033-2041`, 저장 `car-management.js:294,364`, 불러오기 `:786`, 기본 꺼짐, 메인 차량은 항상 false).
 
 ### 1. 현재 상태 (증거 병기)
-- 내역서 요약 계산 `buildMonthReport`([reportSummary.js:64-79](react-app/src/lib/reportSummary.js:64))는 고정노선을
-  `resolveFixedUnitPrice({ clients })`·`getFixedRouteClient({ clients })`로 **차량번호 없이(=차주 스코프 없는 것만)** 찾는다
-  ([:66-67](react-app/src/lib/reportSummary.js:66)). 그 값이 일자별 표(`buildReportDayRows`)와 월 정산(`monthSettlementSummary`)에 그대로 들어간다.
-- 내역서 화면 `ReportPage`는 **일지는 맞게 고른다** — `logKey`(`/app/logs/:logId/report`의 차량번호 또는 `main`)로 `workData`를 고르고
-  `cars`를 그 차량 하나로 좁힌다([ReportPage.jsx:34-57](react-app/src/components/ReportPage.jsx:34)). 그런데 단가는 위처럼 차량을 모른다.
-- 결과(2026-09-21 재현 스크립트): **차주 계정의 서브차량 내역서** — 서브 스코프 10만원/차주 25만원, 고정운행 1회 → 거래처별 `{차주고정: 250,000}`,
-  즉 **차주 단가로 계산**. **기사 본인 내역서** — 기사 세션은 스코프 거래처만 있어 **고정 기본운임 0원·합계 0원**.
-- 이미 스코프가 맞는 곳(`CalendarPage`·`financeCore`·`financeOwnerDetail`·`financeTaxInvoiceGroups`·`driverSelfRevenue`)과 달리 내역서만 남았다.
+- **계산부는 이미 `car.insuranceOn`을 읽는다** — 켜져 있어야만 콜상세에 입력한 산재보험료(`CallDetailForm.jsx:195` → `insuranceFee`)가 기사 정산에서 차감된다:
+  `driverRevenueShareExpense.js:37`(차주 기사 지급 지출) · `financeTaxInvoiceGroups.js:99`(기사 매입 계산서)·`:174`(차주가 보는 연동기사 정산 상세) · `driverSelfRevenue.js:72`(기사 본인 매출).
+- **그런데 값을 켜는 화면이 없다.** `CarFormModal.jsx`(146줄)에 토글이 없고, `upsertCar`([cars.js:101](react-app/src/domain/cars.js:101))의 `driverFieldsFromDraft`가
+  `insuranceOn`을 다루지 않는다(신규 등록은 미설정, 수정은 기존 값을 spread로 보존만). 결과적으로 새로 등록한 기사차량은 산재보험이 **항상 차감 안 됨**.
+- **데이터 경로는 이미 갖춰져 있다(새 저장 필드·서버 변경 없음):** 로컬 persist 허용(`persistDomainRecords.js:40,78`), hydrate 복원(`hydrateMergeCars.js:90-91`),
+  서버 저장은 차량 전체를 `raw`로 통째 저장(`cloudStorage.js:96` `raw: car`).
+- **기사 본인 세션의 차량은 다른 경로다:** 서버 RPC `get_assigned_vehicle_summary`(`driverLinkRpc.js:117`) 요약 컬럼으로 만든다(`carFromAssignedSummary`,
+  `hydrateEmployedDriver.js:33-51`) — 여기엔 `insuranceOn`이 없다. 이 화면(기사 본인 매출)까지 반영하려면 **DB 함수 변경**이 필요해 이번 범위 밖(아래 4번).
 
 ### 2. 목표 상태
-- 서브차량 내역서(차주 계정)의 고정노선 기본 운송료가 **그 차량 스코프 단가×횟수**(10만원)다. 스코프 고정노선이 없으면 차주 것으로 fallback(기존과 동일).
-- 기사 본인 내역서가 **본인 스코프 단가**로 나온다(0원이 아님).
-- 차주 메인 내역서·상세(거래처별) 내역서·PDF/이미지/공유 흐름은 **결과 동일**.
-- **수수료 관련 계산은 바꾸지 않는다**(기사차량 수수료 미차감 유지 — 위 근거).
+- 차주가 **기사차량** 등록·수정 폼에서 "산재보험 적용" 토글을 켜고 저장할 수 있고, 다시 열면 값이 유지된다(로컬·로그인 계정 모두, 새로고침·다른 기기 포함).
+- 켜면 콜상세의 산재보험료가 차주 화면의 기사 정산·기사 매입 계산서·연동기사 정산 상세에서 **기존 계산 코드 그대로** 차감된다(계산부는 안 바꿈).
+- **메인 차량 폼에는 토글이 안 보이고** 저장값은 항상 false(원본과 동일).
 
-### 3. 건드릴 파일 (수정 1 + 테스트 1)
-1. `react-app/src/lib/reportSummary.js`(101줄) — `buildMonthReport`에서 이미 계산하는 `mainCar`(`cars`에서 고른 그 내역서의 대상 차량, 현재 `:80`)를
-   먼저 구하고 **`mainCar?.type === 'sub'`일 때만 그 차량번호**를 고정노선 스코프 키로 `resolveFixedUnitPrice`·`getFixedRouteClient`(`:66-67`)에 넘긴다.
-   메인 차량이면 스코프 키 없음(지금과 동일). **함수 시그니처 불변**(파라미터 추가 없음).
-2. 테스트: `react-app/src/lib/report.test.js`(이미 `buildMonthReport` 사용) — 새 파일 없음.
+### 3. 건드릴 파일 (수정 3 + 테스트)
+1. `react-app/src/domain/cars.js`(**237줄, 이미 200 초과**, 파일 머리말에 "§6 예외" 기록 있음) — `CarUpsertDraft`에 `insuranceOn?: boolean` 추가,
+   `driverFieldsFromDraft`가 서브차량이면 `insuranceOn: !!draft.insuranceOn`, 메인이면 `false`를 반환. 증가 약 3줄 → ~240줄(≤250 응집도 예외).
+2. `react-app/src/components/cars/CarFormModal.jsx`(146줄) — `CarFormDraft`에 `insuranceOn?: boolean`, **기사차량(`isSub`) 정산 그룹 아래**에 토글 행 추가
+   (라벨 "산재보험 적용", 설명 "기사차량의 산재보험 정산에 반영합니다.", 기존 `setting-item`/`switch`/`slider` 클래스 재사용 — `ClientTradeFields.jsx`와 같은 모양). 증가 약 14줄 → ~160줄.
+3. `react-app/src/components/cars/CarListPage.jsx`(**231줄, 이미 200 초과**) — `openEdit`이 만드는 draft에 `insuranceOn: !!car.insuranceOn` 1줄(수정 화면에서 값 불러오기).
+   `emptyDraft`는 옵셔널이라 미수정. 증가 1줄 → 232줄.
+4. 테스트(새 파일 없음): `domain/cars.test.js`에 `upsertCar` 케이스 추가 — 서브차량 신규 등록 시 `insuranceOn: true` 저장, 메인은 항상 `false`, 수정 시 토글 끄기 반영, draft에 값 없으면 `false`.
 
-### 4. 안 건드릴 파일 (근거 병기)
-- `ReportPage.jsx`(**250줄, 이미 200 초과**) — 수정 불필요: `cars`를 이미 그 차량으로 좁혀 `buildMonthReport`에 넘기므로(`ReportPage.jsx:44-57`) 위 1번만으로 서브·기사 본인 내역서가 모두 맞는다.
-  200줄 초과 파일을 건드리지 않는다(§6).
-- `reportDetail.js` — 고정노선·단가를 읽지 않는다(`grep fixed|unitPrice|resolveFixed` 0건, `buildDetailReport`는 `{ clients }`만 받아 거래처 필터).
-- `domain/monthSettlement.js` — `car`·`logId` 옵션으로 수수료를 다루는 부분은 이번에 넘기지 않는다(F-06 결정). **F-03(휴무일 합산) 수정은 별도 슬라이스**이며 그때 내역서 합계가 영향받는지 재검증한다.
-- `domain/clients.js` — 이미 스코프 인자 지원(`clients.js:23-42`).
-- `hydrateEmployedDriver.js` — 기사 세션에 내려오는 거래처는 그대로(고정노선은 차주·기사 둘 다 설정 가능 — 같은 스코프 레코드 공유).
+### 4. 안 건드릴 것 (근거 병기)
+- **계산부 4곳**(`driverRevenueShareExpense.js`·`financeTaxInvoiceGroups.js`·`driverSelfRevenue.js`) — 이미 `car.insuranceOn`을 읽음(위 1번). 기존 테스트(`driverRevenueShareExpense.test.js:24,61`, `cars.test.js`)가 켠/끈 경우를 검사 중.
+- **hydrate·persist·서버 저장 경로**(`hydrateMergeCars.js`·`persistDomainRecords.js`·`cloudStorage.js`) — 이미 `insuranceOn`을 보존(1번 근거). `vehicleMutations.js`도 draft를 `upsertCar`에 그대로 넘기므로 미수정.
+- **기사 본인 세션 정산의 산재보험 반영**(`hydrateEmployedDriver.js`·RPC `get_assigned_vehicle_summary`) — 요약 컬럼에 `insuranceOn`이 없어 DB 함수 변경이 필요하다. AGENTS §9(진단 SELECT → 멱등 SQL → 사후검증)를 따라 **별도 슬라이스**로 roadmap에 등재한다.
+- 11-5 사업자정보·11-6 계좌 — "기사 관리" 화면 하단에 넣기로 한 **별도 슬라이스**(이관 마무리 ③).
+- `CarListItem.jsx`(목록 카드 표시) — 이번 범위 밖.
 
 ### 5. 실패 시 처리
-새 저장소·필드·레이어 없음(§7). 읽기 전용 계산 변경(저장·동기화 미접촉)이라 되돌리면 이전 동작(차주 단가/0원)으로 복귀, 데이터 유실 경로 없음.
-읽기/쓰기 권한(§8-5): 해당 없음. 플레이북: `lib/reportSummary.js`는 §4 트리거 경로가 아니다(`domain/finance*`·`store`·`lib/*mutation*` 아님) — 참고만.
-새 테스트가 수정 코드를 되돌리면 실제로 FAIL하는지 확인한다(플레이북 §6, 이번 슬라이스도 적용).
+새 필드·저장소·레이어 없음(§7) — 이미 있는 `insuranceOn`을 폼에서 입력·저장할 뿐이다. 문제가 생기면 3개 파일을 되돌리면 "토글 없음" 상태로 복귀하고, 이미 저장된 값은 그대로 남는다(계산부가 계속 읽음).
+읽기/쓰기 권한(§8-5): 차주가 자기 차량을 수정하는 기존 권한 그대로, 새 권한 없음. 기사 본인은 차량 폼을 열지 못한다(감사 11-2·11-3, 의도적 변경).
+플레이북: 트리거 경로(`store/**`·`lib/*mutation*`·`domain/finance*` 등)는 수정하지 않으나 **저장되는 차량 데이터에 폼 입력을 추가**하므로 `docs/testing-playbook.md`를 열람하고, §6(새 테스트가 수정 코드를 되돌리면 실제로 FAIL하는지 확인)을 적용한다.
 
 ### 6. §6 200줄 확인
-`reportSummary.js` 101 → 약 104줄. `ReportPage.jsx`(250줄)는 수정하지 않는다. 테스트 파일은 §6 예외.
+`cars.js` 237 → ~240, `CarListPage.jsx` 231 → 232는 **이미 200 초과인 파일에 소량 추가**(≤250, 응집도 예외 — 아래 "확인 필요 ①"). `CarFormModal.jsx` 146 → ~160은 200 이내.
 
-### 기대 동작 (브라우저 검증 — 차주 계정 + 기사 계정, `npm run dev`)
-**준비:** 차주 고정노선 25만원(스코프 없음) / 서브차량 스코프 고정노선 10만원 / 서브차량 일지에 고정운행 1회(이번 달). 10만원은 차주가
-"기사 관리 → 거래처"에서 설정하든 기사가 본인 거래처 화면에서 설정하든 동일.
-1. **차주 계정 — 서브차량 내역서**(`/app/logs/<차량번호>/report`): 고정노선 기본 운송료가 **100,000원**(수정 전 250,000원)이고 거래처명이 서브 스코프 거래처.
-2. **기사 계정 — 내역서**(`/app/report`): 고정 기본 운송료가 **100,000원**(수정 전 0원).
-**회귀**
-3. 차주 계정 메인 내역서: 이전과 동일(차주 25만원 기준). 서브차량에 스코프 고정노선이 없으면 차주 단가 fallback도 이전과 동일.
-4. 세부(거래처별) 내역서, PDF·이미지 저장, 공유 문구·파일: 이전과 같이 동작.
-5. **수수료:** 수수료 10% 서브차량의 내역서 합계에 **기사차량 수수료가 차감되지 않는다**(이번 변경 전후 동일 — 운송료+부가세 기준).
+### 기대 동작 (브라우저 검증 — 차주 계정, `npm run dev`)
+1. 차량 관리 → **기사차량** 수정(또는 "+ 추가"로 기사차량 등록) 폼의 "정산" 아래에 **"산재보험 적용"** 토글이 보인다. **메인 차량 폼에는 안 보인다.**
+2. 토글을 켜고 저장 → 그 차량 수정을 다시 열면 **켜져 있다.** 새로고침 후에도 유지(로그인 계정은 다른 기기에서도).
+3. **정산 반영:** 그 기사차량 일지의 콜상세에 산재보험료를 입력해 두고, "기사 관리"의 정산 요약에서 토글 **켬 = 산재보험 차감 반영 / 끔 = 차감 안 됨**을 확인. 세금계산서 "기사 매입" 항목에도 같은 차감이 반영.
+4. **회귀:** 기존 기사차량을 수정해도 다른 항목(정산 방식·수수료·기사명·연락처)이 그대로 유지되고, 메인 차량 등록·수정은 이전과 동일.
+5. **알려진 한계(범위 밖):** 기사 **본인 계정**의 매출 화면에서는 산재보험 차감이 아직 반영되지 않는다(위 4번 — DB 함수 변경 필요).
 
-### 문서 반영 (승인 후 문서 커밋 — 보리 지시: 작업 완료 뒤 **한꺼번에**)
-이 슬라이스 승인 시 아래를 한 번에 커밋한다(그 커밋에 이 지시서 포함, 비우기는 그 뒤):
-- `docs/roadmap.md`: 묶음 2 `[x]`. `docs/scope-audit.md`: Q3 조치 완료 메모. `STATUS.md`: `[x]`·완료 항목.
-- **`docs/sot.md`: scope-audit §6 규칙 초안 6개를 묶음 1·2 실제 동작 기준으로 확정해 기록**(용어는 "연동기사 본인"; 옛 "직원기사" 정산 방식과 혼동 금지)
-  + 이미 워킹카피에 있는 §0 "업무 흐름과 문서의 성격".
-- `docs/finance-parity.md`: F-01~F-06 결정 기록(이미 워킹카피 수정 중).
+### 문서 반영 (승인 후 문서 커밋)
+`docs/roadmap.md`: 11-7 `[x]` + **후속 항목 신규 등재 — "기사 본인 세션 산재보험 반영(`get_assigned_vehicle_summary` 컬럼 추가, DB 변경 §9)"**, `docs/migration-audit.md`: 11-7 조치 완료, `STATUS.md` `[x]`.
 
-### AI관찰 (미확인 — 실행 지시 아님)
-- `mainCar = cars.find(main) || cars[0]`의 `cars[0]` 폴백: 메인 차량이 없고 서브 차량만 있는 계정(비정상)이면 그 서브 번호로 스코프가 잡힌다 — 실계정에서는 발생하지 않을 것으로 보이나 확인은 못 함.
+### 확인 필요 (보리)
+① **200줄 초과 두 파일**(`cars.js` 237→~240, `CarListPage.jsx` 231→232)에 소량 추가하는 것을 응집도 예외(≤250)로 허용할지. (허용 안 하면 `CarListPage.jsx` 수정 없이 수정 폼에서 값을 못 불러오므로 슬라이스가 성립하지 않음.)
+② 기사 본인 세션 반영을 이번엔 빼고 **별도 슬라이스(DB 함수 변경)**로 두는 것에 동의하는지.
