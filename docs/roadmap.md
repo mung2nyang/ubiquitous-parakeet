@@ -13,13 +13,16 @@
 
 0. **항상 최우선 끼워넣기** — 보리가 배포 페이지 모바일 셀프 테스트에서 찾은 버그,
    현직자 조언으로 계산식이 틀린 게 확인된 것.
-   - **0-1. 개인정보 화면 로그인 상태 텍스트 입력 오류** `[확인: 2026-09-24 보리 — 1번으로 진행 요청]` —
+   - ~~**0-1. 개인정보 화면 로그인 상태 텍스트 입력 오류**~~ `[x]` — react-app `914431c`(2026-09-24). `[확인: 2026-09-24 보리 — 1번으로 진행 요청]` —
      글자가 늦게 반영되거나 사라짐. 원인: `PersonalInfoPage.jsx` `update()`가 글자마다 `saveProfile`을 부르고
      로그인 상태에선 서버 저장이 끝난 뒤에야 화면 값이 바뀜(2026-09-02 `fbe91d5`부터). 착수지시서는 `docs/report.md`.
    - **0-2. 대표자명·예금주 서버 저장·복원 확인** `[확인: 2026-09-24 보리 — 2번으로 진행 요청]` —
      `profileCloudCommit.js`·`hydrateMerge.js`에 `bizRepresentative`·`accountHolder`가 없어 새로고침·다른 기기에서
      빈칸이 될 수 있음(재현 미확인). 착수 전 Supabase `profiles` 칸 목록 조회 결과가 필요(AGENTS §9 ①).
-     0-1이 끝난 뒤 별도 슬라이스로 진행.
+     **진단 결과(2026-09-24, 보리가 Supabase에서 읽기 전용 쿼리 실행):** `profiles` 14칸 — id·account_type·name·phone·business_name·
+     business_number·business_address·business_type·business_item·business_email·bank_name·account_number·settings(jsonb)·updated_at.
+     **`business_representative`·`account_holder` 칸이 없음** → 로그인 상태에서 입력한 대표자명·예금주는 서버에 안 올라감(브라우저 재현은 미확인).
+     계획: DB에 두 칸 추가(보리가 SQL 직접 실행, DB 부분은 착수지시서 생략 `[확인: 2026-09-24 보리]`) → 서버 저장·불러오기 코드 수정.
 1. ~~이관 마무리 ② 5-5 세금계산서 모달 세무정보~~ `[x]` — react-app `550bca5`(2026-09-24).
 2. ~~이관 마무리 ③ 11-5 차량별 사업자정보 + 11-6 정산 계좌~~ `[x]` — react-app `41f9539`(2026-09-24).
 3. **테스트 원본 의존 제거** — 계산식이 바뀌기 전에 확정 규칙 기준 검사로 바꿔 둔다
