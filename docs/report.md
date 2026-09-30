@@ -1,162 +1,56 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-(지난 슬라이스 0-3-B는 `git show a4c59d8 -- docs/report.md`, 0-3-A·0-3 원인 조사는 `git show 81fb8ca -- docs/report.md`.)
+(진행 중인 슬라이스 없음. 지난 슬라이스 5-C(계정 삭제 시 운행·비용 기록 유지, DB)는 `git show 6737a35 -- docs/report.md`.)
 
-## 배포까지 순서 5-C — 기사 계정이 삭제되면 그 기사가 입력한 비용이 차주 장부에서도 사라짐 — 조사 (착수지시서 전)
+## 배포까지 순서 6 — 고정노선 자동 해제가 서버에 안 올라감 `[x]` (착수지시서 확정 2026-10-01)
 
-`[확인: 2026-09-27]` 고친다(DB 변경, AGENTS §9 절차). 근거: 5-B 조사 3 — 정비·유류·기타 `user_id`가 `profiles`에 `ON DELETE CASCADE`.
+> 완료(2026-10-01): react-app `decf4e9`, 브라우저 확인·push·CI 초록·§5 리뷰 통과·사용자 최종 승인. (사용자 화면 작업 커밋 `88af249`·`d2ca6fb` — 테스트 4줄 포함 — 은 6번과 별도.)
 
-### 조사 1 — 코드
-- 계정 삭제 경로는 **회원 탈퇴** 1곳: `PersonalInfoPage.jsx` → `lib/accountWithdrawal.js`가 서버 함수 `delete_own_account`만 호출. 무엇을 지우는지는 서버 함수 안에 있어 코드로는 모름.
-  탈퇴 안내 문구: "모든 운행 기록, 거래처, 정산 데이터가 영구적으로 삭제" — 차주에겐 맞지만, **연동 기사가 차주 차량에 입력한 공용 장부 항목**은 차주 것이기도 함(5-B 결정).
-- `daily_logs`도 `user_id`가 `profiles`에 `ON DELETE CASCADE`(5-B 조사 3) → 기사가 만든 하루 기록 줄이 지워지면 0-3과 같은 연쇄로 **그날 차주 비용·콜 상세까지** 사라질 수 있음.
-  (0-3-A 방어는 앱 일지 저장 경로에만 있어 계정 삭제 연쇄는 못 막음.)
+### 1. 원인 (코드로 확인)
+- 거래처를 "고정노선 연결"로 저장하면 `upsertClient`(`domain/clients.js:136-142`)가 **1곳 규칙**대로 같은 범위(같은 차량 범위)의 다른 거래처 고정노선을 자동으로 끈다.
+- 그런데 로그인 상태 저장(`lib/clientMutations.js:62-66` `requestClientSave`)은 서버에 **저장한 그 거래처 1개만** 보낸다(`changedIds: [result.id]`).
+  → 화면(store)에선 이전 고정노선 거래처가 꺼졌지만 서버에는 켜진 채 남음 → 새로고침하면 두 거래처가 모두 고정노선으로 돌아옴.
+- 서버 저장 함수 `saveClientsToCloud`(`lib/clientCloudSave.js:42`)는 여러 거래처 id를 받아 하나씩 저장할 수 있음 — 넘기는 목록만 빠져 있음.
+- 같은 문제의 다른 경로: 없음(grep `fixedRouteLinked: false` — 도메인 1곳 외엔 화면 빈 양식 초기값뿐).
 
-### 조사 2 — 서버 확인 요청 (AGENTS §9 ①, 읽기 전용 — SQL Editor에서 **하나씩 따로** 실행)
-```sql
--- 1) 계정(profiles·auth.users)에 묶인 모든 연결과 삭제 규칙
-SELECT conrelid::regclass AS table_name, conname, pg_get_constraintdef(oid) AS definition
-FROM pg_constraint
-WHERE contype = 'f' AND confrelid IN ('public.profiles'::regclass, 'auth.users'::regclass)
-ORDER BY 1, 2;
-```
-```sql
--- 2) 회원 탈퇴 서버 함수 내용
-SELECT pg_get_functiondef(p.oid) AS definition
-FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public' AND p.proname = 'delete_own_account';
-```
-```sql
--- 3) user_id 칸이 비어 있어도 되는지(설정 변경 방식 결정용)
-SELECT table_name, is_nullable
-FROM information_schema.columns
-WHERE table_schema = 'public' AND column_name = 'user_id'
-ORDER BY 1;
-```
+### 2. 목표
+로그인 상태에서 고정노선 거래처를 저장하면 **저장한 거래처 + 자동으로 고정노선이 꺼진 거래처들**을 서버에 함께 저장한다. 게스트 경로는 무변경.
 
-### 조사 3 — 서버 회신 결과 (2026-10-01, AI가 옆 브라우저 SQL Editor로 읽기 전용 조회 실행)
-- **탈퇴 함수:** `delete_own_account()` = `delete from auth.users where id = auth.uid()` 한 줄(SECURITY DEFINER, search_path=public). 지우는 범위는 전부 연결 설정이 결정.
-- **연결(public):** `profiles.id → auth.users` CASCADE, 그리고 `clients`·`daily_logs`·`transport_details`·`fuel_records`·`maintenance_records`·`misc_expense_records`·
-  `tax_invoices`·`vehicles`의 `user_id → profiles` 전부 CASCADE, `driver_links`의 `driver_id`·`owner_id → profiles` CASCADE, `support_inquiries.user_id → auth.users` CASCADE.
-- **user_id 비어도 되나:** `support_inquiries`만 YES, 나머지 전부 NO.
-- **앱 코드:** 이 표들의 `user_id`를 읽거나 그 칸으로 거르는 곳 없음(grep 0건) — 조회는 전부 `vehicle_id` 기준.
+### 3. "1곳 규칙 삭제"(배포 후 항목)와 묶을지 — 판단: **묶지 않음**
+1곳 규칙 삭제는 고정노선 여러 곳 허용 = 매출 계산까지 바뀌는 새 기능(로드맵 "배포 후"). 6번은 지금 규칙대로 서버와 화면을 맞추는 버그 수정.
 
-### 조사로 커진 위험 (연동 기사가 탈퇴하면)
-1. 기사가 입력한 정비/주유/기타가 차주 장부에서 사라짐(원래 5-C).
-2. 기사가 입력한 **콜 상세(`transport_details`) = 차주 차량의 운송 매출 기록**이 사라짐.
-3. 기사가 만든 **하루 기록 줄(`daily_logs`)**이 사라지면 그 줄에 묶인 그날 **차주 비용·콜 상세까지** 연쇄 삭제(0-3과 같은 구조).
-- 차주가 탈퇴하면: 차주 `vehicles`가 지워지며 그 차량의 모든 기록이 삭제 — 안내 문구대로라 의도된 동작.
+### 4. 건드릴 파일 (react-app)
+1. `src/lib/clientMutations.js`(133줄) — `requestClientSave`의 서버 저장 목록에 "이전엔 고정노선이었는데 이번 저장으로 꺼진 거래처" id를 추가(이전·다음 목록을 id로 비교하는 작은 함수 1개).
+2. 테스트: `src/lib/clientMutations.fixedRoute.test.js`(신규) — 로그인 상태에서 B를 고정노선으로 저장하면 서버에 B와 A(꺼짐)가 둘 다 저장되는지, 고정노선이 아닌 저장은 1개만인지.
 
-### 설계안 (1회 보고 — 승인 전, 아무것도 안 바꿈)
-**추천: 운행·비용 5개 표의 "쓴 사람" 연결을 `ON DELETE SET NULL`로 바꾼다** — `daily_logs`·`transport_details`·`fuel_records`·`maintenance_records`·`misc_expense_records`.
-- 계정이 지워져도 그 사람이 쓴 행은 남고 "쓴 사람"만 비워진다. 차주는 차량 소유로 계속 보고·고치고·지움(권한 규칙이 `vehicle_id` 기준 포함, 조사 3·5-B 조사 3).
-- 기사 본인 차량(연동 전 개인 차량)의 기록은 `vehicles` 삭제 연쇄로 지금처럼 지워짐 → 기사 개인 데이터는 탈퇴 시 삭제 유지.
-- `clients`·`tax_invoices`·`vehicles`·`driver_links`는 개인 데이터라 그대로(CASCADE).
-- 필요한 변경: 5개 표 `user_id`의 "비어 있으면 안 됨" 해제 + 연결 규칙 교체. 데이터 삭제·표 삭제 없음(AGENTS §9 보존적). 새로 쓰는 행은 권한 규칙상 계속 쓴 사람이 채워짐.
-- 코드 변경 없음, 기록 파일 `react-app/supabase/migrations/0008_…sql` 1개(0005~0007과 같은 방식).
-- (대안, 비추천) 탈퇴 함수가 기사 행의 쓴 사람을 차주로 바꾼 뒤 지우기 — 함수가 복잡해지고 "누가 썼는지"가 틀어짐.
-
-### 결정·확인 요청
-1. 위 추천(5개 표 SET NULL)으로 갈지. 콜 상세·하루 기록까지 포함(2·3번 위험 때문).
-2. 탈퇴 안내 문구("모든 운행 기록 … 영구적으로 삭제")를 기사 계정용으로 바꿀지 — 바꾸면 화면 문구 1곳 추가 작업.
-
-### 결정 `[확인: 2026-10-01 보리]`
-1. 추천 설계(5개 표 `ON DELETE SET NULL`)로 진행.
-2. 탈퇴 문구는 바꾸지 않음 — 대신 **연동 중에는 차주·기사 모두 탈퇴 불가**, 10-7에 포함(로드맵 7번).
-3. 새로 연동한 기사는 이전 기사 기록을 보면 안 됨 → 10-7 서버 권한 작업(로드맵 7번). 5-C 범위 아님.
-4. 연동 해제는 양쪽 동의 + 해제 후 각자 기록 보관 → 10-7(로드맵 7번). 5-C 범위 아님.
-
----
-
-## 배포까지 순서 5-C — 계정이 지워져도 운행·비용 기록은 남기고 "쓴 사람"만 비운다 (DB) `[x]` (착수지시서 확정 2026-10-01)
-
-> 완료(2026-10-01): DB 적용·사후검증, 기록 파일 react-app `4a1068a`, push·CI 초록·§5 리뷰 통과·사용자 최종 승인.
-
-### 1. 목적 (쉬운 말)
-계정이 삭제(탈퇴)돼도, 그 사람이 **남의 차량(연동 차량)에 입력한 운행·비용 기록**이 차주 장부에서 연쇄로 사라지지 않게 한다. 기록은 남고 "쓴 사람" 칸만 비워진다.
-자기 차량의 기록은 지금처럼 차량이 지워질 때 함께 지워진다.
-
-### 2. 현재 → 목표
-| 표 | 현재 | 목표 |
-|---|---|---|
-| `daily_logs`·`transport_details`·`fuel_records`·`maintenance_records`·`misc_expense_records` | `user_id` 필수 + 계정 삭제 시 **행 삭제**(CASCADE) | `user_id` 비어도 됨 + 계정 삭제 시 **`user_id`만 비움**(SET NULL) |
-| `clients`·`tax_invoices`·`vehicles`·`driver_links`·`profiles`·`support_inquiries` | CASCADE | **그대로**(개인 데이터) |
-
-### 3. 서버 변경 SQL (AGENTS §9 ②③ — 멱등, 사용자가 SQL Editor에 그대로 붙여 실행)
-```sql
-begin;
-
-alter table public.daily_logs alter column user_id drop not null;
-alter table public.daily_logs drop constraint if exists daily_logs_user_id_fkey;
-alter table public.daily_logs add constraint daily_logs_user_id_fkey
-  foreign key (user_id) references public.profiles(id) on delete set null;
-
-alter table public.transport_details alter column user_id drop not null;
-alter table public.transport_details drop constraint if exists transport_details_user_id_fkey;
-alter table public.transport_details add constraint transport_details_user_id_fkey
-  foreign key (user_id) references public.profiles(id) on delete set null;
-
-alter table public.fuel_records alter column user_id drop not null;
-alter table public.fuel_records drop constraint if exists fuel_records_user_id_fkey;
-alter table public.fuel_records add constraint fuel_records_user_id_fkey
-  foreign key (user_id) references public.profiles(id) on delete set null;
-
-alter table public.maintenance_records alter column user_id drop not null;
-alter table public.maintenance_records drop constraint if exists maintenance_records_user_id_fkey;
-alter table public.maintenance_records add constraint maintenance_records_user_id_fkey
-  foreign key (user_id) references public.profiles(id) on delete set null;
-
-alter table public.misc_expense_records alter column user_id drop not null;
-alter table public.misc_expense_records drop constraint if exists misc_expense_records_user_id_fkey;
-alter table public.misc_expense_records add constraint misc_expense_records_user_id_fkey
-  foreign key (user_id) references public.profiles(id) on delete set null;
-
-commit;
-```
-- 데이터 삭제·표 삭제 없음(보존적). 한 묶음(begin~commit)이라 중간 실패 시 전부 되돌아감.
-- 권한 규칙(RLS) 무변경: 조회·수정·삭제는 "내 차량 또는 연동 차량" 조건으로 계속 보임, 새로 쓰는 행은 작성 규칙(`user_id = auth.uid()`)상 계속 쓴 사람이 채워짐.
-
-### 4. 사후검증 (AGENTS §9 ④, 읽기 전용)
-```sql
-select string_agg(conrelid::regclass::text || ' | ' || pg_get_constraintdef(oid), E'\n' order by conrelid::regclass::text) as fks
-from pg_constraint
-where contype = 'f' and confrelid = 'public.profiles'::regclass
-  and conrelid::regclass::text in ('daily_logs','transport_details','fuel_records','maintenance_records','misc_expense_records');
-```
-기대: 5줄 모두 `FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL`.
-```sql
-select string_agg(table_name || '=' || is_nullable, ', ' order by table_name) as nullable
-from information_schema.columns
-where table_schema = 'public' and column_name = 'user_id'
-  and table_name in ('daily_logs','transport_details','fuel_records','maintenance_records','misc_expense_records');
-```
-기대: 5개 모두 `YES`.
-
-### 5. 건드릴 파일 (react-app)
-- `supabase/migrations/0008_log_rows_keep_on_account_delete.sql`(신규) — 위 SQL 기록(0005~0007과 같은 형식, 실행·검증 날짜 머리 주석).
-- 앱 코드 변경 없음(근거: 이 5개 표의 `user_id`를 읽거나 그 칸으로 거르는 코드 grep 0건, 조사 3).
+### 5. 안 건드릴 것 (근거)
+- `domain/clients.js`(243줄, §6 초과 기존 파일) — 1곳 규칙 자체는 맞게 동작, 서버에 보내는 목록만 빠진 것이라 수정 불필요.
+- `clientCloudSave.js`·화면 파일·서버(DB) — 무변경.
 
 ### 6. §8 5대 질문
-1~4 앱 경로 무변경. 5. 권한: 조회·수정·삭제 규칙 무변경(조사 3·5-B 조사 3), 계정 삭제 시 행 처리만 바뀜 — 확인된 결정(위 1).
+1. 거래처 화면은 store 구독. 2. 보이는 값 = store. 3. 쓰기 창구 `requestClientSave` 1곳. 4. 저장 직렬화(`runOwnerSaveSerialized`) 무변경. 5. 권한 무변경.
 
-### 7. 실패 시 처리
-SQL은 한 묶음이라 실패하면 전부 적용 안 됨 → 오류 문구를 받아 다시 판단. 앱 코드 무변경. **신규 레이어 없음.**
+### 7. 기대 동작
+- 로그인 상태: A가 고정노선일 때 B를 고정노선으로 저장 → 새로고침 후에도 B만 고정노선.
+- 고정노선과 무관한 저장은 지금처럼 그 거래처 1개만 서버 저장.
 
-### 8. §6 200줄
-해당 없음(SQL 기록 파일 1개).
+### 8. 실패 시 처리
+기존과 같음: 저장 중 하나라도 실패하면 "저장 실패" 토스트, 화면은 저장 전 값. 순서는 저장한 거래처 먼저 → 꺼진 거래처. **알려진 한계:** 두 번째 저장만 실패하면
+서버엔 잠시 두 곳이 켜져 있을 수 있음(다시 저장하면 맞춰짐 — 지금보다 나아짐). **신규 레이어 없음.**
 
-### 9. 검증
-- 사후검증 쿼리 2개 기대값 일치.
-- 실제 계정 삭제로 시험하지 않음(되돌릴 수 없음). 대신 앱 동작 확인: 차주·기사 계정으로 비용 1건 저장·새로고침 정상(작성 규칙 무변경 확인) — AI가 옆 브라우저로.
-- `npm test`는 코드 변경이 없어 영향 없음(기록 파일만 추가).
+### 9. §6 200줄
+`clientMutations.js` 133 → 145줄 안팎.
 
-### 10. 알려진 한계
-- 연동 중 탈퇴 막기·해제 후 각자 보관·새 기사 이전 기록 차단은 10-7.
+### 10. 검증
+- 테스트: 위 2개 + 되돌리면 FAIL. `npm test`·`tsc`·strict 427 불변.
+- 브라우저(AI가 옆 브라우저로, 차주 계정): 거래처 A 고정노선인 상태에서 B를 고정노선으로 저장 → 새로고침 → B만 고정노선인지, 서버 조회로 A가 꺼졌는지.
 
 ### 검증 결과 (2026-10-01)
-- **SQL 실행:** 사용자 지시("SQL은 너가 실행해")로 AI가 옆 브라우저 SQL Editor에서 3번 SQL 그대로 실행(실행 전 편집기 처음~끝 확인) → "Success. No rows returned".
-- **사후검증(읽기 전용):** 5개 표 모두 `FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL`, `user_id` nullable 5개 모두 `YES` — 기대값 일치.
-- **앱 동작:** 차주 계정으로 메인 9/29에 정비 "5-C확인" 2원 저장 → 서버 행 생성, 쓴 사람 = 차주(작성 규칙 무변경 확인). 기사 계정 저장은 경로·규칙이 같아 따로 안 봄.
-  (확인용 "0-3확인" 1원·"5-C확인" 2원이 차주 메인 9/29에 남아 있음 — 필요하면 지워도 됨.)
-- 기록 파일: `supabase/migrations/0008_log_rows_keep_on_account_delete.sql`(react-app `4a1068a`). 앱 코드 변경 없음 → `npm test` 영향 없음(CI가 확인).
-- 실제 계정 삭제 시험은 안 함(되돌릴 수 없음) — 사후검증으로 대신.
+- 바뀐 파일: `lib/clientMutations.js`(133→146)·테스트 `lib/clientMutations.fixedRoute.test.js`(신규 2개). 지시서 4번과 일치.
+- `npm test`: unit 740·화면 208 전부 통과(사용자 작업 중인 저장 표시 문구 변경 + 아래 테스트 4줄 수정이 워킹카피에 있는 상태). `tsc` 0에러, strict 427 불변.
+- 되돌려서 FAIL 확인: 서버 저장 목록을 저장한 거래처 1개로 되돌리면 "B와 자동 해제된 A를 둘 다" FAIL / 원복 통과.
+- 브라우저(AI가 옆 브라우저로, 차주 메인 범위, 사용자 허락): 테스트거래처를 고정노선(50,000)으로 저장 → 새로고침 후 테스트거래처만 "고정노선 연동", 서버 고성노선 `fixedRouteLinked=false`
+  → 고성노선을 다시 고정노선(100,000·파렛트 10,000)으로 저장해 복구 → 새로고침 후 고성노선만, 서버 테스트거래처 false. 양방향 통과.
+  (테스트거래처 서버 `fixedUnitPrice`에 50,000이 남음 — 고정노선 꺼져 있어 계산 무영향.)
+- **6번 범위 밖(사용자 요청):** 사용자가 바꾼 저장 표시 문구(`AutoSaveStatus.jsx`: 저장됨→저장 완료 등)에 맞춰 테스트 4줄 수정 — `App.guestDurable.test.js` 792·1137·1138, `App.test.js` 916
+  ('저장됨'→'저장 완료'). 문구 변경과 같이 올라가야 CI가 초록이라 6번 커밋에 안 넣고 워킹카피에 둠.
