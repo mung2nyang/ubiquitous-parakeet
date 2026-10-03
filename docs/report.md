@@ -1,45 +1,80 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 구글 로그인 G-3 — 전화번호 로그인·가입·비밀번호 찾기 삭제 (로드맵 밖 보리 요청, 2026-10-03)
+## 개인정보처리방침 페이지 + 구글 앱 게시 (로드맵 밖 보리 요청, 2026-10-03)
 
-로그인 개편(전화번호 → 구글, 보리 결정) 마지막 단계. G-1 `[x]`(`123da52`)·G-2 `[x]`(`9a0f04d`) — 지난 기록은 문서 커밋 `819ff74`·`5b886ce`의 이 파일.
-기존 전화번호 테스트 계정은 버림(보리 결정 "가", 서버 기록은 남음).
+**배경:** Google 인증 플랫폼 → 대상 → [앱 게시]가 비활성 — 구글이 브랜딩에 **앱 홈페이지·개인정보처리방침 링크·승인된 도메인**을 요구.
+우리 앱은 이름·전화번호·사업자 정보·**계좌번호**·운행 기록을 받으므로 국내 「개인정보 보호법」 제30조로도 실서비스 전 처리방침 공개가 필요. 보리 결정: 지금 바로(1번), 내용은 보리가 최종 확인.
 
-**현재 상태 (근거: `grep -rln "signInWithPhone|signUpWithPhone|phoneToFakeEmail|AuthLoginView|AuthSignupView|ForgotPasswordModal|forgotOpen|AuthBackIcon" src`)**
-- 첫 화면 `AuthIntroView`: "계정이 있으신가요?" [로그인][회원가입][Google로 계속하기] [비회원으로 시작하기].
-- 전화번호 로그인·가입 화면 `auth/AuthLoginView.jsx`·`auth/AuthSignupView.jsx`, 그 둘만 쓰는 뒤로가기 아이콘 `auth/AuthBackIcon.jsx`,
-  비밀번호 찾기 안내 창 `ForgotPasswordModal.jsx`(없는 기능 "사장님 임시 비밀번호 재발급"을 안내 중).
-- 연결부: `AuthPage.jsx`(화면 전환·전화번호 로그인/가입 처리), `app/AuthRoute.jsx`(onLogin·onSignup·onForgotPassword 전달),
-  `app/App.jsx`(onLogin·onSignup 처리 73~102행, 안내 창 180행), `app/useAppSession.js`(`forgotOpen`), `supabaseClient.js`(`phoneToFakeEmail`·`signInWithPhone`·`signUpWithPhone`, 오류 문구의 전화번호 안내).
+**순서**
+1. **P-0 초안 확인 (문서, 코드 없음):** `docs/privacy-policy-draft.md` — 앱이 실제로 받는 항목을 코드·서버 조사로 적은 초안(근거는 그 문서 맨 아래).
+   보리가 `【보리 입력】` 4곳(운영자 이름·상호, 보호책임자 이름, 연락 이메일, 시행일)과 `【보리 확인】` 2곳(법정 보존 기간 해당 없음, 국외 이전 고지 필요 여부)을 정하고 문구 확인.
+2. **B-1 회원용 백업 (코드, 보리 결정 2026-10-03 — 배포 전 필수):** 처리방침 3-4항에 "설정의 백업으로 내 기록 전체 내려받기"를 넣기로 해서, 지금 비회원 전용인 백업(`AppSettingsPage.jsx:161`)을
+   회원도 쓰게 하는 기능이 **처리방침 공개 전에** 있어야 함. 착수지시서는 따로(roadmap 9-P ②).
+2-2. **P-1 페이지 (코드):** 확정 문구로 처리방침 페이지 + 첫 화면 링크(B-1 뒤 공개).
+3. **P-2 보리 설정:** 구글 브랜딩에 홈페이지·처리방침 주소·승인된 도메인 입력 → [앱 게시].
 
-**목표 상태**
-- 첫 화면 = 로고 + **[Google로 시작하기]**(기본 버튼) + [비회원으로 시작하기]. 문구 "계정이 있으신가요?" → 없앰(로그인·가입 구분 없음).
-- 위 전화번호 관련 화면·함수·연결부 전부 삭제. 구글 첫 로그인은 G-2의 `/welcome` → `/onboarding`(가입 역할을 대신함).
-- 오류 문구 함수 `getSupabaseAuthErrorMessage`는 구글 버튼이 쓰므로 남기되, 전화번호 전용 문구(이미 가입된 번호·이름/전화번호 틀림·6자) 삭제.
+### 슬라이스 B-1 — 회원용 백업 내보내기 (비회원과 같은 파일, 보리 지시 2026-10-03)
+
+**조사 (근거)**
+- 지금 백업은 비회원 전용: `AppSettingsPage.jsx:161` `{!logId && ownerKey === 'guest' && <AppSettingsBackupSection …/>}`.
+- 비회원 백업 파일(`lib/guestBackup.js` `buildGuestBackupData`): `{ backupType: 'react_practice_backup', version: 1, createdAt, cars, clients, settings, expenses, invoices,
+  drivers, profile, dismissedNotifications, workDataDeletedDates, workData, workLogs }` — **기기 저장소(localStorage)**에서 읽음.
+- **회원은 업무 기록을 기기에 저장하지 않는다:** `store/batchWrites.js:29` `CLOUD_MEMORY_ONLY_DOMAINS`(차량·거래처·기사·일지·비용·계산서·프로필)는 로그인 중엔
+  서버에서 불러온 뒤 **앱 메모리(Store)에만** 있다. 그래서 회원 백업은 같은 파일 모양을 **Store에서** 만들어야 한다(`store/ownerDataHooks.js`의 `readOwner*` 읽기 함수들).
+- **일상점검표는 Store에 없다**(서버 전용, `lib/dailyInspections.js` — 화면 열 때마다 서버에서 읽음). 비회원은 점검표 기능 자체가 없음(9-B-1 "비회원 숨김").
+- 비회원 마지막 백업 시각 `lastBackupAt`은 기기 하나에 한 칸(`guestBackup.js:21`), 비회원 백업 알림이 씀(`notifications.js:108~110` 비회원만).
+
+**확정 설계 (보리 2026-10-03, 아래 "목표 상태"·"보리 결정 필요"·"건드릴 파일"보다 우선):**
+마이페이지 가로줄 아래·공지사항 위에 메뉴 **"데이터 다운로드"** → 확인 창(제목 "데이터 다운로드", 문구 4줄: 기록 전체 다운로드 / 세무 증빙·개인 보관용 /
+계좌번호 등 개인정보 포함 안전 보관 / 세무 신고용 서류는 서류 발급 PDF·엑셀) [취소][다운로드]. 파일 = 비회원 백업과 같은 모양 + 일상점검표 `dailyInspections`.
+**내보내기만**, **차주·개인 회원만**(연동 기사·비회원 숨김), 서버 준비 전엔 막고 안내. 앱 설정 화면은 안 건드림. 처리방침 문구 "마이페이지의 데이터 다운로드로".
+건드릴 파일: 새 `lib/memberBackup.js`, `lib/dailyInspections.js`(점검표 전체 읽기 1개), `components/MyPage.jsx`(메뉴), 새 확인 창 컴포넌트 1개, 테스트. **착수 승인 2026-10-03.**
+**진행:** 새 `DataDownloadModal.jsx`·`memberBackup.js` + `MyPage.jsx`(193줄)·`dailyInspections.js`, 새 테스트 4개(되돌리면 2개 FAIL). `npm test`(unit 777+화면 261)·`tsc` 0에러.
+브라우저(AI): 메뉴 위치·확인 창, 문구 단어 중간 끊김 → 이 창만 `wordBreak: keep-all`. 파일 저장을 가로채 칸 구성 확인(그 계정은 기록 0).
+보리: 차량 3대 계정으로 실제 파일 확인 **통과**(2026-10-03). 코드 커밋 react-app `8f66423` → 보리 push·CI 초록·§5 리뷰 7항목 통과·**최종 `[x]` 승인(2026-10-03)**.
+
+**목표 상태 (초안 — 위 확정 설계로 대체)**
+- 로그인 계정(차주·일반)의 설정 화면 맨 아래에도 **데이터 관리 → [백업 파일 내보내기]**. 파일 모양·이름(`운송내역_백업_날짜.json`)은 비회원과 같고, 내용은 Store의 내 기록 전체.
+- 서버에서 다 불러오기 전(hydrate 준비 안 됨)엔 내보내기를 막고 안내(빈 백업 방지).
+- 파일에 개인정보(계좌번호 등)가 들어 있다는 안내 한 줄.
+
+**보리 결정 필요 (착수 전 1회)**
+1. **회원 가져오기(복원):** 추천 = **내보내기만**. 회원 복원은 파일 내용을 서버에 전부 다시 써야 해서(중복·덮어쓰기 위험, 동기화 경로 전체) 별도 큰 작업. 처리방침 문구도 "내려받아 보관"이라 내보내기면 충분.
+2. **연동 기사(employed_driver) 계정:** 추천 = **숨김**. 기사 앱이 들고 있는 기록은 차주 장부(연동 차량 범위)라, 통째로 파일로 나가면 차주 기록 반출이 됨. 기사는 서류 발급(PDF)으로 충분.
+   이 경우 처리방침 문구는 "설정의 백업 기능(차주·개인 계정)"으로 조금 고침.
+3. **일상점검표 포함:** 추천 = **포함**(처리방침이 "내 기록 전체"라). 내보낼 때 내 차량들의 점검표를 서버에서 한 번 읽어 파일에 `dailyInspections` 칸으로 추가
+   (새 읽기 함수 1개, 권한은 기존 그대로 — 내 차량 행만). 빼면 처리방침에 "일상점검표는 서류 발급에서 PDF로" 문구를 따로 둠.
+
+**건드릴 파일 (결정 1·2·3이 추천대로일 때)**
+- 새 `react-app/src/lib/memberBackup.js` — Store에서 같은 모양 파일 만들기 + 점검표 읽기(`guestBackup.js`는 174줄이라 합치면 200 넘음).
+- `react-app/src/components/AppSettingsBackupSection.jsx`(110줄) — 회원이면 [내보내기]만, 가져오기 숨김, 개인정보 안내, 준비 안 됐으면 막기. 회원 내보내기는 비회원 `lastBackupAt`을 건드리지 않음.
+- `react-app/src/components/AppSettingsPage.jsx`(165줄) — 161행 조건을 "비회원 또는 연동 기사 아닌 로그인 계정"으로.
+- `react-app/src/lib/dailyInspections.js` — 내 차량들 점검표 전체 읽기 함수 1개(결정 3 포함 시).
+- 테스트: 새 `memberBackup.test.js`(Store 값 → 파일 모양·점검표 포함·준비 전 막힘), 설정 화면 테스트(회원은 내보내기만, 연동 기사는 안 보임).
+
+**안 건드릴 것:** 비회원 백업·복원(`guestBackup.js` 그대로), 저장·동기화 경로, DB 표·권한.
+**§4 플레이북:** `lib/*` 읽기만(서버 쓰기 없음) — 저장 경로 아님. **§6:** 모두 200줄 이하 유지. **실패 시:** 토스트. 신규 레이어 없음.
+**AGENTS 예외:** 결정 3 포함 시 코드 4개 파일(새 1) — §3 기준(1~3개) 넘음, 승인 필요.
+**확인:** `npm test`·`tsc`·되돌리면 FAIL. 브라우저(AI): 회원 계정 설정 → 내보내기 → 파일 안에 차량·일지·비용·점검표가 들어 있는지, 비회원 화면은 그대로.
+
+### 슬라이스 P-1 — 처리방침 페이지 + 첫 화면 링크
 
 **건드릴 파일**
-- 삭제 4개: `components/auth/AuthLoginView.jsx`·`AuthSignupView.jsx`·`AuthBackIcon.jsx`, `components/ForgotPasswordModal.jsx`.
-- 수정 6개: `components/auth/AuthIntroView.jsx`, `components/AuthPage.jsx`(첫 화면만 남아 크게 줄어듦), `app/AuthRoute.jsx`, `app/App.jsx`, `app/useAppSession.js`, `supabaseClient.js`.
-- 테스트: `App.test.js`·`App.clientsCars.test.js`·`App.guestDurable.test.js`·`AuthPage.google.test.js`의 가짜 목록에서 전화번호 함수 삭제, `AuthPage.google.test.js` 버튼 이름 바뀜 반영 + "첫 화면에 전화번호 로그인·가입 버튼 없음" 확인 추가.
+- 새 파일 `react-app/public/privacy.html` — 앱과 따로 뜨는 정적 한 장(앱이 안 켜져도 구글 검사기·누구나 열림). 배포 주소 `https://mung2nyang.github.io/react-app/privacy.html`,
+  개발 `http://localhost:5173/privacy.html`(Vite `public/`은 그대로 복사). 글씨는 앱과 같은 크기·색(최소 12px, 대비 4.5:1 이상), 라이트·다크 자동.
+- `react-app/src/components/auth/AuthIntroView.jsx`(30줄) — [비회원으로 시작하기] 아래 작은 링크 "개인정보처리방침"(새 탭). 주소는 `assetPath('/privacy.html')`(배포 경로 `/react-app/` 반영, 기존 배너 이미지와 같은 방식).
+- 테스트: `AuthPage.google.test.js`의 "버튼만 있다" 확인은 그대로(링크는 `<a>`), 링크 주소 확인 1개 추가.
 
-**안 건드릴 것:** `/welcome`·`/onboarding`·부트 복원(G-1·G-2 그대로), 마이페이지 "로그인하러 가기"(비회원 → `/auth`, 그대로 동작), DB.
-`account-flow.css`(549줄)에 남는 전화번호 화면 전용 클래스(`auth-link-text`·`auth-field-extra` 등) 정리 — 200줄 넘는 파일이라 별도(필요하면 나중에).
+**안 건드릴 것:** 앱 라우터·로그인 흐름·DB. 마이페이지·고객센터 링크는 이번엔 안 넣음(필요하면 다음에).
+**§6:** 새 HTML은 코드 규칙(200줄) 대상 밖 정적 문서지만 200줄 이하로 맞춤. **실패 시:** 파일 삭제·링크 1줄 되돌림. 신규 레이어 없음.
+**확인:** `npm test`·`tsc`. 브라우저(AI): 로컬 `/privacy.html` 열림·모바일 폭 가로 넘침 없음·다크/라이트 대비, 첫 화면 링크 → 새 탭. 배포 후 실제 주소 열림(보리 push 뒤 AI 확인).
 
-**AGENTS 예외 승인 필요:** 삭제 4 + 수정 6 = 10개 파일로 §3 "1~3개" 기준을 넘음 — 한 기능(전화번호 로그인)을 통째로 빼는 일이라 나누면 중간에 연결이 끊긴 화면이 남음.
-§6: 수정 파일 모두 줄어들거나 그대로(200줄 이하).
+### P-2 보리 설정 (P-1 배포 뒤, AI 안내)
 
-**G-3 뒤 보리 설정 (권장, 코드 없음):** Supabase → Authentication → Providers → **Email 끄기**. 앱에서 버튼을 지워도 공개 키로 전화번호(가짜 이메일) 가입 요청을
-직접 보낼 수 있어서, 막으려면 서버에서도 꺼야 한다(기존 전화번호 계정 로그인도 막힘 — "가" 결정과 같음).
-
-**확인:** `npm test`·`tsc`·새 확인 되돌리면 FAIL. 브라우저(AI): 첫 화면 모양(구글·비회원만), 비회원 시작, 콘솔 오류 없음.
-브라우저(보리): 구글 로그인 → 홈 → 로그아웃 → 첫 화면, 마이페이지(비회원) "로그인하러 가기" → 첫 화면.
-**실패 시:** 되돌림(git). 신규 레이어 없음.
+Google 인증 플랫폼 → **브랜딩**: 앱 홈페이지 `https://mung2nyang.github.io/react-app/`, 개인정보처리방침 `https://mung2nyang.github.io/react-app/privacy.html`,
+승인된 도메인 `mung2nyang.github.io`, 앱 로고는 넣지 않음(로고 넣으면 구글 확인 절차가 생길 수 있음) → **대상 → [앱 게시]**.
+승인된 도메인 소유 확인(Search Console)을 구글이 요구하면 그때 안내.
 
 ---
 
-**진행:** 착수 승인(2026-10-03, 파일 수 예외 포함, Email 끄기 권장 확인) → 삭제 4·수정 6, 테스트 1개 추가(삭제 전 화면으로 되돌리면 FAIL 확인).
-`npm test`(unit 775+화면 259)·`tsc` 0에러. 브라우저 확인 중 개발 서버가 마지막 수정을 놓쳐 옛 모듈(`forgotOpen` 참조)을 보내 빈 화면 — 디스크 파일은 정상,
-파일 시각 갱신 후 정상(코드 문제 아님, OneDrive 폴더 파일 감시). 보리 확인 통과(첫 화면·구글 로그인·비회원 → 로그인하러 가기).
-코드 커밋 react-app `9d1cf8c` → 보리 push·CI 초록·§5 리뷰 7항목 통과·**최종 `[x]` 승인(2026-10-03)**.
-Supabase Email provider 끄기 — 보리 저장, AI 확인(Email Disabled·Google Enabled·Allow new users to sign up 켜짐).
-배포 전 할 일(10번): Google 인증 플랫폼 → 대상 → [앱 게시](기본 범위만이라 심사 없음, 로고 등록 시 확인 절차 생길 수 있음). 남은 nit: `account-flow.css`의 지운 전화번호 화면 전용 클래스.
+**지금 요청:** ① `docs/privacy-policy-draft.md`의 `【보리 입력】` 4곳 값 ② `【보리 확인】` 2곳 결정 ③ 문구 확인 후 P-1 "착수지시서 확정, 작업 진행해".
