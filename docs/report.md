@@ -1,70 +1,63 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 입력칸 X(한 번에 지우기) 버튼 — 슬라이스 B: 내 정보·기사·차량 창 `[x]` (react-app `c27be67`, CI 초록, 보리 최종 승인 2026-10-07)
+## 입력칸 X(한 번에 지우기) 버튼 — 슬라이스 C: 경비·계산서·미수금 `[x]` (react-app `bcb5f9a`, CI 초록, 보리 최종 승인 2026-10-07)
 
-슬라이스 A(react-app `f61a673`)에서 만든 공용 부품 `ClearableInput`을 내 정보·기사·차량 관련 창에 넣는다.
-부품 자체는 안 고친다. 각 칸의 `<input` → `<ClearableInput`(이름만 바꿈) + import 1줄.
-A의 보리 결정 그대로 적용: 여러 줄·날짜·단위(원·km·톤·%) 칸 제외, X 붙는 칸은 왼쪽 정렬, 누르는 영역 44px, 회색 동그라미 X.
+A(react-app `f61a673`)의 공용 부품 `ClearableInput`을 경비·세금계산서·미수금 화면에 넣는다. 부품 자체는 안 고친다.
+A·B의 보리 결정 그대로: 여러 줄·날짜·단위(원·km·톤·%·L) 칸 제외, X 붙는 칸 왼쪽 정렬, 누르는 영역 44px, 회색 동그라미 X.
 
 ### 보리 결정 (2026-10-07, 착수 승인)
 
-1. 내 정보 화면(자동 저장)에도 **넣는다**.
-2. 내 정보 성명·연락처 2칸은 **뺀다** — 비우면 가입 때 이름·번호가 다시 나타나는 구조(`PersonalInfoPage.jsx:134`·`138`). 실명 안내 문구는 로드맵 16번으로 따로.
-3. **처음 이름 입력 화면(`WelcomeProfileView.jsx`) 이름 칸에도 넣는다** — 구글 계정 이름이 미리 채워져 들어오므로 한 번에 지우고 실명을 쓰기 쉽게(D에서 하려던 것 중 이 1칸만 앞당김).
+1. 미수금 "입금액 입력" 칸(`ReceivableItemCard.jsx:112`) **넣는다** — 줄 CSS(`receivables.css:380`) 1곳 같이 고침.
+2. 앱 설정 노선 칩 상차지·하차지 칸(`RoutePresetEditor.jsx`) **뺀다** — 좁은 줄, 유지·삭제 고민 중인 기능.
 
 ### 현재 상태 (코드 확인)
 
 | 파일 | 줄 수 | 넣을 칸 | 뺄 칸 (이유) |
 |---|---|---|---|
-| `PersonalInfoPage.jsx` | 193 | 사업자명·대표자명·사업자번호·주소·업태·종목·이메일·입금 은행·예금주·계좌번호 = 10칸 | 성명·연락처(질문 2) |
-| `DriverFormModal.jsx` | 99 | 기사 이름·전화번호·할당 차량 = 3칸 | 초대 코드(읽기 전용) |
-| `cars/CarFormModal.jsx` | 159 | 차량번호·기사명·연락처 = 3칸 | 톤수(톤)·정산 값(원/%) |
-| `drivers/CarBusinessInfoSection.jsx` | 123 | 칸 그리는 함수 `Field` 1곳 → 차량 사업자정보 11칸 전부 | 없음 |
-| `InviteRedeemModal.jsx` | 69 | 초대코드 1칸 | 없음 |
-| `auth/WelcomeProfileView.jsx` | 81 | 이름 1칸(`auth-input-box` 모양) | 휴대전화 번호(D에서) |
+| `ExpenseFormModal.jsx` | 181 | (정비/기타) 항목명 1칸 | 누적거리(km)·비용(원)·유가보조금(원)·주유량(L) |
+| `TaxInvoiceDraftModal.jsx` | 81 | 사업자등록번호·대표자·이메일·업태·종목·주소·품목·비고 = 8칸 | 거래처명(읽기 전용)·작성일자(날짜) |
+| `receivables/ReceivableItemCard.jsx` | 126 | 입금액 1칸(질문 1) | 없음 |
+| `RoutePresetEditor.jsx` | 55 | 없음(질문 2) | 상차지·하차지 |
+| `FixedRouteClientModal.jsx` | 111 | 없음 | 1회 단가·파렛트 단가(원) |
 
-- 할당 차량 칸은 목록 고르기(datalist)가 붙어 있지만 오른쪽 화살표는 이미 숨겨져 있어(`driver-connection.css:138`) X와 안 겹침.
-- 내 정보 칸은 직원 기사일 때 잠김(`disabled`) — 잠긴 칸은 누를 수 없어 X도 안 나옴.
+- 세금계산서 창·경비 창은 [저장]을 눌러야 저장(지운 뒤 [취소]로 되돌릴 수 있음).
+- 입금액 칸 줄: `.receivable-partial-input-row .input-box { flex: 1 }`(`receivables.css:380`) — 칸이 감싸는 상자 안으로 들어가면 이 "남는 폭 채우기"가 칸에 안 먹힘 → 상자에 걸어 줘야 함.
+  이 클래스는 `ReceivableItemCard.jsx:111` 한 곳에서만 씀(`grep receivable-partial-input-row` 결과 1건, §5-6).
 
 ### 목표 상태 (기대 동작)
 
-1. 위 표의 "넣을 칸" 29칸에서 A와 똑같이 동작(입력 중·글자 있을 때만 X, 누르면 비움, 입력 상태 유지).
-2. "뺄 칸"은 지금과 똑같음.
-3. 각 칸의 기존 입력 처리(사업자번호·전화번호 하이픈 등)·저장 방식은 그대로.
+1. 위 표의 "넣을 칸" 10칸(질문 1 "넣는다"일 때)에서 A와 똑같이 동작.
+2. 입금액 줄은 지금처럼 칸이 남는 폭을 채우고 [확인] 버튼이 오른쪽에 붙음 — 줄 모양이 안 바뀜.
+3. "뺄 칸"은 지금과 똑같음. 저장 방식·각 칸 입력 처리는 그대로.
 
 ### 건드릴 파일 (react-app)
 
-- `src/components/PersonalInfoPage.jsx` — 10칸 이름 바꿈 + import
-- `src/components/DriverFormModal.jsx` — 3칸 + import
-- `src/components/cars/CarFormModal.jsx` — 3칸 + import
-- `src/components/drivers/CarBusinessInfoSection.jsx` — `Field` 안 1곳 + import
-- `src/components/InviteRedeemModal.jsx` — 1칸 + import
-- `src/components/auth/WelcomeProfileView.jsx` — 이름 1칸 + import
-- `src/components/shared/clearable-input.css` — 로그인 화면 칸 모양(`auth-input-box`)에도 X 여백·왼쪽 정렬이 걸리게 선택자 추가(부품 동작은 안 바뀜)
+- `src/components/ExpenseFormModal.jsx` — 1칸 + import
+- `src/components/TaxInvoiceDraftModal.jsx` — 8칸 + import
+- `src/components/receivables/ReceivableItemCard.jsx` — 1칸 + import(질문 1)
+- `src/components/receivables/receivables.css` — 입금액 줄 규칙 1곳: 남는 폭 채우기를 감싸는 상자(`.clearable-input`)에 걸기(질문 1)
 
-7개 파일이라 §3 "1~3개 파일" 기준을 넘지만, 전부 태그 이름만 바꾸는 같은 작업이라 한 슬라이스로 묶음(A 지시서 계획대로).
+4개 파일. 질문 1을 "뺀다"로 하면 2개 파일.
 
 ### 안 건드릴 파일
 
-- `src/components/shared/ClearableInput.jsx` — A에서 끝난 부품 동작 그대로.
-- `src/components/cars/CarDriverConnectPanel.jsx` — 초대 코드 칸이 읽기 전용이라 넣을 칸 없음.
-- `src/components/cars/CarDriverIncomeFields.jsx` — 칸이 전부 %가 붙은 칸이라 제외.
-- 저장 경로(`src/lib/**`·`src/store/**`) — 화면 태그만 바뀜. 내 정보 자동 저장 코드(`PersonalInfoPage.jsx:40~43`)도 안 고침.
+- `src/components/shared/ClearableInput.jsx`·`clearable-input.css` — 부품 그대로.
+- `src/components/RoutePresetEditor.jsx`(질문 2)·`src/components/FixedRouteClientModal.jsx`(전부 원 칸).
+- 저장 경로(`src/lib/**`·`src/store/**`·미수금 입금 처리) — 화면 태그만 바뀜.
 
 ### §6 200줄
 
-- `PersonalInfoPage.jsx` 193줄 → import 1줄 추가로 **194줄**(200 이하).
-- 나머지는 각각 +1줄(100·160·124·70·82줄), `clearable-input.css` 약 +4줄.
+- `ExpenseFormModal.jsx` 181 → **182줄**. `TaxInvoiceDraftModal.jsx` 81 → 82줄. `ReceivableItemCard.jsx` 126 → 127줄. 200줄 넘는 파일 없음.
 
 ### §8 질문
 
-1. 구독/스냅샷: 바뀌지 않음(태그 이름만). 2. 보이는 값: 각 화면의 기존 값 그대로. 3. 쓰기 창구: 바뀌지 않음 — X는 "글자를 다 지운 입력"과 같아서 기존 onChange를 그대로 거침. 4. 동시 편집: 해당 없음. 5. 권한: DB 안 건드림.
-- §4 플레이북: 내 정보 화면은 저장하는 화면이지만 저장 코드는 안 바뀜 → 참고만.
+1. 구독/스냅샷: 바뀌지 않음. 2. 보이는 값: 각 창의 임시 값 그대로. 3. 쓰기 창구: 바뀌지 않음 — X는 "글자를 다 지운 입력"과 같아 기존 onChange를 그대로 거침. 4. 동시 편집: 해당 없음. 5. 권한: DB 안 건드림.
+- §4 플레이북: `receivables*` 화면이지만 입금 처리·저장 코드는 안 바뀜(태그·CSS만) → 참고만.
 
 ### 테스트
 
-- 새 테스트 없음 — 부품 동작은 A의 `ClearableInput.test.js`가 확인함. 기존 화면 테스트(`PersonalInfoPage.*.test.js`·`CarBusinessInfoSection.test.js`·`MyPage.inviteModal.test.js`·`App.clientsCars.test.js`)가 칸 id로 입력하므로 그대로 통과해야 함.
-- 브라우저: 화면마다 1~2칸 X 보임/지우기, 반쪽 폭 칸(업태/종목·은행/예금주), 휴대폰 폭, 내 정보에서 X로 지운 뒤 다시 들어가 저장 결과 확인.
+- 새 테스트 없음(부품 동작은 A의 `ClearableInput.test.js`). 기존 `TaxInvoiceDraftModal.test.js`·`App.test.js`·`App.guestDurable.test.js` 그대로 통과해야 함.
+- 브라우저: 세금계산서 창 반쪽 폭 칸(대표자/이메일·업태/종목), 경비 창 항목명, 미수금 입금액 줄 모양·X, 휴대폰 폭. 전부 [취소]로 닫아 저장 안 함.
 
 ### 실패 시 처리
 
