@@ -1,56 +1,146 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-(지난 작업 10-S-1은 `git log -p -- docs/report.md`, 커밋 8821832.)
+## 고정노선 거래처 연결 — 앱 설정에서 거래처 고르기·1회 단가 저장 `[x]`
 
-## 10-S-2 초대코드 강화 — 착수지시서 (작성 2026-10-03, `[x]` — 보리 최종 승인 2026-10-03)
+보리 지시(2026-10-05): 앱 설정 "고정 노선 사용" 카드에 거래처 연결란 추가(B안, 착수지시서 절차).
+로드맵 순서(12번 → 10-P) 사이에 끼워 넣는 작업.
 
-> **진행(2026-10-03):** 보리 "착수지시서 확정, 작업 진행해". 0019 SQL·서버 시험 SQL 작성(아직 실서버 미적용 — AI의 실서버 쓰기는 자동 차단, 보리가 붙여넣어 실행).
-> 화면 6파일 수정 + 테스트(`inviteCode.security.test.js` 신규 7개, `drivers-cloud.test.js` 6자리 예시 코드를 10자리로). `npm test` unit 777·app 269 통과(신규 제외 기준), `tsc` 0에러. `directMutations.js` 200줄 유지(재시도 생성기를 동적 import로).
-> 브라우저(dev, 저장 안 함): 기사 초대 창 코드 `66SWQ-AN8HQ` 형식·읽기 전용·[코드 생성] 동작, 375px 넘침 없음.
-> **범위 추가 승인(보리 "그 파일도 수정해서 진행해"):** `src/lib/carInviteFromDraft.js` 6자리 검사 → 빈 코드만 건너뛰고 형식은 `upsertDriver`가 검사, 테스트 예시 교체 + 6자리 안내 테스트 1개. 차량 등록 화면 코드 `HBYQD-VPJUB`·읽기 전용 확인(저장 안 함).
-> `npm test` unit 785·app 269 통과, `tsc` 0에러. react-app `3fe7975` 커밋(push 없음). 보리 push 후 0019 실서버 적용(2026-10-03) — 사후 SELECT: 트리거 guard_invite_code·guard_unlink, 시도 표 RLS 켜짐·정책 0·authenticated 조회 불가, 수락 함수 postgres·definer·search_path=public·anon 실행 불가, 대기 초대 1건 중 사용 가능 0(원래 2건 중 1건은 S-1 앱 확인에서 쓰임). 서버 시험 SQL(주석·PASS 표시 줄만 뺀 본문) Success — 형식 거절 4·기한 무시·재발급 7일·틀림 5회 기록 후 6번째 차단·만료 거절·소문자/하이픈 연결·anon 거절 통과, 전부 ROLLBACK. CI `3fe7975` 초록. AI 앱 확인(보리 지시, localhost dev = 배포와 같은 코드·실서버, 차주 계정): 코드 칸 입력 무시·[코드 생성] `KVYYJ-DRP4K`, 시험 초대 저장 → 실서버 10자리 저장·새로고침 유지, 초대코드 입력에 틀린 코드 1번째 "맞지 않거나 기한(7일)" 안내·6번째 "여러 번 틀렸습니다" 차단, 시험 초대 취소로 정리(대기 0). 두 번째 계정이 없어 정상 코드 수락은 앱에서 못 봄(서버 시험 6번 항목으로 확인). 보리 최종 승인(2026-10-03). 목록 화면 하이픈 표시는 S-2 밖 소수정으로 따로(보리 "나").(10자리 초대·소문자 입력 연결·6번째 틀림 안내·기존 대기 초대 재발급) → CI → 최종 승인.
+### 현재 상태
 
-> **착수 조건:** S-1 `[x]` 확정(2026-10-03). 보리 "착수지시서 확정, 작업 진행해" 전에는 코드·DB를 건드리지 않는다.
+- 고정노선 거래처 연결은 **거래처 추가·수정 창**에서만 한다(`ClientTradeFields.jsx:25-50` "고정노선 연동" 스위치 + "1회 단가").
+- 한 스코프에 한 곳만 연결된다. 다른 거래처를 켜고 저장하면 이전 거래처는 자동 해제(`domain/clients.js:137-143`),
+  클라우드 저장 때 해제된 거래처도 함께 저장(`lib/clientMutations.js:74-80`).
+- 앱 설정 고정 노선 카드(`FixedRouteBlock.jsx`)에는 연결 상태가 안 보인다.
+- 스코프 규칙(`docs/sot.md` §4-4e): 차주 메인 = 스코프 없는 거래처, 차주가 서브차량 설정을 볼 때 = 그 차량번호(라우트 `logId`).
+  서브차량에 연결 거래처가 없으면 차주 메인 것으로 물러난다(`clients.js:23-31`).
 
-**목적(보리님용):** 지금 초대코드는 숫자 6자리(90만 가지)라, 로그인한 누구나 자동으로 계속 넣어 보면 남의 대기 중 초대에 들어가 그 차량 기록·차주 이름을 볼 수 있다. 코드를 길게, 기한을 두고, 틀린 시도를 제한한다.
+### 목표 상태 (기대 동작)
 
-**현재 상태(근거):**
-- 코드는 화면에서 `Math.random` 6자리 숫자로 만들고 차주가 직접 입력도 가능(`domain/drivers.js:19`, `CarDriverConnectPanel.jsx:55`, `DriverFormModal.jsx:61`), 저장 실패 재시도도 6자리(`directMutations.js:163`).
-- 서버 수락 함수(`0017` `redeem_driver_invite_code`)는 코드 형식·만료·시도 횟수를 안 본다. `driver_links`에 만료 칸 없음.
-- 문자 초대는 저장 전 화면의 코드로 보냄(`DriverFormModal.jsx:29`, `driverInviteSms.js` 6자리 숫자 검사) → 서버가 코드를 새로 정하면 문자와 어긋나므로, **화면이 강한 코드를 만들고 서버는 형식만 강제**하는 방식으로 설계.
+1. "고정 노선 사용"이 켜져 있으면 하위 상자 맨 위에 **거래처 연결** 줄이 생긴다.
+   - 거래처 고르기 드롭다운: "연결 안 함" + 그 화면 스코프의 거래처 목록
+     (차주 앱 설정 = 스코프 없는 거래처, 서브차량 운행일지 설정 = 그 차량번호 거래처,
+     **연동기사 본인 앱 설정 = 배정 차량번호 거래처** — `MainPageRoute.jsx:61-63`의 `clientScopeKey`와 같은 규칙).
+   - 거래처를 고르면 **1회 단가** 칸이 보이고, 그 거래처에 저장된 단가가 미리 채워진다.
+   - **저장** 버튼을 눌러야 저장된다(바꾼 게 없으면 버튼 비활성).
+2. 저장은 기존 거래처 저장 창구 `requestClientSave` 그대로 쓴다.
+   - 고른 거래처 = `fixedRouteLinked: true` + 단가. 이전 연결 거래처는 기존 1곳 규칙으로 자동 해제.
+   - "연결 안 함" 저장 = 지금 연결된 거래처를 `fixedRouteLinked: false`로 저장(단가는 기존 동작대로 비워짐).
+   - 단가 비어 있으면 기존 안내 "고정노선 1회 단가를 입력해 주세요." 그대로.
+3. 서브차량 설정에서 연결이 없으면 "연결 안 하면 차주 메인 연결 거래처(○○)를 씁니다" 안내 한 줄.
+4. 거래처가 하나도 없으면 "먼저 거래처를 등록해 주세요" 안내.
 
-### 기대 동작
-1. **코드:** 영문 대문자+숫자 10자리(헷갈리는 0·O·1·I·L 제외, 31종 → 약 800조 가지), `crypto.getRandomValues`로 생성. 화면 표시는 `ABCDE-FGHJK`. 차주 직접 입력 칸은 읽기 전용, [코드 생성]만. 기사 입력은 대소문자·하이픈·공백 무시.
-2. **서버 형식 강제:** `driver_links` 감시 트리거에서 INSERT·코드 변경 때 형식이 아니면 거절(약한 코드·옛 6자리 새로 못 만듦).
-3. **만료:** `invite_expires_at` 칸 추가. 코드 생성·변경 때 서버가 지금+**7일**로 설정(화면 값 무시). 수락 함수는 만료면 "만료된 코드입니다. 차주에게 새 코드를 요청해 주세요." 차주는 초대 수정 → [코드 생성] → 저장으로 재발급(기한도 새로).
-4. **시도 제한:** 계정당 실패 **10분 5회·하루 20회** 넘으면 수락 함수가 거절("잠시 후 다시 시도"). 실패 기록이 오류와 함께 되돌려지지 않도록, 못 찾음·만료는 오류 대신 빈 결과로 돌려주고 화면(`driverLinkRpc.js`)이 문구로 바꾼다.
-5. **기존 대기 초대:** 결정 ④에 따름. 연결된(linked) 줄은 코드를 안 쓰므로 영향 없음.
-6. 비회원(로컬) 초대도 같은 생성기 사용 — 서버 없음, 동작 동일.
+### 건드릴 파일
 
-### 건드릴 파일 (보안 묶음이라 평소 1~3개보다 많음 — 형식 하나가 아래 전부에 박혀 있어 나누면 중간 상태에서 문자 초대가 깨짐)
-- `react-app/supabase/migrations/0019_driver_invite_code_hardening.sql` 신규 — 만료 칸, 형식·만료 트리거 보강, 시도 기록 표, 수락 함수 교체, 기존 대기 초대 처리.
-- `react-app/supabase/tests/driver_invite_security.sql` 신규 — 일반 로그인 역할로 약한 코드 INSERT·만료 수락·6회째 실패·만료일 조작 거절, 정상 생성·수락·재발급 통과, 전부 ROLLBACK.
-- `src/domain/drivers.js`(생성기·형식 검사), `src/lib/driverInviteSms.js`(형식 검사), `src/lib/directMutations.js`(재시도 생성기 교체, **200줄 — 줄 수 늘리지 않음**), `src/lib/driverLinkRpc.js`(입력 정리·빈 결과 문구), `src/components/DriverFormModal.jsx`·`src/components/cars/CarDriverConnectPanel.jsx`(입력 읽기 전용·표시).
-- 테스트: 관련 `*.test.js` 보강·신규.
-- 문서: `docs/report.md`, `docs/roadmap.md`, `STATUS.md`.
+| 파일 | 내용 | 예상 줄 수 |
+|---|---|---|
+| `react-app/src/components/FixedRouteClientLink.jsx` (새 파일) | 거래처 연결 줄(드롭다운·단가·저장) | ~110 |
+| `react-app/src/domain/clientDraft.js` (새 파일) | 저장된 거래처 → 저장용 draft 변환 순수 함수(빠진 칸이 지워지지 않게 전 필드 복사) | ~40 |
+| `react-app/src/components/FixedRouteBlock.jsx` | 새 줄 끼우기, `ownerKey`·`scopeKey` 받기 | 52 → ~58 |
+| `react-app/src/components/AppSettingsPage.jsx` | 거래처 스코프 키 계산(서브=`logId`, 연동기사=배정 차량, 차주=없음) 후 `FixedRouteBlock`에 넘기기 | 166 → ~172 |
+| `react-app/src/app/AppShellRoutes.jsx` | `AppSettingsPage` 두 곳에 `session` 넘기기(연동기사 판별용) | 103 → 103 |
+| `react-app/src/components/app-settings.css` | 연결 줄 모양 | 187 → ~197 |
+| `react-app/src/components/FixedRouteClientLink.test.js` (새 파일) | 아래 테스트 | — |
 
 ### 안 건드릴 것
-- `InviteRedeemModal.jsx` — 입력이 자유 글자이고 정리는 `driverLinkRpc.js`에서 함(근거: `InviteRedeemModal.jsx:13-15` 길이 4 이상만 검사).
-- 0001~0018 파일, 연동 해제·기록 복사·접근 규칙(S-1 범위), 금액 계산, 디자인.
+
+- `lib/clientMutations.js`·`domain/clients.js`(저장·1곳 규칙·검증) — 그대로 호출만 한다.
+- 거래처 추가·수정 창의 기존 연동 스위치 — 그대로 둔다(두 곳 어디서 바꿔도 같은 레코드).
+- 정산·달력·내역서 계산(`getFixedRouteClient` 호출부) — 읽는 값이 같아 변경 없음.
+
+### 실패 시 처리 — **신규 레이어 없음**
+
+- 새 저장소·큐·fallback·tombstone 없음(AGENTS §7). 저장 실패·차단은 `requestClientSave`가 돌려준 안내 토스트만 띄우고
+  화면 값은 그대로 둔다(다시 저장 가능).
+- 동기화 중이면 기존 `fieldset disabled`(`AppSettingsPage.jsx:88`)로 입력 자체가 막힌다.
 
 ### §6 200줄
-- SQL 각 200줄 이하 예상. `directMutations.js`는 지금 200줄 — 생성기 호출 교체로 줄 수 그대로 유지, 늘어나면 분리설계안 먼저 보고. `DriverConnectionPage.jsx` 194줄은 수정 대상 아님.
 
-### §7 새 저장소 (승인 필요)
-- 시도 제한용 **새 표 1개**(`driver_invite_redeem_attempts`: 사용자·시각, RLS 켜고 정책 없음 = 수락 함수만 씀, 하루 지난 기록은 함수가 정리). 결정 ③에서 승인 여부.
+- 새 파일 둘 다 200줄 이하. `app-settings.css` ~197줄로 200 이하 유지(넘으면 연결 줄 CSS를 새 파일로 분리하고 보고).
 
-### 검증·실패 처리
-- S-1과 같은 절차: 실서버 SELECT 확인 → 멱등 BEGIN…COMMIT 완성본 → 보리 실행 지시 → BEGIN…ROLLBACK 시험 PASS 후 적용 → 사후 SELECT.
-- 브라우저(보리): 차주 초대 생성(10자리 표시)·문자 내용·기사 입력(소문자·하이픈 섞어)·연동 성공, 틀린 코드 6번째 거절 문구, 재발급.
-- 실패 시 신규 레이어 추가 없이 중단·수정 지시서. 데이터 삭제 없음.
+### §8 질문 답
 
-### 결정 (보리 "권장대로 1~4 전부 진행해", 2026-10-03)
-1. 코드 형식: 영문+숫자 10자리.
-2. 만료 기간: 7일.
-3. 시도 제한 새 표(§7): 승인 — `driver_invite_redeem_attempts` 1개만, 계정당 10분 5회·하루 20회.
-4. 기존 대기 초대 2건: 0019 적용 때 바로 만료, 차주가 재발급.
+1. 구독/스냅샷: `useOwnerClients` 구독. 2. 보이는 값: Store. 3. 쓰기 창구: `requestClientSave`(우회 없음).
+4. 겹침: 저장은 한 번에 한 건, 결과 목록으로 Store 교체 — 기존 거래처 창과 같은 경로.
+5. 권한: 차주 = 읽기·쓰기(기존과 동일). 연동기사 본인 = 배정 차량 스코프 거래처 읽기·쓰기 — 기사 본인 거래처 화면
+   (`OwnerScopedClientsView.jsx:74` `requestClientSave`)과 같은 권한·같은 레코드(`docs/sot.md` §4-4e 3번, 보리 확인 2026-09-21).
+
+### 테스트 (`FixedRouteClientLink.test.js`, 화면 조작 → Store 확인)
+
+1. 거래처 고르고 단가 입력 → 저장 → 그 거래처만 `fixedRouteLinked`·단가 저장, 이전 연결 거래처는 해제, 다른 칸(업체명·사업자번호 등) 보존.
+2. "연결 안 함" 저장 → 연결 거래처 해제.
+3. 단가 빈칸 저장 → 안내 토스트, Store 그대로.
+4. 서브차량 화면 → 그 차량번호 거래처만 목록에 나옴, 연결 없으면 차주 메인 안내.
+5. 연동기사 본인 세션 → 배정 차량 거래처만 목록에 나오고 저장됨.
+6. `clientDraft.js` 변환이 거래처 전 필드를 보존(빠진 필드로 데이터가 지워지지 않음).
+- 새 테스트는 연결 코드를 잠시 되돌려 FAIL 확인 후 결과 첨부(플레이북 §6).
+
+### 보리 결정 (2026-10-05)
+
+1. 연동기사 본인 앱 설정에도 **보인다**(배정 차량 스코프).
+2. **저장 버튼**으로 저장.
+3. "연결 안 함" 저장 시 그 거래처 단가도 지워짐 — **승인**(기존 거래처 창과 같은 동작).
+
+### 진행 기록 (2026-10-05)
+
+- 착수 승인 후 구현(커밋 전). 파일·줄 수: `FixedRouteClientLink.jsx` 92, `domain/clientDraft.js` 44, `FixedRouteBlock.jsx` 54,
+  `AppSettingsPage.jsx` 175, `AppShellRoutes.jsx` 103, `app-settings.css` 197, 테스트 `FixedRouteClientLink.test.js`.
+- 로컬 `npm test` 전체 통과(1,071건), 타입체크 오류 0. 새 테스트 6건, act 경고·console.error 0건.
+- 되돌림 확인(플레이북 §6): `FixedRouteBlock`에서 연결 줄을 빼고 `clientToDraft`에서 `managerName`을 지운 상태로 실행 → 6건 전부 FAIL,
+  복구 후 6건 PASS.
+
+```
+✖ 거래처 고르고 단가 입력 → 저장: 그 거래처만 연결, 이전 연결 해제, 다른 칸 보존 (63.7687ms)
+✖ "연결 안 함" 저장 → 연결 거래처 해제(단가 비움) (11.9511ms)
+✖ 단가 빈칸 저장 → 기존 안내, Store 그대로 (8.9536ms)
+✖ 서브차량 운행일지 설정: 그 차량번호 거래처만, 연결 없으면 차주 메인 거래처 안내 (11.3554ms)
+✖ 연동기사 본인: 배정 차량 거래처만 나오고 저장됨 (9.4347ms)
+✖ clientToDraft: 저장된 거래처 전 필드를 그대로 옮긴다 (1.6967ms)
+ℹ pass 0
+ℹ fail 6
+ℹ duration_ms 2432.322
+(exit=1)
+```
+
+- 남은 것: 보리 브라우저 실검증(로그인 상태에서 앱 설정 → 고정 노선 사용 → 거래처 연결).
+
+### 수정 사항 1 (보리 브라우저 확인 후, 2026-10-05 승인)
+
+- 문제: 고르기 버튼 첫 항목 "연결 안 함"이 늘 보여 헷갈림.
+- 수정: 연결이 없으면 버튼에 **"선택"**(목록엔 거래처만), 연결이 있으면 목록 맨 아래 **"연결 해제"** 항목.
+- 건드릴 파일 추가: `components/shared/AppDropdown.jsx`(128줄) — 값과 맞는 항목이 없을 때 보여줄 `placeholder` 선택 인자 추가.
+  안 넘기면 지금과 동일(공용 사용처 8곳 영향 없음). `FixedRouteClientLink.jsx`·테스트 수정.
+- 수정 사항 1 반영: `AppDropdown.jsx` 130줄, `FixedRouteClientLink.jsx` 94줄. 테스트에 "연결 없으면 버튼 '선택'·목록엔 거래처만",
+  "연결 있으면 맨 아래 '연결 해제'" 확인 추가. 전체 `npm test` 1,071건 통과, 타입체크 0.
+
+### 수정 사항 2 (2026-10-05 승인)
+
+- 거래처 추가·수정 창(`ClientTradeFields.jsx`)에서 "고정노선 연동"·"파렛트 단가" 칸 삭제. 저장된 값은 draft로 그대로 보존.
+- 파렛트 단가(켜기 + 단가)를 앱 설정 "거래처 연결" 줄로 이동 — 운행일지 파렛트 입력란은 고정노선 연결 거래처의 `palletOn`만 보므로
+  (`DayLogPage.jsx:83`) 연결 줄에 두는 게 맞음. 저장은 같은 `requestClientSave` 한 번.
+- 건드릴 파일 추가: `ClientTradeFields.jsx`, `App.clientsCars.test.js`. `app-settings.css` 200줄 넘으면 연결 줄 CSS를 새 파일로 분리.
+- 수정 사항 2 반영: `ClientTradeFields.jsx` 두 칸 삭제(59줄), 쓰지 않게 된 `hideFixedRoute` 인자를 `ClientFormModal.jsx`·`CallClientQuickAdd.jsx`에서도 제거.
+  `FixedRouteClientLink.jsx` 125줄(파렛트 스위치·단가), `app-settings.css` 198줄.
+  `App.clientsCars.test.js`의 "거래처 폼 고정노선 1곳" 테스트를 앱 설정 연결 줄 경로로 바꿈(클라우드 저장·id 보존 확인 유지).
+  파렛트 테스트 추가. 전체 `npm test` 1,072건 통과, 타입체크 0.
+
+### 수정 사항 3 (2026-10-05 승인)
+
+- 설정 화면 연결 줄 UI가 별로 → 설정 화면엔 요약만(연결 없음: "+ 추가" / 연결 있음: 거래처명·1회 단가·파렛트 + "수정"),
+  고르기·단가·파렛트·저장은 **팝업 창**(`FixedRouteClientModal.jsx` 새 파일, 기존 `modal-overlay`·`modal-content`·`modal-btns` 모양).
+- 팝업: 저장 성공 시 닫힘, 실패·안내 시 유지. 수정일 때만 "연결 해제"(확인 창 한 번). 저장 경로·1곳 규칙은 그대로.
+- 건드릴 파일: `FixedRouteClientLink.jsx`, `FixedRouteClientModal.jsx`(새), `app-settings.css`, `FixedRouteClientLink.test.js`, `App.clientsCars.test.js`.
+- 수정 사항 3 반영: `FixedRouteClientLink.jsx` 63줄(요약 + "+ 추가"/"수정"), `FixedRouteClientModal.jsx` 111줄(새, `createPortal`로 body에 그림,
+  모양은 기존 `client-modal` 틀 재사용), `app-settings.css` 199줄. 테스트를 팝업 경로로 고침(저장 성공 시 닫힘·실패 시 유지·연결 해제 확인 창 포함).
+  전체 `npm test` 1,072건 통과, 타입체크 0. 브라우저: 앱 설정 요약 줄·팝업 열림·왼쪽 정렬 확인(저장은 안 누름).
+
+### 수정 사항 4 (2026-10-05 보리 "A로 해봐")
+
+- 연결 줄 배치: "+ 추가"/"수정" 버튼을 제목+설명 두 줄의 세로 가운데 오른쪽에, 연결 상태 글("연결된 거래처가 없습니다." 또는
+  거래처명·단가)은 설명 바로 아래 줄로. `FixedRouteClientLink.jsx`·`app-settings.css`만.
+- 간격·버튼 위치 손질(설명과 연결 상태 사이 0, 버튼은 왼쪽 세 줄 세로 가운데). `app-settings.css` 200줄, `FixedRouteClientLink.jsx` 68줄.
+- 보리 브라우저 확인 후 코드 커밋 **react-app `461fced`**(push 전). 전체 `npm test` 1,072건 통과, 타입체크 0.
+- 다음: 보리 push → CI "verify" 확인 → §5 리뷰 → 최종 `[x]` 승인.
+
+### 확정 (2026-10-07)
+
+- 보리 push → CI "verify" 초록(`461fced`) → §5 리뷰 7항목 문제 없음(범위 13개 파일 = 지시서+수정 사항 1~4, 새 저장 레이어·타입 꼼수 없음, 전부 200줄 이하, 테스트 6건 추가·기존 테스트는 경로만 교체) → 보리 최종 `[x]` 승인.
