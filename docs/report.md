@@ -1,112 +1,106 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 로드맵 14번 화면 손질 A·B — 하단 메뉴 첫 화면 뒤로가기 + 자주 누르는 버튼 44px `[x]`
+## 로드맵 15번 화면 손질 C — 늦게 채워지는 화면(일상점검표 빈 카드·트럭 그림) `[x]`
 
-보리 결정(2026-10-07): 배포 전 작은 슬라이스로 A·B만. 원본과 비교하지 않음(이관 끝남). C(빈 카드·트럭 그림 늦게 뜸)는 15번 별도 슬라이스.
+보리 결정(2026-10-07): 14번 다음, 배포 전. 원본과 비교하지 않음.
 
-### 현재 상태 (2026-10-07 AI 앱 확인, 휴대폰 크기 375px)
+### 현재 상태 (원인, 코드 확인 2026-10-07)
 
-- **A** — 하단 메뉴 4칸 중 매출(`/app/revenue`)·마이페이지(`/app/me`) 첫 화면 왼쪽 위에 `<` 뒤로가기가 있음. 누르면 홈으로 감
-  (`AppShellRoutes.jsx:86`·`:96` `onBack={() => navigate('/app')}`). 홈 첫 화면엔 없음 → 화면마다 달라 헷갈림.
-- 일일운행(`/app/day/날짜`)의 뒤로가기는 성격이 다름 — 달력 날짜를 눌러 들어온 경우 달력으로 돌아가는 "닫기" 역할이고(`workLogNavigation.test.js:6`),
-  나갈 때 입력 즉시 저장에도 쓰임(`App.test.js:398-405`).
-- **B** — 실제 잰 크기: 상단 뒤로가기·메뉴·알림 버튼 40×40(`shared-controls.css:130` `.icon-btn`), 달 이동 화살표 34×34
-  (`shared-controls.css:41` `.arrow-btn`, 그림 22 + 여백 6), 홈 연·월 선택 칸 높이 32(`app-dropdown.css:6` `min-height: 32px`). 권장 44px보다 작음.
+1. **일일운행 빈 카드** — `DailyInspectionNotice.jsx:45-46`: 서버에서 그날 점검표를 읽는 동안 "자리만 잡는 빈 상자"를 일부러 그림
+   (아래 내용이 밀리지 않게, 9-B-2). 그래서 잠깐 아무 글자 없는 카드가 보임.
+2. **사이드메뉴 트럭 그림** — `SideMenu.jsx:108`: 메뉴가 닫혀 있으면 아무것도 안 그림(`if (!open) return null`).
+   그래서 **메뉴를 처음 열 때서야** 그림(34KB)을 내려받기 시작함 → 휴대폰에선 그림 칸이 잠깐 비어 보임.
+   그림 칸 크기도 정해져 있지 않아(`side-menu.css:39` 높이만) 내려받기 전엔 폭 0.
+3. **홈 화면 트럭 그림** — `CalendarHeader.jsx:52` `banner_image.png`가 **144KB**(408×231, 화면엔 높이 52px로만 보임).
+   그림 칸 폭이 정해져 있지 않아(`calendar.css:17` 높이만) 그림이 오기 전엔 폭 0 → 그림이 뜰 때 옆 "운행 일지" 글자도 같이 밀림.
+   (PC 개발 서버에선 17ms로 바로 와서 안 보임 — 휴대폰 네트워크에서만 보이는 현상으로 판단.)
 
 ### 목표 상태 (기대 동작)
 
-1. **A**: 매출·마이페이지 첫 화면에 뒤로가기 버튼이 없다. 왼쪽은 빈 자리(제목이 가운데 그대로). 오른쪽 메뉴 버튼은 그대로.
-   - 일일운행 화면의 뒤로가기는 **그대로 둔다**(위 이유). → 보리 확인 필요(아래 "결정할 것" 1).
-   - 하단 메뉴로 열리지 않는 화면(차량 관리·거래처·개인정보 등)은 지금처럼 뒤로가기 있음.
-2. **B**: 상단 뒤로가기·메뉴·알림 버튼 44×44. 그림 크기(20px)는 그대로, 누르는 영역만 커짐.
-3. **B**: 달 이동 화살표 44×44(그림 22px 그대로). 같은 버튼을 쓰는 다른 화면도 같이 커짐(아래 영향 목록).
-4. **B**: 홈 달력 연·월 선택 칸 높이 44. **홈 달력만** — 다른 화면 드롭다운(15곳)은 안 바뀜.
-5. 빈 자리 자리채움(`width: 40` 3곳)도 44로 맞춰 제목이 가운데에서 안 밀림.
+1. 일상점검표 카드가 확인 중일 때 빈 상자 대신 **불러오는 중 애니메이션**을 보임(보리 2026-10-07: 글자 대신 애니메이션).
+   - 모양: 카드 안에 실제 내용 자리 모양의 회색 막대(왼쪽 글자 자리 1줄 + 오른쪽 버튼 자리 1개)를 그리고, 그 위로 밝은 빛이 왼쪽→오른쪽으로 천천히 지나감(약 1.2초 반복).
+   - 카드 크기 그대로(지금 빈 상자와 같은 높이 70px) → 확인되면 지금처럼 "작성 필요 [+ 입력]"/"작성 완료 [보기]"로 바뀜.
+   - 라이트·다크 둘 다 테마 색 사용. 휴대폰 "동작 줄이기" 설정이 켜져 있으면 빛 지나감은 멈추고 회색 막대만 보임.
+   - 화면 읽기 기능엔 "일상점검표 불러오는 중"으로 읽힘(눈엔 안 보이는 글자).
+2. 사이드메뉴 그림은 **앱이 뜬 직후 미리 내려받아 둠**(지금 테마 그림 1장만 — 10-A의 "안 보이는 그림은 안 받기" 유지).
+   그림 칸 크기를 미리 정해(높이 56 × 폭 84) 그림이 늦어도 자리가 안 흔들림.
+3. 홈 트럭 그림 칸 크기를 미리 정함(높이 52 × 폭 92) → "운행 일지" 글자가 안 밀림.
+4. `banner_image.png`를 **144KB → 약 40KB 이하**로 줄임(크기 288×163, 가장 크게 보이는 곳 54px의 3배 — 선명도 유지).
+   이 그림을 쓰는 곳 전부 같이 가벼워짐: 첫 로딩 화면(`index.html`), 홈, 로그인 첫 화면, 가입 환영, 처음 설정(온보딩).
 
 ### 건드릴 파일
 
 | 파일 | 내용 | 줄 수 |
 |---|---|---|
-| `react-app/src/components/PageHeader.jsx` | `onBack` 없으면 뒤로가기 대신 빈 자리, 빈 자리 40→44 | 37 → ~40 |
-| `react-app/src/components/RevenuePage.jsx` | `PageHeader`에 `onBack` 안 넘김, 안 쓰는 `onBack` 인자 삭제 | 소폭 감소 |
-| `react-app/src/components/MyPage.jsx` | 위와 같음 | 195 → ~193 |
-| `react-app/src/app/AppShellRoutes.jsx` | `:86`·`:96` `onBack` 넘기기 삭제 | 103 → 103 |
-| `react-app/src/components/calendar/CalendarHeader.jsx` | 빈 자리 2곳 40→44 | 83 → 83 |
-| `react-app/src/components/calendar/calendar-date-select.css` | 홈 달력 연·월 칸만 `min-height: 44px` | 2 → 3 |
-| `react-app/src/shared-controls.css` 또는 새 파일 | `.icon-btn` 44, `.arrow-btn` 최소 44 — **200줄 초과 파일**, 아래 §6 | — |
-| 테스트(새 파일 1개) | 아래 테스트 | — |
-
-### 공용 클래스 영향 범위 (§5-6, `grep` 결과)
-
-- `.icon-btn`(크기 변경): `PageHeader.jsx`(뒤로가기·메뉴 — 이 헤더를 쓰는 화면 약 20곳 전부), `CalendarHeader.jsx`(알림·메뉴),
-  `NotificationPanel.jsx`(알림 창 닫기 버튼 1곳). `action-icon-btn`·`di-icon-btn`·`auth-back-icon-btn`은 다른 클래스라 영향 없음.
-- `.arrow-btn`(크기 변경): `CalendarHeader.jsx`(홈 달력), `RevenueNav.jsx`(매출), `MonthNavigator.jsx`(서류 발급),
-  `MaintFuelPage.jsx`(차량 유지비), `SettlementSummaryCard.jsx`(기사 정산) — 5곳 모두 달 이동 줄. 둥근 달 이동 상자가 34→44로 조금 높아짐.
-- `.app-dropdown-trigger`는 **안 바꿈**(15곳 공용). 홈 달력 안(`.date-select-group`)에서만 높이 지정.
-- 브라우저 확인 때 위 5개 달 이동 줄·알림 창·하단 메뉴 첫 화면 4개를 전부 본다.
+| `react-app/src/components/day-log/DailyInspectionNotice.jsx` | 확인 중 상자 안에 회색 막대 2개 + 읽기용 글자, 새 CSS import | 92 → ~97 |
+| `react-app/src/components/day-log/daily-inspection-loading.css` (새 파일) | 회색 막대·빛 지나감·동작 줄이기 | ~35 |
+| `react-app/src/components/SideMenu.jsx` | **208줄(200 초과)** — 아래 §6 분리 + 그림 미리 받기 함수 | 208 → ~130 |
+| `react-app/src/components/side-menu/SideMenuIcons.jsx` (새 파일) | SideMenu의 아이콘 9개를 그대로 옮김 | ~85 |
+| `react-app/src/app/AppShell.jsx` | 앱이 뜬 뒤 사이드메뉴 그림 미리 받기 1번 호출 | 185 → ~188 |
+| `react-app/src/side-menu.css` | 메뉴 그림 칸 폭 84px | 133 → 134 |
+| `react-app/src/components/calendar/calendar-header.css` | 홈 그림 칸 폭 92px·높이 52px | 23 → ~26 |
+| `react-app/public/images/banner_image.png` | 288×163으로 줄여 다시 저장 | 144KB → ~40KB |
+| 테스트(새 파일 1개) | 아래 | — |
 
 ### 안 건드릴 것
 
-- `BottomNav.jsx`·`bottom-nav.css` — 이미 44px(앱 실측 60×44).
-- `DayLogPage.jsx`(229줄) — 일일운행 뒤로가기 그대로(결정 1이 "그대로"일 때).
-- `app-dropdown.css`·`AppDropdown.jsx` — 공용이라 그대로.
-- 저장·계산 코드 없음. 화면 크기·버튼 표시만.
+- `calendar.css`(251줄)·`daily-inspection.css`(254줄) — 둘 다 200줄 초과라 안 건드림. 홈 그림 크기는 `CalendarHeader.jsx`가 이미 불러오는 `calendar-header.css`에,
+  확인 중 애니메이션은 새 파일 `daily-inspection-loading.css`에(카드 틀 `.daily-inspection-notice.is-loading` 높이는 기존 그대로 씀).
+- 사이드메뉴 그림 2장(`banner_image_Light/dark.png`, 10-A에서 이미 34KB) — 그대로.
+- 일상점검표 읽기·저장(`lib/dailyInspections.js`) — 그대로. 화면 글자만.
+
+### 공용 클래스·그림 영향 범위 (§5-6)
+
+- `.banner-logo`: `CalendarHeader.jsx` 한 곳만(grep). `.menu-banner`: `SideMenu.jsx` 한 곳만.
+- `banner_image.png` 사용처(grep): `index.html:57`, `CalendarHeader.jsx`, `LoadingScreen.jsx`, `AuthIntroView.jsx`, `WelcomeProfileView.jsx`, `OnboardingPage.jsx`.
+  표시 높이 30~54px(`account-flow.css:53·175·230·368`, `index.html:36`) → 163px 그림이면 전부 3배 이상이라 흐려지지 않음. 브라우저 확인 때 6곳 다 봄.
 
 ### 실패 시 처리 — **신규 레이어 없음**
 
-- 저장·동기화를 안 건드림. 새 저장소·큐·fallback 없음(AGENTS §7).
+- 미리 받기가 실패해도(네트워크 끊김) 지금처럼 메뉴 열 때 다시 받음. 새 저장소·재시도 장치 없음(AGENTS §7).
 
 ### §6 200줄
 
-- `shared-controls.css`가 **287줄**(이미 200 초과)이라 고치려면 분리설계안 승인이 필요함(AGENTS §6). 제안:
-  - **분리안**: 앞부분 "월 이동기·설정 헤더·아이콘 버튼" 규칙(`.date-navigator`·`.date-select-group`·`.date-select`·`.arrow-btn`·
-    `.settings-header`·`.settings-title`·`.icon-btn`, 약 100줄)을 새 파일 `header-controls.css`로 **그대로 옮기고** 거기서 크기를 고침.
-    `App.jsx`의 `shared-controls.css` import 바로 앞줄에 같은 자리로 import → 적용 순서 그대로. `shared-controls.css`는 약 185줄로 줄어듦
-    (남는 것: 요약 카드·토글·입력·세그먼트·백업 버튼 — 폼·카드 기본형). 책임 경계 = "화면 맨 위 줄" vs "폼·카드".
-  - 이 경우 건드릴 파일에 `App.jsx`(import 1줄)·`header-controls.css`(새, ~105줄) 추가.
-- 나머지 파일은 전부 200줄 이하 유지(`MyPage.jsx` 195 → ~193).
+- `SideMenu.jsx` **208줄** → 분리설계안: 맨 위 아이콘 그림 9개(`CarIcon`~`SupportIcon`, 8~90줄, 약 83줄)를
+  `components/side-menu/SideMenuIcons.jsx`로 **그대로 옮기고** `SideMenu.jsx`는 import만. 책임 경계 = "그림 모양" vs "메뉴 구성·동작".
+  아이콘은 다른 곳에서 안 씀(grep). `SideMenu.jsx`는 약 130줄.
+- 나머지 파일 전부 200줄 이하 유지.
 
 ### §8 질문 답
 
-- 1~4: 저장·구독·쓰기 창구와 무관(화면 모양만). 5: 권한 변경 없음.
+- 1~4: 저장·구독·쓰기 창구 변경 없음(일상점검표는 읽은 결과 표시 글자만). 5: 권한 변경 없음.
 
-### 테스트 (새 파일 `PageHeader.test.js`)
+### 테스트
 
-1. `onBack`을 넘기면 뒤로가기 버튼이 있고 누르면 불린다.
-2. `onBack`이 없으면 뒤로가기 버튼이 없고 빈 자리가 있다(제목·메뉴 버튼은 그대로).
-3. 매출·마이페이지 화면을 그리면 뒤로가기 버튼이 없다. 일일운행 화면엔 있다(기존 `App.test.js:398` 그대로 통과).
-- 새 테스트는 바꾼 코드를 잠시 되돌려 FAIL 확인 후 결과 첨부(플레이북 §6). 크기(44px)는 테스트 환경이 CSS를 안 그려 브라우저에서 잰다.
+1. `DailyInspectionNotice` 확인 중: 회색 막대 2개와 읽기용 "일상점검표 불러오는 중"이 있고 버튼이 없음 → 읽기가 끝나면 막대가 사라지고 "작성이 필요합니다" + [+ 입력].
+2. 사이드메뉴 미리 받기 함수: 지금 테마(다크/라이트)에 맞는 그림 1장만 요청함.
+- 새 테스트는 바꾼 코드를 잠시 되돌려 FAIL 확인 후 결과 첨부(플레이북 §6). 그림 칸 크기·늦게 뜨는 현상은 브라우저에서 네트워크를 느리게 해서 확인.
 
 ### 결정할 것 (보리)
 
-1. **일일운행 화면 뒤로가기** — AI 추천: **그대로 둠**(달력에서 들어온 날짜 닫기 + 나갈 때 즉시 저장 역할). 다른 의견 있으면 말씀.
-2. **`shared-controls.css` 분리** — AI 추천: **위 분리안**. 다른 길: 이번만 예외로 그 파일 안 숫자 2개만 고치기(287줄 유지).
-
-### 보리 결정 (2026-10-07)
-
-1. 일일운행 뒤로가기 **그대로 둠**(추천대로). 2. `shared-controls.css` **분리안**(추천대로). → "착수지시서 확정, 작업 진행해".
+1. `SideMenu.jsx` 분리 — **분리안으로 결정**(보리 2026-10-07).
+2. ~~확인 중 문구~~ → 애니메이션으로 변경(보리 2026-10-07). 모양은 위 목표 1(회색 막대 + 빛 지나감).
+3. 착수 확정(2026-10-07, "착수지시서 확정, 작업 진행해").
 
 ### 진행 기록 (2026-10-07)
 
-- 구현(커밋 전). 줄 수: `PageHeader.jsx` 41, `RevenuePage.jsx` 26, `MyPage.jsx` 194, `AppShellRoutes.jsx` 103, `CalendarHeader.jsx` 83,
-  `calendar-date-select.css` 3, `App.jsx` 146(import 1줄), `shared-controls.css` 287→184, `header-controls.css` 103(새).
-- 분리는 규칙을 글자 그대로 옮김 — 옮기기 전후 두 파일 합친 규칙 줄이 원본과 같음을 비교로 확인(머리 주석 제외). 그 뒤 `.icon-btn` 40→44, `.arrow-btn` `min-width`·`min-height` 44 추가.
-- 지시서 밖 추가 수정(타입 검사가 잡음): 마이페이지에 더는 없는 `onBack`을 넘기던 테스트 3개 파일에서 그 한 줄만 삭제 —
-  `MyPage.dataDownload.test.js`·`MyPage.inviteModal.test.js`·`accountPermissionUi.test.js`(검사 내용 변경 없음).
-- 로컬 `npm test` 전체 통과(unit 788 + 화면 287), `tsc` 오류 0. 새 테스트 `PageHeader.test.js` 3건.
-- 되돌림 확인(플레이북 §6): `PageHeader.jsx`만 예전 것으로 되돌려 실행 → 2·3번 FAIL, 복구 후 3건 PASS.
+- 구현(커밋 전). 줄 수: `SideMenu.jsx` 208→138(아이콘 9개 → `side-menu/SideMenuIcons.jsx` 85줄, 그대로 옮김 + 미리 받기 함수),
+  `AppShell.jsx` 186(첫 화면에서 미리 받기 1번), `DailyInspectionNotice.jsx` 101, `daily-inspection-loading.css` 41(새), `side-menu.css` 134, `calendar-header.css` 26.
+- **목표 4 미달 — 보리 결정 필요**: `banner_image.png` 408×231 → 288×163으로 줄였지만 **144KB → 74.6KB**(약 48% 감소). 목표 "약 40KB 이하"엔 못 미침.
+  이 PC 기본 도구(Windows 그림 기능)로는 색 수 줄이기(압축)를 못 해서 크기만 줄임. 화질은 홈에서 확인(선명).
+  더 줄이는 방법: ① 지금 74.6KB로 둠 ② 240×136으로 더 작게(52KB, 가장 크게 보이는 54px의 2.5배) ③ 외부 압축 도구 설치(내려받기 필요 — 승인 대상).
+- 테스트는 새 파일 대신 **기존 두 파일에 추가**(같은 화면 테스트가 이미 있어서): `DailyInspectionNotice.test.js`의 "확인 중엔 글씨 없는 빈 상자" 테스트를
+  새 동작(막대 2개·버튼 없음·읽기용 "일상점검표 불러오는 중")으로 바꾸고, "확인 끝나면 막대가 사라지고 [+ 입력]" 1건 추가.
+  `SideMenu.banner.test.js`에 "메뉴가 닫혀 있어도 지금 테마 그림 1장 미리 요청" 1건 추가.
+- 로컬 `npm test` 전체 통과(unit 788 + 화면 289), `tsc` 오류 0.
+- 되돌림 확인(플레이북 §6): `DailyInspectionNotice.jsx`를 예전 것으로, 미리 받기 함수에서 그림 요청 줄을 뺀 상태로 실행 → 새·바뀐 테스트 3건 FAIL(나머지 8건 PASS), 복구 후 11건 PASS.
+- AI 앱 확인(375px, 다크): 홈 그림 칸 92×52(그림 288px로 선명), 사이드메뉴를 열기 전에 다크 그림 요청됨 → 메뉴 열자마자 그림 이미 받아져 있음(84×56),
+  일상점검표 읽기를 6초 늦춰 확인 → 막대 2개 + 빛 지나감, 상자 높이 70 → 다 읽은 뒤 "작성이 필요합니다 [+ 입력]"도 70(화면 안 흔들림).
+- 못 본 것: 라이트 테마 막대 색, 로그인·가입 환영·처음 설정 화면 그림(로그아웃 필요) — 보리 확인 때.
 
-```
-✔ onBack을 넘기면 뒤로가기 버튼이 있고 누르면 불린다
-✖ onBack이 없으면 뒤로가기 대신 빈 자리, 제목·메뉴는 그대로  — true !== false
-✖ 하단 메뉴 첫 화면: 마이페이지·매출에는 뒤로가기가 없다  — true !== false
-ℹ pass 1 / ℹ fail 2
-```
-
-- AI 앱 확인(375px, 다크): 홈 알림·메뉴 44×44, 달 이동 44×44, 연·월 칸 높이 44, 매출·서류 발급 달 이동 44×44,
-  매출·마이페이지 뒤로가기 없음(제목 가운데 그대로), 일일운행·거래처·서류 발급·차량 유지비 뒤로가기 44×44, 가로 넘침 없음.
-- 보리 브라우저 확인 후 코드 커밋 **react-app `1e4f638`**(push 전). 다음: 보리 push → CI "verify" 확인 → §5 리뷰 → 최종 `[x]` 승인.
+- 보리 결정(2026-10-07): 그림 크기 **① 74.6KB로 둠**(목표 4는 이 크기로 확정 — 착수지시서 "약 40KB 이하"를 보리가 변경). 보리 브라우저 확인 후 코드 커밋 **react-app `1ef55fc`**(push 전).
+  다음: 보리 push → CI "verify" 확인 → §5 리뷰 → 최종 `[x]` 승인.
 
 ### 확정 (2026-10-07)
 
-- 보리 push → CI "verify" 초록(`1e4f638`) → §5 리뷰 7항목 문제 없음 → 보리 최종 `[x]` 승인.
+- 보리 push → CI "verify" 초록(`1ef55fc`) → §5 리뷰 7항목 문제 없음(아이콘 이동 글자 그대로 비교 확인) → 보리 최종 `[x]` 승인.
