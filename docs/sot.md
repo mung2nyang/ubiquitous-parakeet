@@ -464,6 +464,8 @@
 
 `position: sticky; bottom`이 스크롤 포트에 조기 부착되어 버튼이 위쪽에 떴다. sticky/`fixed` 제거, 폼 맨 아래 문서 흐름. `scrollIntoView` / `InlineExpandHost` 없음.
 
+**2026-10-08 변경(로드맵 20-A, 보리 결정)**: 칸이 화면 밖에서 열려 눌렀는지 모르는 문제 → `InlineSheet.jsx`만 펼쳐짐이 끝난 뒤·고르는 항목(`scrollKey`)이 바뀔 때 `scrollIntoView({ block: 'start' })` 허용. 버튼 문서 흐름·`useLayoutEffect` 금지·CSS 스크롤 없음은 그대로. `InlineExpandHost` 없음도 그대로.
+
 ## 4-10. 2026-08-31 — 테스트·지원 strict-inventory 중간점검
 
 Step 8 전. `error TS\d+:` 테스트·지원 **384 → 314**(캡 355 이하). 전체 911→840, 프로덕션 527→526. `finance.fixtures.js` 타입, `normalizeSettings` `@returns`, `App.test.js` 기존 헬퍼 재사용. 프로덕션 런타임 분기 변경 없음(`CalendarPage` `!!paymentOn`은 optional boolean 정합).
