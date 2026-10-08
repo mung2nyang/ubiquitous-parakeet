@@ -1,48 +1,71 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 문구 정리 1 — 사실과 다른 안내·임시 글 `[x]`
+## 문구 정리 2-A — 화면에 보이는 개발 용어 (클라우드·로컬·원탭 등) `[x]`
 
-로드맵 밖 보리 요청(2026-10-08). 전수 조사·수정안은 `docs/copy-review.md`. 보리 결정(2026-10-08): 용어 추천대로 통일, 말투 "~습니다" 통일, 공지사항 임시 글 비움, 온보딩 문구 제외. 4개 슬라이스 중 1번.
+로드맵 밖 보리 요청(2026-10-08). 전수 조사·수정안 `docs/copy-review.md` B절. 보리 결정: 말투 "~습니다", 용어 추천대로.
+문구 정리 2(개발 용어)는 고칠 파일이 25개라 **2-A 화면 쪽(9개)**과 **2-B 저장·서버 쪽(16개 + 테스트 3개)**으로 나눔 — 이번은 2-A.
 
 ### 현재 상태 (코드 확인)
 
-- 공지사항 임시 글: `NoticePage.jsx:6-22` `NOTICES` 3개("[필독] 서비스 이용 안내" 2026.08.11 등). 위 소개 카드(`:42-45`) "NOTICE / 새로운 소식을 확인하세요 / 서비스 업데이트와 중요한 안내를 가장 먼저 전해드립니다."
-- 고객센터 자주 묻는 질문(`CustomerCenterPage.jsx:16-33`): 3번 답 "백업 파일 내보내기·가져오기"(실제 버튼은 "백업 저장하기 / 백업 불러오기", `AppSettingsBackupSection.jsx:101·104`), 2번 답 "기본 차량"(앱에 없는 말), 1·3번 답 "클라우드·게스트·브라우저 데이터·~있어요". 카드 설명(`:196`) "궁금한 내용을 빠르게 확인해 보세요."
-- 준비 중 화면(`ComingSoonPage.jsx:13`) "이 화면은 다음에 옮깁니다." — 이관 때 개발 메모(`/app/soon`, `AppShellRoutes.jsx:100`).
-- 알림 창(`NotificationPanel.jsx:24`) "확인이 필요한 알림 내역입니다."
+| 위치 | 언제 보이나 | 현재 문구 |
+|---|---|---|
+| `app/HydrationRetryBanner.jsx:61` | 로그인 후 서버 기록을 못 불러왔을 때 위쪽 띠 | 클라우드 데이터를 불러오지 못했습니다. 로컬 데이터로 계속 쓸 수 있어요. |
+| `app/HydrationRetryBanner.jsx:63` | 띠의 [다시 시도] 누른 동안 | 재시도 중... |
+| `app/HydrationRetryBanner.jsx:50·53` | 다시 시도 결과 안내 | 클라우드 데이터를 다시 불러왔습니다. / 다시 시도했지만 아직 클라우드 데이터를 불러오지 못했습니다. |
+| `app/useAppSession.js:74` | 로그인 직후 일부 실패 | 로그인은 유지됐지만 클라우드 데이터를 일부 못 불러왔습니다. |
+| `components/InviteRedeemModal.jsx:31` | 기사 초대 코드 연동 직후 일부 실패 | 연동은 됐지만 클라우드 데이터를 일부 못 불러왔습니다. |
+| `components/drivers/EmployerLinkCard.jsx:14` | 기사 연동 해제 직후 일부 실패 | 연동은 해제됐지만 내 계정 데이터를 일부 못 불러왔습니다. |
+| `components/AppSettingsPage.jsx:87`, `components/PersonalInfoPage.jsx:70` | 서버 기록을 불러오는 동안(`useHydrationLock`) 설정·개인정보 위 안내 | 클라우드 동기화 중입니다. 잠시 후 다시 시도해 주세요. |
+| `components/AppSettingsBackupSection.jsx:75` | 백업 불러오기에서 엉뚱한 파일을 골랐을 때 | 파일 내용이 손상되었거나 JSON 파일이 아닙니다. |
+| `components/RoutePresetEditor.jsx:36` | 자주 다니는 노선 설정 설명 | …일일운행에서 원탭으로 횟수를 기록하세요. |
+| `components/day-log/FixedRouteChips.jsx:19` | 노선 버튼 묶음의 화면 읽기용 이름(눈에 안 보임) | 자주 다니는 노선 원탭 기록 |
 
 ### 목표 상태 (기대 동작)
 
-1. 공지사항: 임시 글 3개 삭제 → "등록된 공지사항이 없습니다." 표시. 소개 카드 삭제. (보리 결정: 비우기)
-2. 자주 묻는 질문 답 3개:
-   - 1번: 로그인하면 서버에 자동 저장됩니다. 비회원은 이 휴대폰에만 저장되므로, 앱을 지우거나 휴대폰을 바꾸면 기록이 사라질 수 있습니다. 앱 설정의 백업으로 꼭 보관해 주세요.
-   - 2번: 메뉴 → 차량 관리에서 차량을 추가하거나 수정할 수 있습니다.
-   - 3번: 로그인 계정은 다른 휴대폰에서 같은 계정으로 로그인하면 됩니다. 비회원 기록은 앱 설정의 [백업 저장하기]로 파일을 만든 뒤, 새 휴대폰에서 [백업 불러오기]로 옮길 수 있습니다.
-   - 카드는 제목 "자주 묻는 질문"만, 설명 줄 삭제.
-3. 준비 중 화면: "준비 중인 화면입니다."
-4. 알림 창: 설명 줄 삭제.
+| 위치 | 바뀐 문구 |
+|---|---|
+| `HydrationRetryBanner.jsx:61` | 서버에서 기록을 불러오지 못했습니다. 이 휴대폰에 있는 기록으로 계속 쓸 수 있습니다. |
+| `HydrationRetryBanner.jsx:63` | 다시 시도하는 중… |
+| `HydrationRetryBanner.jsx:50·53` | 기록을 다시 불러왔습니다. / 다시 시도했지만 아직 불러오지 못했습니다. |
+| `useAppSession.js:74` | 로그인은 됐지만 기록 일부를 불러오지 못했습니다. |
+| `InviteRedeemModal.jsx:31` | 연동은 됐지만 기록 일부를 불러오지 못했습니다. |
+| `EmployerLinkCard.jsx:14` | 연동은 해제됐지만 내 기록 일부를 불러오지 못했습니다. |
+| `AppSettingsPage.jsx:87`, `PersonalInfoPage.jsx:70` | 서버에서 기록을 불러오는 중입니다. 잠시 후 다시 시도해 주세요. |
+| `AppSettingsBackupSection.jsx:75` | 백업 파일이 아니거나 파일이 손상되었습니다. |
+| `RoutePresetEditor.jsx:36` | …일일운행에서 한 번 눌러 횟수를 기록하세요. |
+| `FixedRouteChips.jsx:19` | 자주 다니는 노선 (누르면 1회 추가) |
+
+- 동작·조건은 그대로, 문구만.
 
 ### 건드릴 파일
 
-| 파일 | 내용 | 줄 수 |
-|---|---|---|
-| `react-app/src/components/NoticePage.jsx` | `NOTICES` 비움 + 빈 목록 안내, 소개 카드 삭제 | 62 → 약 45 |
-| `react-app/src/components/CustomerCenterPage.jsx` | 답 3개 문구, 설명 줄 삭제 | 229 → 228 |
-| `react-app/src/components/ComingSoonPage.jsx` | 문구 1줄 | 16 |
-| `react-app/src/components/NotificationPanel.jsx` | 설명 줄 삭제 | 52 → 51 |
-| `react-app/src/components/NoticePage.test.js` (새 파일) | 공지 없으면 안내 문구 | — |
+| 파일 | 줄 수 |
+|---|---|
+| `react-app/src/app/HydrationRetryBanner.jsx` | 그대로 |
+| `react-app/src/app/useAppSession.js` | 그대로 |
+| `react-app/src/components/InviteRedeemModal.jsx` | 그대로 |
+| `react-app/src/components/drivers/EmployerLinkCard.jsx` | 그대로 |
+| `react-app/src/components/AppSettingsPage.jsx` | 175 그대로 |
+| `react-app/src/components/PersonalInfoPage.jsx` | 194 그대로 |
+| `react-app/src/components/AppSettingsBackupSection.jsx` | 그대로 |
+| `react-app/src/components/RoutePresetEditor.jsx` | 그대로 |
+| `react-app/src/components/day-log/FixedRouteChips.jsx` | 그대로 |
 
-### §6 200줄 — **예외 1건 승인 요청**
+- 9개 파일이지만 모두 문구 1~4줄 교체. AGENTS §3 "1~3개 파일"보다 많음 — 같은 종류 문구라 한 번에 보는 게 낫다고 판단, **승인 요청**.
 
-- `CustomerCenterPage.jsx` 이미 229줄(18-D 예외) → 문구만, 228줄. 나머지 200 이하.
+### §6 200줄
+
+- 9개 모두 200줄 이하, 줄 수 변화 없음.
 
 ### 안 건드릴 것 (근거)
 
-- 화면 구조·CSS 클래스 그대로(줄 삭제만). 마이페이지 "공지사항" 메뉴 이름 그대로(`MyPage.dataDownload.test.js:40·54`). 바꾸는 문구를 검사하는 기존 테스트 0건(grep).
+- 저장·서버 쪽 오류 문구(`lib/*`·`domain/taxInvoices.js` — 세션·행·형식 등) — 2-B에서.
+- 이 문구들을 검사하는 테스트 — 없음(`grep` "클라우드 데이터를·일부 못 불러왔·클라우드 동기화 중·JSON 파일이 아닙니다·원탭·재시도 중..." → 테스트 0건. `practiceSettings.test.js:74` describe 이름 "원탭 노선 기록"은 테스트 제목이라 그대로).
+- `settingsHydrationLockNotice` id·`locked` 조건 — 그대로(문구만).
 
 ### 실패 시 처리 — **신규 레이어 없음**
 
-- 문구만, 저장·동기화 무관.
+- 문구만. 저장·동기화 동작 무관, 새 장치 없음(AGENTS §7). 플레이북 트리거 파일 없음(`lib/*`는 2-B).
 
 ### §8 질문 답
 
@@ -50,14 +73,14 @@
 
 ### 테스트·확인
 
-- 새 테스트 1건(공지 없음 안내, 되돌림 FAIL 확인). 기존 테스트 전체 통과. AI 개발 서버 화면 확인(모바일·다크). 보리 휴대폰: 공지사항 / 고객센터 자주 묻는 질문 / 알림 창.
+- 문구 교체라 새 테스트 없음. 기존 테스트 전체 통과 확인.
+- AI 개발 서버: 자주 다니는 노선 설정 설명, 백업 불러오기에 엉뚱한 파일 → 안내 문구. (서버 불러오기 실패 띠·잠금 안내는 일부러 만들기 어려워 코드 확인으로 대신.)
+- **보리 휴대폰 확인**: 고정 노선 설정의 "자주 다니는 노선 등록" 설명 / 앱 설정 → 백업 불러오기에서 사진 파일 등을 골라 안내 문구 보기.
 
 ### 진행 기록 (2026-10-08)
 
-- 보리 "착수지시서 확정, 작업 진행해"(`CustomerCenterPage.jsx` 228줄 예외 포함). 구현: `NoticePage.jsx` 62 → 44, `CustomerCenterPage.jsx` 229 → 228, `ComingSoonPage.jsx` 16, `NotificationPanel.jsx` 52 → 51, 테스트 `NoticePage.test.js`(새, 1건).
-- 로컬 `npm test` 전체 통과(unit 824 + 화면 326), `tsc` 오류 0.
-- 되돌림 확인(플레이북 §6): 빈 목록 안내 줄을 지우면 → FAIL, 복구 후 PASS.
-- AI 개발 서버(5174, 모바일 375px): 공지사항 "등록된 공지사항이 없습니다." 상자만, 고객센터 자주 묻는 질문 답 4개 펼쳐 문구 확인(카드는 제목만), 준비 중 화면 "준비 중인 화면입니다.", 알림 창 제목 "알림"만(배치 이상 없음). 콘솔 오류 없음. 빈 안내 상자는 기존 `.empty-state`(테마 색 변수, 13개 화면 공용) 그대로라 다크도 같은 모양.
-- 코드 커밋 **react-app `6ef6374`**(push 전). 다음: 보리 push·배포 → **휴대폰**: 마이페이지 → 공지사항 / 고객센터 → 자주 묻는 질문 펼쳐 보기 / 홈 종 모양 알림.
-- push(보리) → CI "verify"·"deploy" 초록(`6ef6374`, run 37763644660) → 배포본 확인(AI): 새 문구 3개 들어감("등록된 공지사항이 없습니다"·"준비 중인 화면입니다"·"[백업 저장하기]로"), 옛 문구 0건. §5 리뷰 문제 없음(범위 5개 파일 = 지시서, 새 저장 장치·타입 꼼수 없음, `CustomerCenterPage.jsx` 228은 예외 승인·나머지 200 이하, 기존 테스트 변경 없음, CSS 변경 없음, 기대 동작 1~4 구현). 보리 휴대폰 확인 대기.
-- 보리 휴대폰 확인·최종 `[x]` 승인(2026-10-08).
+- 보리 "착수지시서 확정, 작업 진행해"(9개 파일 승인 포함). 9개 파일 문구만 교체(12줄 바뀜, 줄 수 변화 없음).
+- 로컬 `npm test` 전체 통과(unit 824 + 화면 326), `tsc` 오류 0. 새 테스트 없음(지시서대로).
+- AI 개발 서버(5174): 고정 노선 설정 "…일일운행에서 한 번 눌러 횟수를 기록하세요." 확인(확인 후 설정 되돌림), 앱 설정 → 백업 불러오기에 사진 파일 → 안내 "백업 파일이 아니거나 파일이 손상되었습니다." 확인. 콘솔 오류 없음. 서버 불러오기 실패 띠·잠금 안내는 코드 확인으로 대신(지시서대로).
+- 코드 커밋 **react-app `545ff2f`**(push 전). 다음: 보리 push·배포 → 휴대폰 확인.
+- push(보리) → CI 초록(`545ff2f`, run 37764829499) → §5 리뷰 문제 없음(범위 9개 파일 = 지시서, 문구만·새 저장 장치·타입 꼼수 없음, 모두 200줄 이하, 테스트 변경 없음, CSS 변경 없음, 기대 동작 전부 구현) → 보리 최종 `[x]` 승인(2026-10-08).
