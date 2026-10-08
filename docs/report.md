@@ -1,91 +1,74 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 로드맵 10-P ⓐ — 새 도메인(getdrivelog.com)으로 앱 옮기기 `[x]`
+## 로드맵 18-E — 인터넷 끊긴 채 설치 앱을 열 때 안내 화면 `[ ]`
 
-보리 확인(2026-10-08): 도메인 `getdrivelog.com` 구입(가비아, 2년). 로드맵 10-P 순서 ⓐ.
+보리 지시(2026-10-08): 18-E 진행(앞서 "잠시 중단"에서 재개). 로드맵상 "저장 쪽과 엮여 조사부터".
 
-### 이미 끝난 설정 (코드 밖, 2026-10-08)
+### 조사 결과 (코드 확인)
 
-- 가비아 DNS: A `@` 4개(185.199.108~111.153) + CNAME `www` → `mung2nyang.github.io` — AI가 보리 지시로 입력, 가비아 네임서버 조회로 5개 확인.
-- GitHub `react-app` → Settings → Pages → Custom domain `getdrivelog.com` 저장(보리) — "DNS check successful".
-- Supabase URL Configuration — AI가 보리 지시로 변경: Site URL `https://getdrivelog.com`, Redirect URLs에 `https://getdrivelog.com/**` 추가(옛 주소·localhost 유지, 총 3개). 아래 진행 순서 2번 완료.
-- 조회 결과(curl): `https://getdrivelog.com` 응답 200(인증서 발급됨), 옛 주소 `mung2nyang.github.io/react-app/` → 새 도메인으로 301 이동.
-
-### 현재 상태 (코드 확인)
-
-- **지금 앱이 안 열림**: 배포된 앱은 파일을 `/react-app/assets/...`에서 찾는데(`getdrivelog.com` 응답 HTML에서 확인), 새 도메인에는 그 경로가 없음 → 빈 화면. 옛 주소도 새 도메인으로 넘어가서 마찬가지.
-- 원인은 한 줄: `vite.config.js:8` `base: command === 'build' ? '/react-app/' : '/'`.
-- 옛 주소가 적힌 주석·문구: `vite.config.js:4`, `ci.yml:4`, `routerBasename.js:2-3`, `assetPath.js:2`, `pwaManifest.test.js:18`(안내 문구).
+- **지금**: 오프라인 대비 장치(서비스워커) 없음(`serviceWorker` 0건, `public/`에 `manifest.webmanifest`만). 인터넷이 끊긴 채 설치 앱을 열면 **브라우저 공룡 오류 화면**.
+- **앱을 인터넷 없이 "켜게" 만들면 생기는 위험**(그래서 이번엔 안 함):
+  1. 로그인 확인(`boot.js:94` `supabase.auth.getSession`)이 로그인 유효시간이 지난 상태면 서버에 새로 받으러 감 → 실패하면 `null` → **로그인 화면으로 감**(저장된 로그인 정보는 남지만 사용자는 "로그아웃됐다"고 느낌).
+  2. 기사 계정은 연동 확인(`driverLinkRpc.js:104-113`)이 실패하면 `null` → `accountType`이 차주로, 데이터 칸(`ownerKey`)이 **기사 본인 칸**으로 잡힘(`boot.js:61-66`·`:76-80`) → 차주 데이터 대신 빈 칸이 보이고 그 상태로 입력하면 엉뚱한 칸에 저장될 수 있음.
+  3. 앱 파일을 기기에 저장해 두면 새 버전 배포 뒤에도 옛 화면이 남는 문제를 따로 다뤄야 함.
+  → 앱 전체를 오프라인으로 켜는 건 저장·로그인 흐름을 같이 바꿔야 하는 큰 작업. **이번 슬라이스는 "공룡 화면 대신 우리 안내 화면"까지만.**
 
 ### 목표 상태 (기대 동작)
 
-1. `https://getdrivelog.com`에서 앱이 열리고, 이미지·아이콘·화면 이동이 정상.
-2. 주소를 직접 열거나 새로고침해도(`/app` 등) 정상(404.html 방식 그대로).
-3. 구글 로그인 → 구글 화면 → `https://getdrivelog.com/auth`로 돌아와 로그인 유지.
-4. 홈 화면 앱 설치가 새 주소 기준으로 됨.
-5. 로컬 `npm run dev`(localhost:5173)는 지금과 똑같음.
+1. 인터넷 없이 설치 앱(또는 앱 주소)을 열면 공룡 화면 대신 **우리 안내 화면**: 트럭 아이콘 + "인터넷에 연결되어 있지 않아요" + "연결되면 자동으로 다시 열려요" + [다시 시도] 버튼. 라이트·다크(휴대폰 설정 따름).
+2. 인터넷이 다시 연결되면 **저절로 앱을 다시 엶**(버튼 안 눌러도).
+3. **인터넷이 있을 땐 지금과 완전히 같음**: 서비스워커는 화면 주소 열기만 지켜보다가 실패했을 때만 안내 화면을 줌. 앱 파일·서버 데이터 요청은 **저장(캐시)하지 않고 손대지 않음** → 옛 버전이 남는 문제 없음.
+4. 개발 서버(`npm run dev`)에선 서비스워커를 안 켬(배포본에서만).
 
 ### 건드릴 파일
 
 | 파일 | 내용 | 줄 수 |
 |---|---|---|
-| `react-app/vite.config.js` | `base`를 항상 `/`로(빌드·개발 구분 삭제), 4번 주석 새 주소로 | 9 → 8 |
-| `react-app/.github/workflows/ci.yml` | 4번 주석 배포 주소만 새 주소로 | 79 → 79 |
-| `react-app/src/app/routerBasename.js` | 2~4번 주석만 새 주소 기준으로(동작 그대로) | 11 → 11 |
-| `react-app/src/lib/assetPath.js` | 2번 주석만(동작 그대로) | 14 → 14 |
-| `react-app/src/app/pwaManifest.test.js` | 18번 안내 문구만 `/react-app/` → 새 주소(검사 내용 그대로) | 40 → 40 |
+| `react-app/public/sw.js` (새 파일) | 설치 때 안내 화면·아이콘만 저장, 화면 주소 열기 실패 때만 안내 화면, 옛 저장분 정리 | ~40 |
+| `react-app/public/offline.html` (새 파일) | 안내 화면(앱 파일 없이 혼자 뜨는 한 장, 연결되면 자동 다시 열기) | ~45 |
+| `react-app/src/lib/registerServiceWorker.js` (새 파일) | 배포본 + 지원 브라우저일 때만 서비스워커 등록 | ~20 |
+| `react-app/src/main.jsx` | 위 등록 부르기(가져오기 1줄 + 호출 1줄) | 18 → 20 |
+| `react-app/src/lib/serviceWorker.test.js` (새 파일) | 아래 테스트 | — |
 
-- 동작이 바뀌는 건 `vite.config.js` 한 줄뿐. 나머지 4개는 옛 주소가 적힌 주석·문구 정리.
+### 안 건드릴 것
+
+- `boot.js`·`driverLinkRpc.js`·저장·동기화(`store/**`·`lib/*outbox*`·`hydrate*`) — 그대로. 위 위험 1·2는 이번 범위 밖(아래 "AI관찰").
+- `manifest.webmanifest`·`index.html` — 그대로.
+
+### 실패 시 처리
+
+- 서비스워커 등록이 실패해도 앱은 지금처럼 동작(등록 실패는 조용히 넘어감). 저장 장치 아님 — 안내 화면 1장·아이콘 1개만 기기에 둠(AGENTS §7 해당: **새 오프라인 장치 1개** — 이 착수지시서로 승인 요청).
 
 ### §6 200줄
 
-- 5개 모두 200줄 이하(최대 `ci.yml` 79줄), 줄 수 거의 변화 없음.
-
-### 안 건드릴 것 (근거)
-
-- `routerBasename.js`·`assetPath.js` 동작 — 둘 다 `import.meta.env.BASE_URL`을 읽어 base가 `/`면 자동으로 맞춤(`routerBasename.js:8-9`, `assetPath.js:11-13`).
-- `supabaseClient.js` — 구글 복귀 주소를 `window.location.origin + routerBasename()`으로 만듦(`supabaseClient.js:31`) → 새 도메인에서 저절로 `https://getdrivelog.com/auth`.
-- `public/manifest.webmanifest` — `start_url`·`scope`가 상대 경로 `./`라 그대로 동작(`pwaManifest.test.js:18-19`).
-- `index.html` — `/favicon.svg` 등 절대 경로는 base `/`와 같음.
-- `ci.yml` 404.html 복사·배포 단계 — 그대로 필요. CNAME 파일 — Actions 배포라 불필요(저장소 설정에 이미 입력).
-- 저장·동기화 코드 — 무관, 플레이북 트리거 없음.
-
-### 실패 시 처리 — **신규 레이어 없음**
-
-- 설정 한 줄 변경. 새 저장소·장치 없음(AGENTS §7). 문제가 생기면 수정 커밋 하나 더.
+- 새 파일 ~40·~45·~20줄, `main.jsx` 20줄(모두 200 이하).
 
 ### §8 질문 답
 
-- 1~4: 저장·구독·쓰기 창구 무관. 5: 권한 변경 없음.
+- 1~4: 저장·구독·쓰기 창구 무관(화면 주소 열기 실패 때 안내 화면만). 5: 권한 변경 없음.
 
-### 이미 합의된 손실 (보리 확인 2026-10-07)
+### 테스트 (`serviceWorker.test.js`)
 
-- 옛 주소에서 쓰던 비회원 데이터·로그인 상태·설치한 홈 화면 앱은 새 주소로 안 넘어감(브라우저가 주소별로 따로 보관). 실사용자 없음. 새 주소에서 다시 로그인·재설치.
+1. 등록: 배포본 + 지원 브라우저일 때만 `/sw.js` 등록, 개발 서버·미지원이면 안 함, 등록 실패해도 오류 안 남.
+2. 서비스워커(가짜 브라우저 환경에서 `sw.js` 실행): 화면 주소 열기가 성공하면 그 응답 그대로, 실패하면 안내 화면, 화면 주소가 아닌 요청(앱 파일·서버 데이터)엔 손 안 댐, 설치 때 안내 화면·아이콘 저장.
+- 새 테스트는 연결을 잠시 빼서 FAIL 확인 후 결과 첨부(플레이북 §6). 기존 테스트 전체 통과 확인.
+- AI: `npm run build` 후 미리보기 서버에서 서비스워커 등록·안내 화면(`/offline.html`) 모양 확인(개발 창은 인터넷 끊기 흉내가 어려움).
+- **보리 휴대폰 확인**: 비행기 모드로 설치 앱 열기 → 안내 화면, 비행기 모드 끄면 저절로 앱 열림, 평소 사용 그대로·배포 뒤 새 버전 바로 반영.
 
-### 진행 순서
+### AI관찰 (미확인 — 실행 지시 아님)
 
-1. AI: 코드 수정 → 로컬 `npm test`·`tsc` → `npm run build` 결과 HTML이 `/assets/...`를 가리키는지 확인 → 커밋(push 안 함).
-2. **보리: Supabase → Authentication → URL Configuration** (push 전에 해도 무해)
-   - Site URL: `https://getdrivelog.com`
-   - Redirect URLs에 추가: `https://getdrivelog.com/**`
-   - 옛 주소·localhost 항목은 그대로 둠(정리는 10-P 출시 설정에서).
-3. 보리: push → CI "verify" 초록·배포.
-4. 보리: GitHub Pages 설정에서 **Enforce HTTPS** 켜기(체크 가능해졌으면).
-5. 확인(아래).
-
-### 테스트·확인
-
-- 새 테스트 없음 — 바뀌는 건 빌드 설정 한 줄이고, 결과는 배포된 주소에서만 확인 가능. 대신 빌드 결과와 배포 주소를 직접 확인.
-- 기존 테스트 전체 통과 확인(`pwaManifest.test.js`는 문구만 바뀜).
-- AI: 배포 후 `https://getdrivelog.com` HTML이 `/assets/...`를 가리키고 그 파일이 200인지, `/app` 직접 열기, 옛 주소 이동 확인.
-- **보리 휴대폰·PC 확인**: ① `getdrivelog.com` 열림 ② 구글 로그인 → 돌아와서 로그인 유지 ③ 새로고침해도 그대로 ④ 홈 화면 앱 다시 설치 → 주소창 없이 열림.
+- 위 위험 2(기사 계정이 앱 켤 때 연동 확인이 실패하면 차주 칸 대신 본인 칸으로 잡힘)는 **인터넷이 잠깐 불안정할 때도 지금 생길 수 있음**. 로드맵 등재 여부 보리 확인 필요.
 
 ### 진행 기록 (2026-10-08)
 
-- 보리 "착수지시서 확정, 작업 진행해"(주석 정리 포함). 구현: `vite.config.js` 9 → 8(base `/`), `ci.yml`·`routerBasename.js`·`assetPath.js`·`pwaManifest.test.js` 주석·문구만.
-- 로컬 `npm test` 전체 통과(unit 791 + 화면 311), `tsc` 오류 0.
-- 빌드 확인: 결과 `index.html`이 `/assets/...`·`/favicon.svg`·`/manifest.webmanifest`·`/images/...`를 가리킴(`/react-app/` 없음). 개발 서버는 원래 base `/`라 변화 없음 — 화면 확인은 배포 주소에서.
-- 코드 커밋 **react-app `cdd1c5d`**(push 전). 다음: 보리 push → CI 초록·배포 → AI 배포 주소 확인 → 보리 휴대폰·PC 확인(위 4개).
-- push(보리) → CI "verify" 초록(`cdd1c5d`) → 배포 확인(AI, curl): `https://getdrivelog.com`이 `/assets/...` 새 빌드를 내보내고 파일 200, `/app` 직접 열기 앱 화면, 옛 주소 → 새 도메인 이동, `www` → `https://getdrivelog.com`.
-- Enforce HTTPS: 보리 지시로 AI가 GitHub Pages 설정에서 체크·저장 확인. `http://` → `https://` 이동은 GitHub 반영 대기(설정 완료).
-- §5 리뷰 문제 없음(범위 5개 파일 = 지시서, 새 저장 장치·타입 꼼수 없음, 모두 200줄 이하, 테스트는 안내 문구만 변경). 보리 휴대폰·PC 확인 ①~④ 문제없음 — 구글 로그인 중 주소창은 구글 사이트(앱 범위 밖)라 정상 → 최종 `[x]` 승인(2026-10-08).
+- 보리 "착수지시서 확정, 작업 진행해"(새 오프라인 장치 1개 승인 포함). 구현: `public/sw.js` 29줄·`public/offline.html` 42줄·`registerServiceWorker.js` 16줄(새), `main.jsx` 18→19, 테스트 `serviceWorker.test.js`(새, 3건 — `sw.js`를 가짜 브라우저 환경에서 그대로 실행).
+  - 안내 화면 아이콘은 그림 파일 대신 화면 안에 그린 트럭(안내 화면 1장만 저장하면 되게).
+  - 보리 문구 지시(작업 중): "네트워크 연결이 불안정합니다." / "연결 상태를 확인해 주세요." 다크 모드 버튼 글씨 색 대비 보강(흰 글씨→어두운 글씨).
+  - **범위 밖 1곳**: 전체 테스트 중 18-A `usePageTransition.test.js` 3번이 한 번 실패 — 뒤로가기 후 0.02초 고정 대기라 컴퓨터가 바쁠 때 늦음(앞 4회는 통과). 주소가 바뀔 때까지 기다리게 고침(검사 내용은 그대로, 약화 아님).
+- 로컬 `npm test` 전체 통과(unit 794 + 화면 311), `tsc` 오류 0.
+- 되돌림 확인(플레이북 §6): 실패 때 안내 화면 주는 부분을 빼면 → 3번 FAIL, 1·2번 PASS, 복구 후 3건 PASS.
+- AI 확인(`npm run build` + 미리보기 서버 4173): 서비스워커 등록·활성, 저장분은 `offline.html` 1개뿐. 서버를 끄고 `/app`·`/app/me` 열기 → 안내 화면(다크). 새 문구는 개발 서버 `/offline.html`로 확인.
+  - 참고: 안내 화면을 나중에 고치면 `sw.js`의 `CACHE` 이름을 올려야 휴대폰에 새로 저장됨(주석에 적어 둠).
+- 코드 커밋 **react-app `b4ef639`**(push 전). 다음: 보리 push·배포 → **휴대폰**: 설치 앱 한 번 연 뒤(서비스워커 설치) 비행기 모드로 다시 열기 → 안내 화면, 비행기 모드 끄면 저절로 앱 열림, 평소 사용·새 버전 반영 그대로.
+- 보리 지시(휴대폰 확인 중): 다시 시도 버튼 글씨 흰색 — 다크도 앱 버튼과 같은 `#2b6cb0` 바탕에 흰 글씨. 이미 push돼 휴대폰에 옛 안내 화면이 저장돼 있어 저장 이름 `offline-v1`→`offline-v2`. 테스트 3건 통과. 수정 커밋 **react-app `7c0a927`**(push 전).
+- push(보리) → CI "verify" 초록(`b4ef639`·`7c0a927`, 이어서 바로 수정 `dd36a00`) → §5 리뷰 문제 없음(범위 = 지시서 + 18-A 테스트 대기 방식 1곳(위 기록), 새 오프라인 장치 1개 = 승인분, 저장 장치·타입 꼼수 없음, 파일 모두 200 이하) → 보리 최종 `[x]` 승인(2026-10-08).
