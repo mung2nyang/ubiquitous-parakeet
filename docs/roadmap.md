@@ -162,7 +162,7 @@
     - 인계의 부수 항목: npm 의존성 취약점 정리도 후속 검토 대상으로 보관(구현 미승인). localhost Redirect URL 정리·Google 앱 게시 확인은 10-P 출시 설정에서 함께 검토.
 10-P. 출시 준비(로드맵 밖 보리 요청, 옛 9-P) `[확인: 2026-10-03 보리]` — 로그인 개편(구글) 완료 뒤 구글 [앱 게시]의 조건. 순서(보리 결정 2026-10-03):
     ② ~~회원용 백업~~ `[x]` react-app `8f66423`(마이페이지 데이터 다운로드).
-    ⓐ **도메인 구입**(보리) → GitHub Pages 연결 → `vite.config.js` `base` `/react-app/` → `/`, Supabase Site URL·Redirect URLs 새 도메인(11번 첫 줄을 여기로 당김)
+    ⓐ ~~**도메인 구입**(보리) → GitHub Pages 연결 → `vite.config.js` `base` `/react-app/` → `/`, Supabase Site URL·Redirect URLs 새 도메인~~ `[x]` react-app `cdd1c5d`(2026-10-08, `https://getdrivelog.com`)
     ⓑ **노무·법률 자문**(보리) → 처리방침 문구 확정(초안 `docs/privacy-policy-draft.md`, 국외 이전 고지 포함) — ⓐ·ⓑ 순서는 바뀌어도 됨
     ⓒ 처리방침 페이지(P-1, **새 도메인**) + 첫 화면 링크, 시행일 = 공개하는 날
     ⓓ 구글 브랜딩(홈페이지·처리방침·승인된 도메인 — 새 도메인 소유 확인) → **[앱 게시] = 실제 출시**.
