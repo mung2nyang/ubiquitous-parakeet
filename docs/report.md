@@ -1,86 +1,117 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 문구 정리 2-A — 화면에 보이는 개발 용어 (클라우드·로컬·원탭 등) `[x]`
+## 문구 정리 2-B — 저장·서버 쪽 오류 문구의 개발 용어 (세션·클라우드·행·형식 등) `[x]`
 
-로드맵 밖 보리 요청(2026-10-08). 전수 조사·수정안 `docs/copy-review.md` B절. 보리 결정: 말투 "~습니다", 용어 추천대로.
-문구 정리 2(개발 용어)는 고칠 파일이 25개라 **2-A 화면 쪽(9개)**과 **2-B 저장·서버 쪽(16개 + 테스트 3개)**으로 나눔 — 이번은 2-A.
+로드맵 밖 보리 요청(2026-10-08). 전수 조사·수정안 `docs/copy-review.md` B절. 보리 결정: 말투 "~습니다", 용어 추천대로. 2-A(화면 쪽) `[x]` `545ff2f` 다음.
 
 ### 현재 상태 (코드 확인)
 
-| 위치 | 언제 보이나 | 현재 문구 |
+저장이 실패하거나 막힐 때 토스트(아래 잠깐 뜨는 안내)로 보이는 문구들. 개발 용어(세션·클라우드·동기화·행·도메인·settings 등)가 그대로 보임.
+
+| 묶음 | 위치 | 현재 문구 |
 |---|---|---|
-| `app/HydrationRetryBanner.jsx:61` | 로그인 후 서버 기록을 못 불러왔을 때 위쪽 띠 | 클라우드 데이터를 불러오지 못했습니다. 로컬 데이터로 계속 쓸 수 있어요. |
-| `app/HydrationRetryBanner.jsx:63` | 띠의 [다시 시도] 누른 동안 | 재시도 중... |
-| `app/HydrationRetryBanner.jsx:50·53` | 다시 시도 결과 안내 | 클라우드 데이터를 다시 불러왔습니다. / 다시 시도했지만 아직 클라우드 데이터를 불러오지 못했습니다. |
-| `app/useAppSession.js:74` | 로그인 직후 일부 실패 | 로그인은 유지됐지만 클라우드 데이터를 일부 못 불러왔습니다. |
-| `components/InviteRedeemModal.jsx:31` | 기사 초대 코드 연동 직후 일부 실패 | 연동은 됐지만 클라우드 데이터를 일부 못 불러왔습니다. |
-| `components/drivers/EmployerLinkCard.jsx:14` | 기사 연동 해제 직후 일부 실패 | 연동은 해제됐지만 내 계정 데이터를 일부 못 불러왔습니다. |
-| `components/AppSettingsPage.jsx:87`, `components/PersonalInfoPage.jsx:70` | 서버 기록을 불러오는 동안(`useHydrationLock`) 설정·개인정보 위 안내 | 클라우드 동기화 중입니다. 잠시 후 다시 시도해 주세요. |
-| `components/AppSettingsBackupSection.jsx:75` | 백업 불러오기에서 엉뚱한 파일을 골랐을 때 | 파일 내용이 손상되었거나 JSON 파일이 아닙니다. |
-| `components/RoutePresetEditor.jsx:36` | 자주 다니는 노선 설정 설명 | …일일운행에서 원탭으로 횟수를 기록하세요. |
-| `components/day-log/FixedRouteChips.jsx:19` | 노선 버튼 묶음의 화면 읽기용 이름(눈에 안 보임) | 자주 다니는 노선 원탭 기록 |
+| ① 로그인 바뀜(같은 문장 복사 8곳) | `lib/clientCloudSave.js:12`, `dayLogCloudCommit.js:25`, `directMutationActions.js:33`, `driverUnlink.js:13`, `requestDriverInviteSave.js:28`, `supportInquiryMutations.js:13`, `vehicleDeletion.js:23`, `vehicleMutations.js:21` | 세션이 바뀌어 저장을 중단했습니다. 다시 로그인한 뒤 시도해 주세요. |
+| ② 다른 계정·세션 | `lib/cloudSession.js:154·157·164·167` / `:160` | 다른 계정의 데이터를 저장할 수 없습니다. 화면을 새로고침한 뒤 다시 시도해 주세요. / 세션이 바뀌었습니다. 화면을 새로고침한 뒤 다시 시도해 주세요. |
+| ③ 아직 불러오는 중 | `lib/cloudSession.js:119` | 클라우드 동기화가 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요. |
+| ④ 차량 저장 중 | `lib/outboxFlush.js:52` / `domain/taxInvoices.js:39` | 선택한 차량이 아직 클라우드에 동기화되지 않았습니다. / 차량 정보가 아직 서버에 등록되지 않았습니다. 잠시 후 다시 시도해 주세요. |
+| ⑤ 삭제 대상 없음 | `lib/directMutations.js:46·69·198` | 삭제할 차량 행을 / 거래처 행을 / 기사 연동 행을 찾지 못했습니다. |
+| ⑥ 초대 코드 | `lib/directMutations.js:168` | 초대 코드 생성에 반복적으로 실패했습니다. |
+| ⑦ 저장 결과 없음 | `lib/driverLinkRpc.js:32` | 서버가 저장 결과를 돌려주지 않았습니다. |
+| ⑧ 백업 파일 이상(11곳) | `lib/guestBackup.js:83·92·101·108·113·118·122·128·132·138` / `:172` | 유효한 백업 데이터가 아닙니다 / 유효한 도메인이 없습니다 / settings·profile·workData·workLogs·subWorkData 형식이 올바르지 않습니다 등 / 백업 적용 중 오류가 발생했습니다. |
+| ⑨ 백업 알림 | `lib/notifications.js:121` | 아직 백업한 적이 없습니다. 브라우저 데이터 삭제 시 기록이 사라질 수 있습니다. |
+| ⑩ 차량번호 변경 막힘 | `lib/logPendingLifecycle.js:122·147` | 운행 대기 기록을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요. |
+
+- 문구를 조건으로 비교하는 코드 없음: 위 상수들은 토스트로 돌려주기만 함(`grep` `SESSION_CHANGED_TOAST`·`TAX_INVOICE_VEHICLE_RETRY_ERROR` 쓰는 곳 — 모두 `toast:`/`throw new Error`, 비교 0건).
 
 ### 목표 상태 (기대 동작)
 
-| 위치 | 바뀐 문구 |
+| 묶음 | 바뀐 문구 |
 |---|---|
-| `HydrationRetryBanner.jsx:61` | 서버에서 기록을 불러오지 못했습니다. 이 휴대폰에 있는 기록으로 계속 쓸 수 있습니다. |
-| `HydrationRetryBanner.jsx:63` | 다시 시도하는 중… |
-| `HydrationRetryBanner.jsx:50·53` | 기록을 다시 불러왔습니다. / 다시 시도했지만 아직 불러오지 못했습니다. |
-| `useAppSession.js:74` | 로그인은 됐지만 기록 일부를 불러오지 못했습니다. |
-| `InviteRedeemModal.jsx:31` | 연동은 됐지만 기록 일부를 불러오지 못했습니다. |
-| `EmployerLinkCard.jsx:14` | 연동은 해제됐지만 내 기록 일부를 불러오지 못했습니다. |
-| `AppSettingsPage.jsx:87`, `PersonalInfoPage.jsx:70` | 서버에서 기록을 불러오는 중입니다. 잠시 후 다시 시도해 주세요. |
-| `AppSettingsBackupSection.jsx:75` | 백업 파일이 아니거나 파일이 손상되었습니다. |
-| `RoutePresetEditor.jsx:36` | …일일운행에서 한 번 눌러 횟수를 기록하세요. |
-| `FixedRouteChips.jsx:19` | 자주 다니는 노선 (누르면 1회 추가) |
+| ① 8곳 | 로그인 정보가 바뀌어 저장하지 못했습니다. 다시 로그인한 뒤 시도해 주세요. |
+| ② 5곳 | 로그인 정보가 바뀌어 저장하지 못했습니다. 화면을 새로고침한 뒤 다시 시도해 주세요. |
+| ③ | 아직 기록을 불러오는 중입니다. 잠시 후 다시 시도해 주세요. |
+| ④ 2곳 | 방금 등록한 차량이 아직 저장 중입니다. 잠시 후 다시 시도해 주세요. |
+| ⑤ 3곳 | 이미 삭제됐거나 찾을 수 없습니다. 화면을 새로고침해 주세요. |
+| ⑥ | 초대 코드를 만들지 못했습니다. 잠시 후 다시 눌러 주세요. |
+| ⑦ | 저장이 끝났는지 확인하지 못했습니다. 화면을 새로고침해서 확인해 주세요. |
+| ⑧ 10곳 | 백업 파일이 손상되었거나 운행 일지 백업 파일이 아닙니다. (`:172` 대체 문구는 "백업을 적용하지 못했습니다.") |
+| ⑨ | 아직 백업한 적이 없습니다. 앱을 지우거나 휴대폰을 바꾸면 기록이 사라질 수 있습니다. |
+| ⑩ 2곳 | 기록을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요. |
 
-- 동작·조건은 그대로, 문구만.
+- 동작·조건·저장 순서는 그대로, 문자열만 바꿈.
 
 ### 건드릴 파일
 
-| 파일 | 줄 수 |
-|---|---|
-| `react-app/src/app/HydrationRetryBanner.jsx` | 그대로 |
-| `react-app/src/app/useAppSession.js` | 그대로 |
-| `react-app/src/components/InviteRedeemModal.jsx` | 그대로 |
-| `react-app/src/components/drivers/EmployerLinkCard.jsx` | 그대로 |
-| `react-app/src/components/AppSettingsPage.jsx` | 175 그대로 |
-| `react-app/src/components/PersonalInfoPage.jsx` | 194 그대로 |
-| `react-app/src/components/AppSettingsBackupSection.jsx` | 그대로 |
-| `react-app/src/components/RoutePresetEditor.jsx` | 그대로 |
-| `react-app/src/components/day-log/FixedRouteChips.jsx` | 그대로 |
+| 파일 | 내용 | 줄 수 |
+|---|---|---|
+| `react-app/src/lib/cloudSession.js` | ②③ 6줄 | 그대로 |
+| `react-app/src/lib/clientCloudSave.js` | ① 1줄 | 그대로 |
+| `react-app/src/lib/dayLogCloudCommit.js` | ① 1줄 | 199 그대로 |
+| `react-app/src/lib/directMutationActions.js` | ① 1줄 | 그대로 |
+| `react-app/src/lib/driverUnlink.js` | ① 1줄 | 그대로 |
+| `react-app/src/lib/requestDriverInviteSave.js` | ① 1줄 | 그대로 |
+| `react-app/src/lib/supportInquiryMutations.js` | ① 1줄 | 그대로 |
+| `react-app/src/lib/vehicleDeletion.js` | ① 1줄 | 그대로 |
+| `react-app/src/lib/vehicleMutations.js` | ① 1줄 | 191 그대로 |
+| `react-app/src/lib/outboxFlush.js` | ④ 1줄 | 197 그대로 |
+| `react-app/src/domain/taxInvoices.js` | ④ 1줄 | 그대로 |
+| `react-app/src/lib/directMutations.js` | ⑤⑥ 4줄 | 200 그대로 |
+| `react-app/src/lib/driverLinkRpc.js` | ⑦ 1줄 | 그대로 |
+| `react-app/src/lib/guestBackup.js` | ⑧ 11줄 | 174 그대로 |
+| `react-app/src/lib/notifications.js` | ⑨ 1줄 | 그대로 |
+| `react-app/src/lib/logPendingLifecycle.js` | ⑩ 2줄 | 그대로 |
+| 테스트 `lib/cloudMemorySave.test.js:113` | ③ 기대 문구(정규식)만 새 문구로 | — |
+| 테스트 `lib/notifications.test.js:22` | ⑨ 기대 문구만 새 문구로 | — |
+| 테스트 `lib/receivablesCloudCommit.test.js:23` | ① 기대 문구 상수만 새 문구로 | — |
 
-- 9개 파일이지만 모두 문구 1~4줄 교체. AGENTS §3 "1~3개 파일"보다 많음 — 같은 종류 문구라 한 번에 보는 게 낫다고 판단, **승인 요청**.
+- 16개 파일 + 테스트 3개. 모두 문자열만 교체. AGENTS §3 "1~3개 파일"보다 많음 — 같은 문장이 여러 파일에 복사돼 있어 한 번에 바꿔야 문구가 섞이지 않음, **승인 요청**.
+- 복사된 같은 문장 8곳을 한 곳으로 모으는 정리(상수 하나로)는 **안 함** — 구조 변경이라 이번 범위 밖, 문자열만.
 
 ### §6 200줄
 
-- 9개 모두 200줄 이하, 줄 수 변화 없음.
+- 16개 모두 200줄 이하(`directMutations.js` 정확히 200), 줄 수 변화 없음(한 줄 안의 문자열만 바꿈).
 
 ### 안 건드릴 것 (근거)
 
-- 저장·서버 쪽 오류 문구(`lib/*`·`domain/taxInvoices.js` — 세션·행·형식 등) — 2-B에서.
-- 이 문구들을 검사하는 테스트 — 없음(`grep` "클라우드 데이터를·일부 못 불러왔·클라우드 동기화 중·JSON 파일이 아닙니다·원탭·재시도 중..." → 테스트 0건. `practiceSettings.test.js:74` describe 이름 "원탭 노선 기록"은 테스트 제목이라 그대로).
-- `settingsHydrationLockNotice` id·`locked` 조건 — 그대로(문구만).
+- 저장·동기화 동작 — 그대로. 바뀌는 건 `throw new Error('…')`·`return '…'`·`toast:` 상수의 글자뿐. 문구를 비교해 분기하는 코드 0건(위 grep).
+- 테스트 제목에 들어간 말("클라우드 동기화를 예약하면 안 된다" 등 `App.guestDurable.test.js:786·931`, `owner-state.test.js:137`, `practiceSettings.test.js:74`) — 테스트 이름이라 그대로.
+- 개발자용 콘솔 기록(`console.error('[…] …')`)·`outboxErrors.js:10` 기본 메시지(화면에 안 나감, 내부 오류 표시) — 그대로.
+- 온보딩 문구 — 보리 결정으로 제외.
+
+### 플레이북 트리거 (AGENTS §4) — 해당, 열람함
+
+- `lib/cloud*`·`lib/*mutation*`·`lib/*commit*` 파일이 포함돼 `docs/testing-playbook.md` 열람. 이번 변경은 **오류 문구 글자만** 바꾸고 저장 순서·실패 처리·세션 확인 코드는 손대지 않음 → 플레이북 §1~§5(원자적 저장·실패 주입·세션 무효화) 검증 대상 동작 변화 없음. 기존 저장 테스트 전체 통과로 확인(§6 테스트 진실성: 기대 문구만 바꾼 3개 테스트는 옛 문구로 되돌리면 FAIL하는 것 확인).
 
 ### 실패 시 처리 — **신규 레이어 없음**
 
-- 문구만. 저장·동기화 동작 무관, 새 장치 없음(AGENTS §7). 플레이북 트리거 파일 없음(`lib/*`는 2-B).
+- 문자열만. 새 저장소·장치 없음(AGENTS §7).
 
 ### §8 질문 답
 
-- 1~5 무관(표시 문구만, 권한 변경 없음).
+- 1~4: 저장·구독·쓰기 창구·동시편집 동작 변화 없음(문자열만). 5: 권한 변경 없음.
 
 ### 테스트·확인
 
-- 문구 교체라 새 테스트 없음. 기존 테스트 전체 통과 확인.
-- AI 개발 서버: 자주 다니는 노선 설정 설명, 백업 불러오기에 엉뚱한 파일 → 안내 문구. (서버 불러오기 실패 띠·잠금 안내는 일부러 만들기 어려워 코드 확인으로 대신.)
-- **보리 휴대폰 확인**: 고정 노선 설정의 "자주 다니는 노선 등록" 설명 / 앱 설정 → 백업 불러오기에서 사진 파일 등을 골라 안내 문구 보기.
+- 새 테스트 없음. 기대 문구 3개 테스트만 새 문구로 고치고, 고친 뒤 코드 쪽 문구를 옛 문구로 잠시 되돌리면 그 3개가 FAIL하는지 확인(결과 첨부).
+- 기존 테스트 전체 통과, `tsc` 0.
+- AI 개발 서버: 비회원으로 홈 종 알림 → 백업 알림 문구, 앱 설정 → 백업 불러오기에 `{}`만 든 파일 → ⑧ 문구. 나머지(로그인 바뀜·삭제 실패 등)는 일부러 만들기 어려워 테스트·코드 확인으로 대신.
+- **보리 휴대폰 확인**: 비회원으로 홈 종 알림의 "데이터 백업 권장" 문구.
 
-### 진행 기록 (2026-10-08)
+### 진행 기록 (2026-10-09)
 
-- 보리 "착수지시서 확정, 작업 진행해"(9개 파일 승인 포함). 9개 파일 문구만 교체(12줄 바뀜, 줄 수 변화 없음).
-- 로컬 `npm test` 전체 통과(unit 824 + 화면 326), `tsc` 오류 0. 새 테스트 없음(지시서대로).
-- AI 개발 서버(5174): 고정 노선 설정 "…일일운행에서 한 번 눌러 횟수를 기록하세요." 확인(확인 후 설정 되돌림), 앱 설정 → 백업 불러오기에 사진 파일 → 안내 "백업 파일이 아니거나 파일이 손상되었습니다." 확인. 콘솔 오류 없음. 서버 불러오기 실패 띠·잠금 안내는 코드 확인으로 대신(지시서대로).
-- 코드 커밋 **react-app `545ff2f`**(push 전). 다음: 보리 push·배포 → 휴대폰 확인.
-- push(보리) → CI 초록(`545ff2f`, run 37764829499) → §5 리뷰 문제 없음(범위 9개 파일 = 지시서, 문구만·새 저장 장치·타입 꼼수 없음, 모두 200줄 이하, 테스트 변경 없음, CSS 변경 없음, 기대 동작 전부 구현) → 보리 최종 `[x]` 승인(2026-10-08).
+- 보리 "착수지시서 확정, 작업 진행해" + 추가 지시 "운행 일지 → 운행일지"(⑧ 문구를 "운행일지 백업 파일"로 반영, 앱 전체 용어 통일은 문구 정리 4). 16개 파일 + 테스트 3개 문구 교체(38줄, 줄 수 변화 없음). `tsc` 오류 0.
+- 로컬 `npm test`: unit 823 통과 / **1 실패** — `lib/cloudSession.test.js:39` "세션은 있는데 hydration이 ready가 아니면 던진다"가 옛 문구 일부(`/준비되지 않았습니다/`)를 기대. 착수 전 grep이 문장 전체("클라우드 동기화가 아직")로만 찾아 이 테스트를 놓침.
+
+### 수정 착수지시서 (AGENTS §3-2, 코드 더 안 건드리고 대기)
+
+- **무엇이 왜 실패**: ③ 문구를 "아직 기록을 불러오는 중입니다."로 바꿨는데, `cloudSession.test.js:39`가 옛 문구 조각 "준비되지 않았습니다"를 기대함. 동작(준비 안 됐으면 던짐)은 정상 — 기대 문구만 옛 것.
+- **수정 계획**: `react-app/src/lib/cloudSession.test.js:39` 정규식 `/준비되지 않았습니다/` → `/아직 기록을 불러오는 중입니다/` 한 줄. 건드릴 파일에 이 테스트 1개 추가.
+- **다시 찾아본 결과**: 옛 문구 조각(준비되지 않았·동기화되지 않았·서버에 등록되지·행을 찾지·반복적으로·저장 결과를·형식이 올바르지·백업 적용 중·브라우저 데이터·운행 대기 기록·다른 계정의 데이터·세션이 바뀌…)으로 테스트 전체 재검색 → 이 1곳 말고는 주석·무관한 테스트 제목뿐(`outboxFlush.test.js:25` 주석, `calendar*.test.js` "유효한 YYYY-MM-DD").
+- 확인: 고친 뒤 전체 테스트 통과 + 코드 쪽을 옛 문구로 되돌리면 이 테스트·기존 3개가 FAIL하는지 확인.
+- 보리 "착수지시서 확정, 작업 진행해"(수정 착수지시서) + "앱 이름 포함"(운행일지 통일 범위 — 문구 정리 4에서). `cloudSession.test.js:39` 기대 문구 1줄 수정.
+- 로컬 `npm test`: unit 824 통과, 화면 325 통과 / 1 실패 — `app/useBackToExit.test.js:57`(뒤로가기 안내 시간 테스트, 이번 변경과 무관한 파일). 단독 5회 모두 통과, `npm run test:app` 재실행 326 전체 통과 → 시간에 따라 가끔 실패하는 테스트로 판단(이번 변경 무관, 따로 보고).
+- 되돌림 확인(플레이북 §6): 코드 쪽 문구 3곳(③⑨①)을 옛 문구로 → 기대 문구 테스트 4개 파일 40건 중 5건 FAIL(`세션은 있는데 hydration이 ready가 아니면 던진다`·`saveProfile hydration failed…`·`게스트 미백업…`·`E — 세션 전환…`·`G-4 — 2건 성공 후 세션 전환…`), 복구 후 40건 PASS.
+- AI 개발 서버(5174, 비회원): 앱 설정 → 백업 불러오기에 `{}` 파일 → "백업 파일이 손상되었거나 운행일지 백업 파일이 아닙니다.", 홈 종 알림 "데이터 백업 권장 — 아직 백업한 적이 없습니다. 앱을 지우거나 휴대폰을 바꾸면 기록이 사라질 수 있습니다." 확인. 콘솔 오류 없음.
+- 코드 커밋 **react-app `610dcbd`**(20개 파일 = 지시서 16 + 테스트 3 + 수정 지시서 1, push 전). 다음: 보리 push·CI → 휴대폰 확인(비회원 홈 종 알림 문구).
+- push(보리) → CI "verify"·"deploy" 초록(`610dcbd`) → 배포본 확인(AI): 새 문구 들어감("앱을 지우거나 휴대폰을 바꾸면"·"운행일지 백업 파일이 아닙니다"·"로그인 정보가 바뀌어 저장하지 못했습니다"), 옛 문구("브라우저 데이터 삭제"·"세션이 바뀌어 저장을"·"형식이 올바르지 않습니다") 0건. §5 리뷰 문제 없음(범위 20개 파일 = 지시서 19 + 수정 지시서 1, 문자열만·새 저장 장치·타입 꼼수 없음, 모두 200줄 이하·줄 수 변화 없음, 테스트는 기대 문구만 바꿈·되돌림 FAIL 확인, CSS 변경 없음, 기대 동작 ①~⑩ 구현). 보리 휴대폰 확인 대기.
+- 보리 휴대폰 확인·최종 `[x]` 승인(2026-10-09).
