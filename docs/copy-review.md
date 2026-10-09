@@ -78,6 +78,7 @@
 | `CallDetailForm.jsx:104` | 부가세 포함 금액으로 계약하셨다면 ÷1.1 한 금액을 입력해 주세요. | 부가세 포함 금액이면 1.1로 나눈 금액을 넣어 주세요. (예: 110,000원 → 100,000원) |
 | `CallDetailForm.jsx:194` | 부가세 해제 | 부가세 없음 |
 | `CallDetailCard.jsx:37·39` | 상차지 **미상** / 하차지 **미상** | 상차지 없음 / 하차지 없음 |
+| `ReceivableItemCard.jsx:60` (미수금 화면) | 상차지 미상 / 하차지 미상 | 상차지 없음 / 하차지 없음 (3-A 배포 확인 때 발견) |
 | `ReceivableItemCard.jsx:101` | **이 건** 입금 완료 | 입금 완료 |
 | `DriverConnectionPage.jsx:147` | (계약기간) ~ 계속 | ~ 종료일 없음 |
 | `DailyInspectionModal.jsx:122` | (예시)창닦이기 불량 | 예: 창닦이기 불량 → 와이퍼 교체 |
