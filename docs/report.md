@@ -1,78 +1,63 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 새 홈 2단계 — 오늘 운행 줄 + "할 일" 카드 + 이번 달 정산 합계 `[x]`
+## 새 홈 3단계 — 운행 탭 달력 위쪽을 홈 위쪽과 같은 모양으로(알림 종만 뺌) `[x]`
 
-보리 요청 2026-10-10(로드맵 밖), 1단계 `[x]`(react-app `new-home` `6eea35b`·`dea8995`) 다음. 같은 브랜치 `new-home`에서 진행.
+보리 요청 2026-10-10(로드맵 밖), 2단계 `[x]`(react-app `new-home` `e60e329`) 다음. 같은 브랜치 `new-home`.
+이 단계가 끝나면 `new-home`을 main에 합쳐 배포(별도 확인 후).
+보리 지시(2026-10-10): "운행탭 상단을 홈상단과 동일하게 바꾸고 종만 없애자" — 처음 안(가운데 제목 "운행")은 폐기.
 
-### 현재 상태 (1단계 끝)
-- 홈 `/app` = 위쪽 줄(작은 로고·알림·메뉴) + 오늘 카드(날짜, "아직 기록이 없습니다"/"오늘 N회"/"오늘은 휴무입니다", 버튼 → 오늘 일지).
-- 오늘 카드엔 운행 내용이 안 보이고, 미수금·이번 달 금액은 다른 화면에 가야 보임.
+### 현재 상태 (코드 확인)
+- 운행 탭 달력(`/app/calendar`) 위쪽이 예전 홈 머리 그대로: 왼쪽 알림 종, 가운데 큰 로고(트럭 그림 + "운행일지"), 오른쪽 메뉴, 그 아래 달 선택(`CalendarHeader.jsx`).
+- 홈 위쪽은 1단계 수정 1로 한 줄(왼쪽 작은 로고, 오른쪽 알림 종 + 메뉴, `HomePage.jsx` 안에 직접 그림).
 
 ### 목표 상태 (기대 동작)
-1. **오늘 카드에 운행 줄**(기록이 있을 때만):
-   - 고정 노선 횟수가 있으면 "고정 노선 N회" 한 줄.
-   - 콜(세부 입력) 한 건마다 "상차지 → 하차지 · 운송료" 한 줄. 상차지·하차지가 비면 일지 카드와 같은 "상차지 없음" 식 문구. **최대 3줄, 넘으면 "외 N건"**.
-   - 제목 줄: 운송료가 있으면 "오늘 3회 · 420,000원"(금액은 달력 칸이 쓰는 기존 `dayFareTotal` 그대로), 없으면 지금처럼 "오늘 3회".
-2. **"할 일" 카드**(오늘 카드 아래):
-   - 미수금이 있으면 "미수 N건 · 합계원" 한 줄 → 누르면 미수금 화면(뒤로가기 = 홈).
-     건수·금액은 미수금 화면과 같은 목록(`useReceivablesData`의 `items`, 입금 완료 제외)에서 센 값 — 새 계산 규칙 없음.
-   - 할 일이 없으면 카드는 "할 일 없음" 한 줄로 작게.
-3. **"이번 달 정산 합계" 카드**(맨 아래): 운행 탭 달력의 "월간 운송료 정산" 카드 **"합계"와 똑같은 값** 한 줄 + [달력에서 보기 ›] → 운행 탭 달력.
-   같은 값을 보장하려고 달력의 합계 계산 연결(입력값 모으기)을 공용 훅 하나로 빼서 **달력과 홈이 같은 훅을 씀** — 계산 함수(`monthSettlementSummary`)는 그대로.
-4. 그대로인 것: 1단계 동작 전부, 달력 화면 모양·숫자, 저장·계산 규칙.
+1. 운행 탭 달력 위쪽 = **홈과 똑같은 한 줄**: 왼쪽 작은 로고(트럭 그림 + "운행일지"), 오른쪽 **메뉴만**(알림 종 없음).
+2. 큰 로고 줄은 없어지고 그 아래 달 선택(◀ 2026년 10월 ▶)은 그대로, 위로 당겨짐.
+3. 홈 위쪽은 지금 그대로(알림 종 + 메뉴).
+4. 두 화면이 같은 모양을 쓰도록 홈 위쪽 줄을 공용 부품 `AppTopBar` 하나로 빼서 홈·달력이 같이 씀(알림은 넘길 때만 보임).
+5. 사이드메뉴에서 여는 서브차량 달력(`/app/logs/번호`)도 같은 머리 + 지금 있는 "○○ 운행일지 [메인 일지로]" 띠 그대로.
+6. 달력 칸·정산 카드·날짜 누르기·월 이동 그대로.
 
 ### 건드릴 파일
 | 파일 | 내용 | 줄 수(현재 → 예상) |
 |---|---|---|
-| `react-app/src/components/home/HomePage.jsx` | 카드 3개 배치, 오늘 카드는 아래 새 파일로 이동 | 81 → 약 70 |
-| `react-app/src/components/home/HomeTodayCard.jsx` (새) | 오늘 카드 + 운행 줄 | 새로 약 75 |
-| `react-app/src/components/home/HomeTodoCard.jsx` (새) | 할 일 카드(미수) | 새로 약 40 |
-| `react-app/src/components/home/useTodayInspectionMissing.js` (새) | 오늘 일상점검을 안 했는지 서버에 1번 확인(일지 화면과 같은 `fetchDailyInspection`·같은 켜짐 조건 — 스위치 켜짐·휴무 아님·로그인·서버 차량 있음). 확인 중·실패면 안 보임 | 새로 약 35 |
-| `react-app/src/components/home/HomeMonthCard.jsx` (새) | 이번 달 정산 합계 카드 | 새로 약 35 |
-| `react-app/src/components/home/home.css` | 운행 줄·할 일·이번 달 카드 모양(공용 변수만) | 70 → 약 140 |
-| `react-app/src/components/calendar/useMonthSettlement.js` (새) | `CalendarPage.jsx`의 정산 합계 입력 모으기(단가·고정 노선·거래처·지출)를 그대로 옮긴 훅 | 새로 약 45 |
-| `react-app/src/components/calendar/CalendarPage.jsx` | 위 훅 사용(숫자·모양 그대로) | 123 → 약 105 |
-| `react-app/src/app/AppShellRoutes.jsx` | 홈에 미수금·달력 열기 연결(미수금은 `?back=home`) | 105 → 약 107 |
-| 테스트 | 아래 | — |
+| `react-app/src/components/shared/AppTopBar.jsx` (새) | 홈 위쪽 줄을 그대로 옮긴 공용 부품(작은 로고 + [알림] + 메뉴) | 새로 약 45 |
+| `react-app/src/components/shared/app-top-bar.css` (새) | `home.css`의 위쪽 줄 규칙 + `calendar-header.css`의 알림 버튼·숫자 배지 규칙을 옮김(이름 `app-topbar…`) | 새로 약 60 |
+| `react-app/src/components/home/HomePage.jsx` | 위쪽 줄 → `AppTopBar`(알림 넘김) | 95 → 약 70 |
+| `react-app/src/components/home/home.css` | 위쪽 줄 규칙 삭제(옮김) | 190 → 약 160 |
+| `react-app/src/components/calendar/CalendarHeader.jsx` | 위쪽 줄·큰 로고 → `AppTopBar`(알림 안 넘김) | 83 → 약 45 |
+| `react-app/src/components/calendar/calendar-header.css` | 규칙이 전부 `app-top-bar.css`로 옮겨져 **파일 삭제** | 26 → 삭제 |
+| `react-app/src/components/calendar/CalendarPage.jsx` | 머리에 알림 값 안 넘김 | 99 → 약 97 |
+| `react-app/src/app/MainPageRoute.jsx` | 달력에 알림 값 안 넘김 | 136 → 약 132 |
+| `react-app/src/app/AppShellRoutes.jsx` | 달력 쪽에 알림 값 안 넘김(홈은 그대로) | 105 → 약 105 |
+| `react-app/src/components/calendar/calendar.css` | 큰 로고용 규칙(`.banner-*`, 머리 위쪽 -30px 당김) 삭제 — 이제 아무도 안 씀 | 252 → 약 231 |
+| `react-app/src/components/home/HomePage.test.js` | 위쪽 줄 확인 이름만 새 이름으로 | 소폭 |
 
 ### 안 건드릴 것
-- `monthSettlementSummary`·`getReceivableItems`·`dayFareTotal` 등 계산 함수 — 읽기만(근거: 홈은 이 함수들의 결과를 그대로 보여주기만 함).
-- `CalendarMonthSummary.jsx` — 달력 카드 모양 그대로.
-- 미수금 화면·저장·동기화 코드 무변경 → 플레이북 대상 아님(읽기만).
+- `controls-common.css`의 `.top-notification-btn` 누름·올림 색 규칙 — 클래스 이름 그대로 써서 그대로 적용(근거: `controls-common.css:122·128`).
+- 큰 로고 클래스(`banner-container` 등)는 `CalendarHeader.jsx`만 씀(근거: 전체 `grep`) → 같이 지워도 다른 화면 영향 없음.
+- 달 선택(`CalendarDateSelect`)·정산 카드·칸 — 그대로.
+- 저장·계산 무변경, 플레이북 대상 아님.
 
 ### 테스트
-- 오늘 카드: 고정 노선 줄, 콜 줄(상차지·하차지·금액), 4건 이상이면 3줄 + "외 N건", 금액 있을 때 제목 "오늘 N회 · 금액".
-- 할 일: 일상점검 — 켜짐·서버에 없음이면 "오늘 일상점검 안 함", 있으면·꺼짐·비회원이면 안 보임. 미수 있으면 "미수 N건 · 합계" + 누르면 미수금 열기, 입금 완료 건은 안 셈, 없으면 "할 일 없음".
-- 이번 달: 같은 데이터로 홈 금액 = 달력 "합계" 금액(두 화면을 같이 그려 비교), 거래처 단가를 바꾸면 둘 다 같이 바뀜.
-- 기존 `CalendarPage.test.js` 그대로 통과(훅으로 옮겨도 숫자 같음).
+- 새: 달력 위쪽에 작은 로고·메뉴 버튼이 있고 알림 버튼·큰 로고가 없음, 월 이동 버튼 그대로. 홈은 알림 + 메뉴 그대로.
+- 기존 달력·앱 테스트 그대로 통과(메뉴 버튼은 그대로라 `App.guestDurable.test.js:808` "달력 헤더 메뉴 버튼" 영향 없음).
 - 되돌림 FAIL 확인.
 
 ### §6 200줄
-- 모두 200줄 이하(가장 긴 `home.css` 약 140).
+- `calendar.css`는 이미 252줄(18-C 때 예외 승인 `2345f7b`) — 이번엔 지우기만 해서 약 231로 줄어듦, 새로 늘지 않음. 나머지는 200줄 이하.
 
 ### 실패 시 처리
 - 새 저장소·재시도·대체 장치 등 **신규 레이어 없음**.
 
 ### 보리 결정 (2026-10-10)
-1. 일상점검 "오늘 안 함"을 할 일에 **넣어 봄**(필요 없으면 뺌). 누르면 오늘 일지(점검표 안내·입력이 있는 곳)로.
-2. 이번 달 카드 이름 **"이번 달 정산 합계"**(달력 합계와 같은 숫자).
+- 더 넣을 다듬기 없음 — 이것만 하고 main 합치기로.
 
 착수지시서 확정, 작업 진행 승인(2026-10-10).
 
 ### 진행 (2026-10-10)
-- react-app `new-home` 커밋 `e60e329`(push 안 함). 새 파일 6개(`HomeTodayCard`·`HomeTodoCard`·`HomeMonthCard`·`useTodayInspectionMissing`·`useMonthSettlement` + 기존 테스트 파일에 추가), `CalendarPage.jsx` 123 → 99(훅으로 옮김), `home.css` 190(예상 140보다 큼 — 200 이하).
-- typecheck 통과, `npm test` unit 832·화면 356 전부 통과(기존 `CalendarPage.test.js` 그대로 통과).
-- 되돌림 FAIL 확인 4종: 홈 합계를 달력과 다르게(부가세 뺌) → 실패, 미수 금액을 운송료로 → 실패, 점검표 서버 결과 무시 → 실패, 콜 줄 제한 풀기 → 실패.
-- AI 브라우저 확인(비회원): 오늘 카드·"할 일 없음"·이번 달 정산 합계 0원·[달력에서 보기], 콘솔 오류 없음.
+- react-app `new-home` 커밋 `99a317d`(push 안 함). 새 `shared/AppTopBar.jsx`(43)·`shared/app-top-bar.css`(56), `calendar-header.css` 삭제, `calendar.css` 252 → 230, `home.css` 190 → 156, `CalendarHeader.jsx` 83 → 51, `HomePage.jsx` 95 → 67.
+- typecheck 통과, 화면 테스트 357 전부 통과(새 1건). 되돌림 FAIL 확인: 옛 달력 머리로 되돌리면 새 테스트 실패.
+- AI 브라우저 확인: 운행 탭 위쪽 = 작은 로고 + 메뉴, 달 선택 바로 아래, 홈은 알림 + 메뉴 그대로.
 - 남은 것: push(브랜치) → CI → 보리 휴대폰 확인.
-- push(보리) `new-home` → CI verify 초록(배포는 브랜치라 건너뜀). 보리 휴대폰 확인 OK(콜 넣고 홈 운행 줄 확인, 2026-10-10).
-
-### §5 리뷰
-1. 범위: 바뀐 파일 10개 = 지시서 표(+ 보리 결정 1의 `useTodayInspectionMissing.js`) + 테스트. 그 밖 변경 없음.
-2. 몰래 증설 없음: 새 파일은 지시서 기재분만, 저장 키·큐·대체 장치 없음. 일상점검은 일지 화면과 같은 읽기 함수만 씀(저장 없음).
-3. 타입 꼼수 없음: `any`·`@ts-ignore`·`as unknown as` 0건. 새 `@type` 표기는 `inputMode` 글자 두 개('count'|'fare')로 좁히는 것 1곳(달력에 원래 있던 식을 옮기며 훅 반환 타입을 맞춤)과 빈 일지 상수(달력에서 그대로 옮김)뿐.
-4. 200줄: 가장 긴 `home.css` 190(지시서 예상 140보다 큼, 200 이하).
-5. 테스트: 새 4건, 되돌림 FAIL 4종 확인. 기존 테스트 수정 없음(`CalendarPage.test.js` 그대로 통과).
-6. 공용 CSS: 바뀐 CSS는 `home.css`(홈 전용 이름)뿐. 누름 98% 규칙도 홈 카드 이름에만.
-7. 요구사항: 목표 1~4 + 보리 결정 2건 충족.
-- 보리 최종 승인 `[x]`(2026-10-10).
+- push(보리) → CI 초록, 보리 최종 승인 `[x]`(2026-10-10). 이후 보리 지시: 착수지시서 없이 바로 수정.
