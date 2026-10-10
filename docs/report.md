@@ -1,67 +1,118 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 로드맵 30 npm 의존성 취약점 정리 `[~]` — react-app `5977a61` 커밋(보리 PDF·엑셀 저장 확인 완료), 보리 push·CI 대기
+## 로드맵 31 미수금 화면 뒤로가기 `?back=` 유실 `[~]` — react-app `ffe3fc5` 커밋(보리 브라우저 확인 완료), 보리 push·CI 대기
 
-보리 지시 2026-10-10 ("30번 착수지시서 작성해"). 출시 전 1단계 ③. 로드맵 메모: "`npm audit` 조사부터, 큰 버전 올림은 따로 상의".
+보리 지시 2026-10-10 ("확인해봐" → 남아 있음 확인 → "응"). 출시 전 1단계 ⑤.
 
-### 현재 상태 (`npm audit` 조사 결과, 2026-10-10)
-6건(높음 3·보통 2·낮음 1). 누가 끌고 오는지·사용자 휴대폰에 실제로 가는지로 나눴다.
+### 현재 상태 (AI 브라우저 재현, 2026-10-10)
+1. 마이페이지 → "미수금/정산 관리" → 주소 `/app/receivables?back=mypage` (표시 있음)
+2. "미수금 상세" → `/app/receivables/미지정 거래처/2026-10` (**표시 빠짐**)
+3. 상세 뒤로가기 → `/app/receivables` (표시 없음)
+4. 목록 뒤로가기 → **홈 `/app`** (마이페이지여야 함)
 
-| 묶음 | 어디서 | 사용자 앱에 들어가나 | 고칠 방법 |
-|---|---|---|---|
-| `source-map-js`(높음) | `vite`(빌드 도구)·`jsdom`(테스트) | 아니오 — 개발·빌드 때만 | `npm audit fix`(호환 범위 안 올림) |
-| `undici`(높음) | `jsdom`(테스트) | 아니오 — 테스트 때만 | `npm audit fix` |
-| `brace-expansion`(높음) | `exceljs` → `archiver` → 파일 찾기 | 아니오 — 앱은 `exceljs`의 미리 묶인 파일(`dist/exceljs.min.js`)을 쓰고, 그 안에 없음(검색 0건) | `npm audit fix` |
-| `dompurify`(보통) | `html2pdf.js`(PDF 저장) | **부분** — 아래 주의 | `npm audit fix`(목록상 해결) |
-| `uuid`+`exceljs`(보통 2) | `exceljs`(엑셀 저장) | 예, 하지만 문제 기능(v3/v5/v6)은 안 씀 — `exceljs`는 `v4`만 사용(`cf-rule-ext-xform.js:1`) | 유일한 방법이 `exceljs`를 4.4.0 → **3.4.0으로 내리기**(큰 변경) → **이번엔 안 함** |
-
-**주의(dompurify):** `html2pdf.js`(0.14.0, 지금 최신)는 DOMPurify **3.3.1을 자기 파일 안에 이미 묶어서** 나온다
-(`dist/html2pdf.js` 16548줄). 그래서 `npm audit fix`로 목록상 경고는 사라져도 **실제 앱에 들어가는 PDF 코드는 그대로**다.
-다만 위험한 기능(`IN_PLACE`)은 쓰이지 않고(기본값 꺼짐, 31996줄은 일반 정리만), 넣는 내용도 우리 앱이 그린 보고서 화면뿐이라
-외부 공격 글이 들어갈 길이 없다. `html2pdf.js` 새 버전이 나와야 근본 해결.
+원인: 목록 → 상세(`ReceivablesListPage.jsx:94`), 상세 → 목록(`ReceivablesDetailPage.jsx:40·52·93`) 이동이
+주소 뒤 표시(`?back=mypage`)를 안 들고 감. 목록의 뒤로가기는 이 표시를 보고 갈 곳을 정함(`AppShellRoutes.jsx:47`).
+상세에 안 들르고 목록에서 바로 뒤로가면 정상.
 
 ### 목표 상태 (기대 동작)
-1. `npm audit fix`(강제 옵션 없이)로 호환 범위 안에서만 올린다 → `package-lock.json`만 바뀜, `package.json` 무변경.
-2. 남는 경고: `uuid`+`exceljs` 보통 2건 — 위 이유로 그대로 둠(큰 버전 변경 금지, 로드맵 메모대로).
-3. **사용자 앱에 들어가는 코드는 바뀌지 않아야 한다** — 빌드 결과를 고치기 전/후 비교해 확인.
-4. 개발·테스트·빌드 도구의 취약점은 실제로 해소.
+1. 마이페이지 → 목록 → 상세 → 뒤로 → 뒤로 = **마이페이지**.
+2. 사이드메뉴 → 목록(`?back=home`) → 상세 → 뒤로 → 뒤로 = **홈**(지금과 같음).
+3. 상세에서 "전체 입금 완료 처리" 뒤 목록으로 돌아갈 때, 잘못된 상세 주소로 들어와 목록으로 돌려보낼 때도 표시 유지.
+4. 화면 모양·미수금 계산·저장은 그대로.
 
 ### 건드릴 파일
-| 파일 | 내용 |
-|---|---|
-| `react-app/package-lock.json` | `npm audit fix` 결과(설치 버전 표시만) |
+| 파일 | 내용 | 줄 수(현재 → 예상) |
+|---|---|---|
+| `react-app/src/components/receivables/receivablesPaths.js` | `receivablesDetailPath`에 주소 뒤 표시를 받는 칸 추가 + 목록 주소 도우미 `receivablesListPath(search)` 추가 | 23 → 약 30 |
+| `react-app/src/components/receivables/ReceivablesListPage.jsx` | 상세로 갈 때 지금 주소 뒤 표시를 넘김(`useLocation().search`) | 128 → 약 130 |
+| `react-app/src/components/receivables/ReceivablesDetailPage.jsx` | 목록으로 돌아가는 3곳(40·52·93줄)을 `receivablesListPath(search)`로 | 103 → 약 105 |
+| `react-app/src/components/receivables/receivablesPaths.test.js` (새 테스트 파일) | 표시가 있을 때·없을 때 두 주소 도우미가 맞는 주소를 만드는지 | 새로 약 30 |
 
 ### 안 건드릴 것
-- `package.json` — 범위 변경 없음(근거: `npm audit fix`는 지정 범위 안에서만 올림, 커밋 전 `git diff --stat`으로 확인).
-- `exceljs`·`html2pdf.js` 버전 — 그대로.
-- 소스 코드 전부.
-- 플레이북 대상 아님(저장·동기화 코드 무변경).
+- `AppShellRoutes.jsx`·`AppShell.jsx` — 표시를 붙이고 읽는 쪽은 정상(근거: 1단계에서 `?back=mypage` 붙음, 목록에서 바로 뒤로가면 마이페이지 — 위 재현).
+- 미수금 계산·입금 처리(`useReceivablesActions.js`·`lib/receivables.js`) — 이동 주소만 바뀜.
+- 플레이북 대상 아님(저장·동기화 코드 무변경, 화면 이동만).
 
 ### §6 200줄
-- 소스 변경 없음. `package-lock.json`은 자동 생성 파일이라 해당 없음.
+- 바뀌는 파일 모두 200줄 이하 유지(약 30 / 130 / 105). 새 테스트 파일은 예외.
 
 ### 실패 시 처리
 - 새 저장소·재시도·대체 장치 등 **신규 레이어 없음**.
-- `npm audit fix`가 `package.json`을 바꾸거나 큰 버전을 올리려 하면 멈추고 보고.
 - 검증에서 하나라도 실패하면 AGENTS §3대로 수정 착수지시서를 다시 쓴다.
 
 ### 검증
-1. (AI) `npm test`·`npm run typecheck`·`npm run build` 통과.
-2. (AI) 빌드 결과 비교: 고치기 전/후 `dist/` 파일 목록·크기 비교 — PDF·엑셀·앱 본체 파일이 같아야 함(다르면 무엇이 왜 다른지 보고).
-3. (AI) `npm audit` 다시 실행 → `uuid`+`exceljs` 2건만 남는지.
-4. (보리) 브라우저: 서류 발급에서 **PDF 저장**·**엑셀(세금계산서) 저장**이 예전처럼 되는지 한 번씩.
-
-### 보리 확인 질문 (1개)
-`html2pdf.js` 안에 묶인 옛 DOMPurify(위 "주의")를 로드맵 "후속 nit"에 **"html2pdf.js 새 버전 나오면 올리기"**로 적어 둘까요?
-(AI 관찰 — 답 받기 전엔 어디에도 등재 안 함.)
+1. (AI) `npm test`·`npm run typecheck` 통과. 새 테스트는 도우미가 표시를 버리게 잠깐 망가뜨려 FAIL 확인 후 되돌림.
+2. (AI) 브라우저에서 위 재현 순서 1~4를 다시 → 마이페이지 도착 확인. 사이드메뉴 경로(홈 도착)도 확인.
+3. (보리) 브라우저: 마이페이지 → 미수금/정산 관리 → 미수금 상세 → 뒤로 → 뒤로 = 마이페이지.
 
 ### 커밋 메시지 초안
-`chore: npm audit fix — 개발·빌드 도구 취약점 정리(package-lock만), exceljs의 uuid 경고는 큰 버전 변경이라 보류`
+`fix: 미수금 상세에 들렀다 뒤로가면 마이페이지 대신 홈으로 가던 것 — 상세 오갈 때 ?back= 표시 유지`
 
 ### 진행 결과 (2026-10-10)
-- `npm audit fix`(강제 없음): `package-lock.json`만 바뀜(15줄 ±), `package.json` 무변경.
-  brace-expansion 1.1.18→1.1.21·2.1.4→2.1.7, dompurify 3.4.14→3.4.16, source-map-js 1.2.1→1.2.2, undici 8.10.0→8.11.2.
-- `npm audit`: 6건 → **`uuid`+`exceljs` 보통 2건만** 남음(계획대로 보류).
-- 빌드 결과 비교: 고치기 전/후 59개 파일 **해시까지 완전히 같음** — 사용자 앱 코드 변화 없음 확인.
-- `npm run typecheck` 오류 0, `npm test` 전체 통과(832 + 340).
-- 보리 답 "적어놔"(2026-10-10) → `docs/roadmap.md` "후속 nit"에 html2pdf.js 항목 등재.
+- 4개 파일(새 테스트 1). 줄 수 29 / 129 / 104. `npm run typecheck` 오류 0, strict-inventory 454 그대로, `npm test` 전체 통과(832 + 344).
+- 새 테스트 4개 — 도우미가 표시를 버리게 망가뜨리면 "표시를 붙인다" 2개 FAIL 확인 후 되돌림.
+- AI 브라우저(375px):
+  - 마이페이지 경로: 목록 `?back=mypage` → 상세 `…/2026-10?back=mypage` → 뒤로 `/app/receivables?back=mypage` → 뒤로 **`/app/me`** ✔
+  - 사이드메뉴 경로: 목록 `?back=home` → 상세 `…?back=home` → 뒤로 → 뒤로 **`/app`** ✔(예전과 같음)
+
+---
+
+## 로드맵 16 처음 이름 입력 "실명" 안내 + 내 정보 성명 칸 비우기 `[~]` — react-app `0a2ae05` 커밋(보리 확인 완료), 보리 push·CI 대기
+
+보리 지시 2026-10-10. 문구는 보리 결정: **"서비스 이용 및 본인 확인을 위해 실명이 필요합니다."** 출시 전 1단계 ⑤.
+
+### 현재 상태
+- 구글 첫 로그인 "기본 정보" 화면(`WelcomeProfileView.jsx`)은 이름 칸에 구글 계정 이름을 미리 채운다(`App.jsx:84`).
+  실명 안내가 없어 별명·영어 이름으로 가입되기 쉽다. 이 이름은 일상점검표 점검자 서명 등에 쓰인다.
+- 로드맵 메모 "내 정보 성명을 비우면 가입 때 이름이 다시 나타나 수정할 방법이 없다" — **지금도 그렇다(AI 코드 확인)**:
+  `PersonalInfoPage.jsx:135` 성명 칸 값이 `get('name') || sessionName` — 칸을 비우면 가입 때 이름이 바로 다시 채워짐.
+  (새 이름을 덮어 치면 저장은 되지만, 비우고 새로 치려는 사용자에겐 "안 지워진다"로 보임.)
+
+### 목표 상태 (기대 동작)
+1. "기본 정보" 화면 이름 칸 바로 아래에 작은 회색 안내 한 줄: `서비스 이용 및 본인 확인을 위해 실명이 필요합니다.`
+2. (보리 추가 지시 2026-10-10) 칸 제목 "이름" → **`이름(실명)`**, 칸 안 예시 "이름을 입력하세요" → **`본인 실명`**. 위쪽 설명 문구·[시작하기] 동작은 그대로.
+3. 라이트/다크 둘 다 읽히는 색(기존 보조 글자색 `--sub-text-color`), 최소 글씨 12px 규칙 지킴.
+4. (보리 "같이 고쳐") 내 정보 성명 칸을 비우면 **빈 칸으로 남는다** — 가입 때 이름은 회색 예시 글자(placeholder)로만 보임. 새로 친 이름 저장은 지금과 같음.
+
+### 건드릴 파일
+| 파일 | 내용 | 줄 수(현재 → 예상) |
+|---|---|---|
+| `react-app/src/components/auth/WelcomeProfileView.jsx` | 이름 칸 아래 안내 `<p>` 1줄 + 새 CSS import + 칸 제목·예시 문구 | 82 → 약 85 |
+| `react-app/src/components/auth/welcome-profile.css` (새 파일) | 안내 줄 모양 `.auth-field-hint` 하나 | 새로 약 5 |
+| `react-app/src/components/auth/WelcomeProfileView.test.js` | 안내 문구가 보이는지 검사 추가 | 테스트 파일 |
+| `react-app/src/components/PersonalInfoPage.jsx` | 135줄 성명 칸: 값은 `get('name')`만, 가입 이름은 예시 글자로 | 197 → 197 |
+| `react-app/src/components/PersonalInfoPage.test.js` | 성명 칸을 비우면 빈 칸·예시 글자에 가입 이름 검사 추가 | 테스트 파일 |
+
+### 안 건드릴 것
+- `account-flow.css` — 이미 572줄(§6 200줄 초과)이라 손대면 분리설계안이 필요 → 새 작은 CSS 파일로 대신(이 화면만 씀).
+- 가입·저장 로직(`App.jsx` `onSubmit`, 서버 저장) — 문구만 추가.
+- `PersonalInfoPage.jsx`의 연락처 칸 등 성명 외 칸 — 이번 범위 아님.
+- 플레이북 대상 아님(저장·동기화 무변경).
+
+### §6 200줄
+- `WelcomeProfileView.jsx` 약 85줄, 새 CSS 약 5줄. 공용 클래스 아님(새 클래스, 이 화면만) → §5-6 영향범위 없음.
+
+### 실패 시 처리
+- **신규 레이어 없음**. 검증 실패 시 AGENTS §3대로 수정 착수지시서.
+
+### 검증
+1. (AI) `npm test`·`npm run typecheck` 통과, 새 검사는 문구를 지우면 FAIL 확인 후 되돌림.
+2. (AI·보리) 브라우저: 구글 첫 로그인 "기본 정보" 화면(휴대폰 크기, 라이트·다크)에서 이름 칸 아래 안내 줄 확인.
+   (구글 첫 로그인 화면은 새 계정이 있어야 떠서 AI는 화면만 따로 띄워 확인, 실제 가입 흐름은 보리 확인.)
+
+### 보리 확인 질문 (1개)
+위 "현재 상태"의 **내 정보 성명 칸이 비우면 가입 이름으로 다시 채워지는 문제**도 이번에 같이 고칠까요?
+(고치면 `PersonalInfoPage.jsx` 135줄 1곳 — 비우면 빈 칸으로 두고, 가입 이름은 회색 예시 글자로만 보이게. 197줄 파일이라 200줄 안.
+따로 하자면 이번엔 안내 문구만.)
+
+### 커밋 메시지 초안
+`feat: 처음 이름 입력 화면에 실명 안내 — "서비스 이용 및 본인 확인을 위해 실명이 필요합니다."`
+
+### 진행 결과 (2026-10-10)
+- 5개 파일(새 CSS 1, 테스트 2). 줄 수 `WelcomeProfileView.jsx` 84, `PersonalInfoPage.jsx` 197 그대로, 새 CSS 7.
+- `npm run typecheck` 오류 0, strict-inventory 454 그대로, `npm test` 전체 통과(832 + 347).
+- 새 테스트 3개 — ① 안내 줄을 지우면 FAIL ② 성명 칸을 예전(`get('name') || sessionName`)으로 되돌리면 FAIL 확인 후 되돌림.
+- AI 브라우저(375px): 기본 정보 화면을 따로 띄워 이름 칸 아래 안내 줄 확인 — 12px, 라이트 `rgb(90,103,120)`·다크 `rgb(173,173,173)`.
+  내 정보 성명 칸: 저장된 이름이 있으면 그 값, 가입 이름은 예시 글자(placeholder)로만. 보리 기기 데이터 안 바꾸려고 "비우기"는 테스트로만 확인. 콘솔 오류 없음.
+- (추가 지시 반영) 칸 제목 `이름(실명)`·칸 안 예시 `본인 실명` — 테스트에 두 문구 검사 추가(예전 문구로 되돌리면 FAIL 확인), `npm test` 전체 통과(832 + 347), 브라우저 다크 화면 확인.
+- (보리 바로 수정 지시, 지시서 없이) 위쪽 설명 "이름과 휴대전화 번호를 입력하면 바로 시작할 수 있습니다." → `이름과 전화번호를 입력해 주세요.`
