@@ -1,63 +1,57 @@
 # docs/report.md — 현재 슬라이스 착수지시서
 
-## 새 홈 3단계 — 운행 탭 달력 위쪽을 홈 위쪽과 같은 모양으로(알림 종만 뺌) `[x]`
+## 새 홈 main 합치기 (2026-10-10, 보리 지시 "지금 만든거 먼저 적용")
+- react-app `new-home`(1~3단계 + 바로 수정 `84dc0b9` 지출 합계 줄·`1c43c7b` 맨 위로)을 main에 **빨리 감기로 합침**(main이 그사이 안 움직여 합치기 커밋 없음). 합친 main에서 typecheck·`npm test` unit 832·화면 358 통과.
+- 보리 main push → CI verify·deploy 초록, 배포본에 새 주소(`/app/calendar`) 들어간 것 확인(2026-10-10). 남은 것: 보리 휴대폰 배포판 확인.
 
-보리 요청 2026-10-10(로드맵 밖), 2단계 `[x]`(react-app `new-home` `e60e329`) 다음. 같은 브랜치 `new-home`.
-이 단계가 끝나면 `new-home`을 main에 합쳐 배포(별도 확인 후).
-보리 지시(2026-10-10): "운행탭 상단을 홈상단과 동일하게 바꾸고 종만 없애자" — 처음 안(가운데 제목 "운행")은 폐기.
+---
 
-### 현재 상태 (코드 확인)
-- 운행 탭 달력(`/app/calendar`) 위쪽이 예전 홈 머리 그대로: 왼쪽 알림 종, 가운데 큰 로고(트럭 그림 + "운행일지"), 오른쪽 메뉴, 그 아래 달 선택(`CalendarHeader.jsx`).
-- 홈 위쪽은 1단계 수정 1로 한 줄(왼쪽 작은 로고, 오른쪽 알림 종 + 메뉴, `HomePage.jsx` 안에 직접 그림).
+## AI 비서 1단계 — 홈에 비서 입력 줄(화면만) `[x]`
+
+보리 요청 2026-10-10(로드맵 밖). 비서는 ② 물어보기 위주 + ① 말로 기록도 가능. **이번엔 화면 자리만**, 동작 연결은 비서 기능이 준비되면 다음 단계.
+**react-app 새 브랜치 `ai-assistant`**(합친 main에서 시작)에서 진행 — 비서가 동작할 때까지 main에 안 합침(사용자에게 안 되는 버튼이 보이지 않게, 보리 결정 "가").
+
+### 현재 상태
+- 홈 = 위쪽 줄 → 오늘 카드 → 할 일 → 이번 달 정산 합계(`HomePage.jsx`). 비서 자리 없음.
 
 ### 목표 상태 (기대 동작)
-1. 운행 탭 달력 위쪽 = **홈과 똑같은 한 줄**: 왼쪽 작은 로고(트럭 그림 + "운행일지"), 오른쪽 **메뉴만**(알림 종 없음).
-2. 큰 로고 줄은 없어지고 그 아래 달 선택(◀ 2026년 10월 ▶)은 그대로, 위로 당겨짐.
-3. 홈 위쪽은 지금 그대로(알림 종 + 메뉴).
-4. 두 화면이 같은 모양을 쓰도록 홈 위쪽 줄을 공용 부품 `AppTopBar` 하나로 빼서 홈·달력이 같이 씀(알림은 넘길 때만 보임).
-5. 사이드메뉴에서 여는 서브차량 달력(`/app/logs/번호`)도 같은 머리 + 지금 있는 "○○ 운행일지 [메인 일지로]" 띠 그대로.
-6. 달력 칸·정산 카드·날짜 누르기·월 이동 그대로.
+1. **오늘 카드 바로 아래, 할 일 카드 위**에 얇은 한 줄 카드(약 56px):
+   왼쪽 **비서 얼굴 그림**(동그랗게) · 가운데 **"운비서"**(굵게, 임시 이름) + "무엇이든 물어보세요"(회색) · 오른쪽 **마이크 아이콘**.
+   마이크는 이모지가 아니라 하단 탭 아이콘과 같은 선 그림(SVG, 24 칸·선 굵기 2·둥근 끝·글자색 따라감 — `BottomNav.jsx` 아이콘과 같은 방식).
+2. 지금은 눌러도 아무 일 없음(보리: 안내도 안 띄움 — 사용자에게 따로 알림). 그래서 이번엔 **누르는 버튼으로 만들지 않고 모양만**(나중에 동작 붙일 때 버튼으로 바꿈) — 눌림 효과·키보드 초점이 생기지 않음.
+3. 다른 카드·하단 탭·달력은 그대로.
 
 ### 건드릴 파일
 | 파일 | 내용 | 줄 수(현재 → 예상) |
 |---|---|---|
-| `react-app/src/components/shared/AppTopBar.jsx` (새) | 홈 위쪽 줄을 그대로 옮긴 공용 부품(작은 로고 + [알림] + 메뉴) | 새로 약 45 |
-| `react-app/src/components/shared/app-top-bar.css` (새) | `home.css`의 위쪽 줄 규칙 + `calendar-header.css`의 알림 버튼·숫자 배지 규칙을 옮김(이름 `app-topbar…`) | 새로 약 60 |
-| `react-app/src/components/home/HomePage.jsx` | 위쪽 줄 → `AppTopBar`(알림 넘김) | 95 → 약 70 |
-| `react-app/src/components/home/home.css` | 위쪽 줄 규칙 삭제(옮김) | 190 → 약 160 |
-| `react-app/src/components/calendar/CalendarHeader.jsx` | 위쪽 줄·큰 로고 → `AppTopBar`(알림 안 넘김) | 83 → 약 45 |
-| `react-app/src/components/calendar/calendar-header.css` | 규칙이 전부 `app-top-bar.css`로 옮겨져 **파일 삭제** | 26 → 삭제 |
-| `react-app/src/components/calendar/CalendarPage.jsx` | 머리에 알림 값 안 넘김 | 99 → 약 97 |
-| `react-app/src/app/MainPageRoute.jsx` | 달력에 알림 값 안 넘김 | 136 → 약 132 |
-| `react-app/src/app/AppShellRoutes.jsx` | 달력 쪽에 알림 값 안 넘김(홈은 그대로) | 105 → 약 105 |
-| `react-app/src/components/calendar/calendar.css` | 큰 로고용 규칙(`.banner-*`, 머리 위쪽 -30px 당김) 삭제 — 이제 아무도 안 씀 | 252 → 약 231 |
-| `react-app/src/components/home/HomePage.test.js` | 위쪽 줄 확인 이름만 새 이름으로 | 소폭 |
+| `react-app/src/components/home/HomeAssistantBar.jsx` (새) | 비서 입력 줄(그림·안내 글·마이크) | 새로 약 30 |
+| `react-app/src/components/home/home-assistant.css` (새) | 줄 모양(높이·둥근 그림·글씨, 공용 색 변수만, 라이트·다크) — `home.css`가 168줄이라 따로 | 새로 약 45 |
+| `react-app/src/components/home/HomePage.jsx` | 오늘 카드와 할 일 사이에 넣기 | 67 → 약 69 |
+| `react-app/public/images/` 비서 그림(새) | 보리가 작업 때 주는 그림. 크면 홈에서 보이는 크기(약 40px)의 2~3배로 줄여 넣음(10-A 배너처럼) | — |
+| `react-app/src/components/home/HomePage.test.js` | 비서 줄이 오늘 카드와 할 일 사이에 있고 글·그림이 보이는지 1건 | 소폭 |
 
 ### 안 건드릴 것
-- `controls-common.css`의 `.top-notification-btn` 누름·올림 색 규칙 — 클래스 이름 그대로 써서 그대로 적용(근거: `controls-common.css:122·128`).
-- 큰 로고 클래스(`banner-container` 등)는 `CalendarHeader.jsx`만 씀(근거: 전체 `grep`) → 같이 지워도 다른 화면 영향 없음.
-- 달 선택(`CalendarDateSelect`)·정산 카드·칸 — 그대로.
-- 저장·계산 무변경, 플레이북 대상 아님.
+- 저장·서버·계산 무변경(화면 모양만). 플레이북 대상 아님.
+- 공용 CSS(`app-shell-base.css` 등) — 비서 줄은 버튼이 아니라 공용 누름 효과와 무관.
 
 ### 테스트
-- 새: 달력 위쪽에 작은 로고·메뉴 버튼이 있고 알림 버튼·큰 로고가 없음, 월 이동 버튼 그대로. 홈은 알림 + 메뉴 그대로.
-- 기존 달력·앱 테스트 그대로 통과(메뉴 버튼은 그대로라 `App.guestDurable.test.js:808` "달력 헤더 메뉴 버튼" 영향 없음).
-- 되돌림 FAIL 확인.
+- 위 1건 + 기존 홈·앱 테스트 그대로 통과. 되돌림 FAIL 확인.
 
 ### §6 200줄
-- `calendar.css`는 이미 252줄(18-C 때 예외 승인 `2345f7b`) — 이번엔 지우기만 해서 약 231로 줄어듦, 새로 늘지 않음. 나머지는 200줄 이하.
+- 모두 200줄 이하(`home.css`는 안 늘림).
 
 ### 실패 시 처리
 - 새 저장소·재시도·대체 장치 등 **신규 레이어 없음**.
 
 ### 보리 결정 (2026-10-10)
-- 더 넣을 다듬기 없음 — 이것만 하고 main 합치기로.
-
-착수지시서 확정, 작업 진행 승인(2026-10-10).
+- 마이크 = 하단 탭 같은 선 그림 SVG(이모지 아님).
+- 이름 임시 "운비서".
+- 비서 그림 시안은 보리가 휴대폰으로 보냄 → 받으면 작업.
 
 ### 진행 (2026-10-10)
-- react-app `new-home` 커밋 `99a317d`(push 안 함). 새 `shared/AppTopBar.jsx`(43)·`shared/app-top-bar.css`(56), `calendar-header.css` 삭제, `calendar.css` 252 → 230, `home.css` 190 → 156, `CalendarHeader.jsx` 83 → 51, `HomePage.jsx` 95 → 67.
-- typecheck 통과, 화면 테스트 357 전부 통과(새 1건). 되돌림 FAIL 확인: 옛 달력 머리로 되돌리면 새 테스트 실패.
-- AI 브라우저 확인: 운행 탭 위쪽 = 작은 로고 + 메뉴, 달 선택 바로 아래, 홈은 알림 + 메뉴 그대로.
-- 남은 것: push(브랜치) → CI → 보리 휴대폰 확인.
-- push(보리) → CI 초록, 보리 최종 승인 `[x]`(2026-10-10). 이후 보리 지시: 착수지시서 없이 바로 수정.
+- react-app `ai-assistant` 커밋 `5d8fac0`(push 안 함, main에 안 합침). 새 파일: `HomeAssistantBar.jsx`(25)·`home-assistant.css`(64)·`public/images/assistant_unbiseo.png`(120×96, 9KB). 원본은 `design-assets/assistant/unbiseo-basic-original.png`(780KB, `public` 밖이라 배포 안 됨 — 다른 표정·큰 그림 때 씀).
+- 높이 58px(56 목표, 얼굴 44 + 위아래 6 + 테두리). 다크는 얼굴 바탕 밝은 크림.
+- `.home-card`(home.css)가 뒤에 불러와져 줄 배치를 덮어서, 비서 줄 규칙을 `.home-card.home-assistant`로 함(같은 파일 안에서 해결).
+- typecheck·`npm test` unit 832·화면 359 통과, 새 1건 되돌림 FAIL 확인. AI 브라우저 확인(휴대폰 크기, 라이트·다크).
+- 남은 것: push(브랜치) → CI → 보리 휴대폰 확인(개발 서버 `http://192.168.219.105:5173/`, 지금 `ai-assistant` 코드).
+- 보리 휴대폰 확인 OK. 바로 수정: 얼굴 바탕 연두 → 회색(`--hover-bg`, 다크는 밝은 회색) `e4c2134`. 보리 최종 승인 `[x]`(2026-10-10). `ai-assistant`는 비서 동작 전까지 main에 안 합침.
